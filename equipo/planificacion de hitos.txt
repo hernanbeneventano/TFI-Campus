@@ -1,0 +1,22 @@
+PLANIFICACIÓN DE HITOS Y ENTREGAS
+Proyecto: Aplicación Campus | Integrantes: Sosa & Beneventano | Plazo: 21 Días (3 Semanas)
+• Hito 1: Definición y Arquitectura UI/UX (Días 1 a 5)
+- Reunión 1: Definición de alcance y stack tecnológico.
+- Beneventano: Modelo ER de Base de Datos y endpoints API.
+- Sosa: Wireframes UI (Dashboard, materias, tareas).
+- Entregable: Diagrama de BD y Mockups visuales.
+• Hito 2: Desarrollo Base y Cursos (Días 6 a 11)
+- Reuniones 2 y 3: Integración Backend-Frontend.
+- Beneventano: Autenticación (login/roles) y CRUD de cursos.
+- Sosa: Maquetación del Dashboard y navegación.
+- Entregable: Login funcional y navegación de cursos.
+• Hito 3: Módulo de Tareas y Notas (Días 12 a 16)
+- Reunión 4: Pruebas de subida de archivos.
+- Beneventano: Lógica de entregas, tareas y calificaciones.
+- Sosa: Layout de entregas y vistas de notas.
+- Entregable: Módulo completo de asignaciones.
+• Hito 4: Testing, Pulido y Cierre (Días 17 a 21)
+- Reunión 5: Pruebas integrales de errores.
+- Beneventano: Corrección de errores y validaciones.
+- Sosa: Pulido UI responsive y presentación final.
+- Entregable: Aplicación lista y entregada en Campus.
