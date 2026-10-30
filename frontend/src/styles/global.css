@@ -1,0 +1,182 @@
+/* Colores y medidas base. Cambiar acá para ajustar el estilo de toda la app. */
+:root {
+  --color-fondo: #f6f7fb;
+  --color-superficie: #ffffff;
+  --color-texto: #1d2433;
+  --color-texto-suave: #6b7280;
+  --color-borde: #e5e7eb;
+  --color-primario: #4f6bed;
+  --color-urgente: #d64545;
+  --radio: 12px;
+  --ancho-menu: 220px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  margin: 0 0 24px;
+  font-size: 1.75rem;
+}
+
+h3 {
+  margin: 4px 0;
+}
+
+p {
+  margin: 0;
+}
+
+/* Estructura general */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.contenido {
+  flex: 1;
+  padding: 32px;
+  max-width: 1000px;
+}
+
+/* Menú lateral */
+.menu {
+  width: var(--ancho-menu);
+  background: var(--color-superficie);
+  border-right: 1px solid var(--color-borde);
+  padding: 24px 16px;
+}
+
+.menu-logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--color-primario);
+  margin-bottom: 32px;
+  padding: 0 12px;
+}
+
+.menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--color-texto);
+  text-decoration: none;
+}
+
+.menu-link:hover {
+  background: var(--color-fondo);
+}
+
+.menu-link.activo {
+  background: var(--color-primario);
+  color: #fff;
+}
+
+/* Actividad */
+.grupo {
+  margin-bottom: 28px;
+}
+
+.grupo-titulo {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-texto-suave);
+  margin: 0 0 8px;
+}
+
+.grupo-titulo.urgente {
+  color: var(--color-urgente);
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+
+/* Cursos */
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.tarjeta {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+
+.tarjeta-banda {
+  height: 72px;
+}
+
+.tarjeta-cuerpo {
+  padding: 14px 16px 18px;
+}
+
+.tarjeta-codigo {
+  font-size: 0.8rem;
+  color: var(--color-texto-suave);
+}
+
+/* Utilidades */
+.texto-suave {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.error {
+  color: var(--color-urgente);
+}
+
+/* Celular: el menú pasa arriba */
+@media (max-width: 700px) {
+  .layout {
+    flex-direction: column;
+  }
+  .menu {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-borde);
+    padding: 12px 16px;
+  }
+  .menu-logo {
+    margin-bottom: 8px;
+  }
+  .menu ul {
+    display: flex;
+    gap: 4px;
+  }
+  .contenido {
+    padding: 20px 16px;
+  }
+}
