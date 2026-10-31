@@ -9,5 +9,7 @@ async function pedir(ruta) {
   return respuesta.json();
 }
 
+export const obtenerUsuarioActual = () => pedir('/me');
 export const obtenerCursos = () => pedir('/cursos');
 export const obtenerActividad = () => pedir('/actividad');
+export const obtenerTareasPendientes = () => pedir('/tareas/pendientes');
