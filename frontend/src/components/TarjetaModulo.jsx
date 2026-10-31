@@ -1,7 +1,18 @@
-import { IconoEstrella } from './Iconos.jsx';
+import { Link } from 'react-router-dom';
+import { IconoEstrella, IconoCampana } from './Iconos.jsx';
+
+// Qué hay de nuevo en el módulo, para el globito de ayuda de la campanita
+function textoNovedades({ anuncios, tareas }) {
+  const partes = [];
+  if (anuncios) partes.push(`${anuncios} ${anuncios === 1 ? 'anuncio nuevo' : 'anuncios nuevos'}`);
+  if (tareas) partes.push(`${tareas} ${tareas === 1 ? 'tarea nueva' : 'tareas nuevas'}`);
+  return partes.join(' y ');
+}
 
 // Un módulo (materia). Se muestra como tarjeta o como fila según la vista elegida.
-export default function TarjetaModulo({ modulo, vista, onFavorito }) {
+// El enlace del nombre se estira sobre toda la tarjeta (clase "enlace-tarjeta"),
+// así se puede hacer clic en cualquier parte sin anidar botones dentro del enlace.
+export default function TarjetaModulo({ modulo, vista, onFavorito, mostrarPeriodo = true }) {
   const botonFavorito = (
     <button
       type="button"
@@ -14,17 +25,31 @@ export default function TarjetaModulo({ modulo, vista, onFavorito }) {
     </button>
   );
 
+  // Campanita a la derecha del nombre cuando hay algo publicado esta semana
+  const novedad = modulo.novedades?.total > 0 && (
+    <span className="novedad" title={textoNovedades(modulo.novedades)}>
+      <IconoCampana width={16} height={16} />
+    </span>
+  );
+
+  const enlace = (
+    <Link to={`/modulos/${modulo.id}`} className="enlace-tarjeta">
+      {modulo.nombre}
+    </Link>
+  );
+
   if (vista === 'lista') {
     return (
       <article className="modulo-fila">
         <span className="modulo-color" style={{ background: modulo.color }} />
         <div className="modulo-fila-texto">
-          <strong>{modulo.nombre}</strong>
+          <strong>{enlace}</strong>
           <small>
             {modulo.codigo} · {modulo.docente}
           </small>
         </div>
-        <small className="modulo-fila-periodo">{modulo.periodo}</small>
+        {novedad}
+        {mostrarPeriodo && <small className="modulo-fila-periodo">{modulo.periodo}</small>}
         {botonFavorito}
       </article>
     );
@@ -37,9 +62,12 @@ export default function TarjetaModulo({ modulo, vista, onFavorito }) {
         {botonFavorito}
       </div>
       <div className="modulo-cuerpo">
-        <h3>{modulo.nombre}</h3>
+        <h3 className="modulo-nombre">
+          {enlace}
+          {novedad}
+        </h3>
         <p>{modulo.docente}</p>
-        <small>{modulo.periodo}</small>
+        {mostrarPeriodo && <small>{modulo.periodo}</small>}
       </div>
     </article>
   );

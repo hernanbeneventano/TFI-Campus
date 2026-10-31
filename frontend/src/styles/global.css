@@ -2,25 +2,44 @@
    Paleta de CampusTFI. Cambiar acá para ajustar toda la app.
    ========================================================= */
 :root {
-  --prussian-blue: #031d44;  /* menú lateral */
-  --space-indigo: #1f2444;   /* textos y botones */
-  --smart-blue: #4a6fa5;     /* color principal, acentos */
-  --alice-blue: #dbe9ee;     /* recuadros y paneles */
-  --bright-snow: #f9f9f9;    /* fondo de la página */
+  /* Las variables se nombran por su rol, no por el color, así probar otra
+     paleta es cambiar solo este bloque.
+     Paletas probadas antes: azules #031D44 · #1F2444 · #4A6FA5 · #DBE9EE · #F9F9F9
+     y rojiza #2C0703 · #890620 · #B6465F · #DA9F93 · #EBD4CB */
+  --oscuro: #2b2d42;        /* menú lateral y títulos */
+  --tinta: #3a3d57;         /* pestañas del menú (aclarado de --oscuro) */
+  --principal: #d80032;     /* color principal, acentos */
+  --gris: #8d99ae;          /* textos secundarios, bordes y detalles */
+  --panel: #edf2f4;         /* recuadros y paneles */
+  --fondo: #f8fafb;         /* fondo de la página (aclarado de --panel) */
 
   --blanco: #ffffff;
-  --texto: var(--space-indigo);
-  --texto-suave: #5d6782;
-  --borde: #c9dbe2;
-  --alerta: #b23a48;         /* solo para lo atrasado */
+  --texto: var(--oscuro);
+  /* --gris puro no llega al contraste mínimo sobre los paneles, así que el
+     texto secundario usa una versión oscurecida y --gris queda para bordes. */
+  --texto-suave: #5f6b7e;
+  --borde: #ccd4de;          /* aclarado de --gris, para líneas finas */
+  /* La paleta tiene un solo rojo, así que el mismo sirve de acento y de
+     alerta: el rojo quiere decir "prestá atención". Lo urgente se distingue
+     por la negrita y por el ícono (reloj o advertencia), no por el tono. */
+  --alerta: var(--principal);
 
-  --radio: 18px;
-  --radio-chico: 12px;
+  /* Avance de una carpeta: rojo hasta 39%, amarillo hasta 79%, verde desde 80% */
+  --progreso-bajo: var(--alerta);
+  --progreso-medio: #d9a21b;
+  --progreso-alto: #2f8f5b;
+  /* Los mismos, oscurecidos, para cuando van como texto y no como barra */
+  --progreso-medio-texto: #8a6400;
+  --progreso-alto-texto: #1f7347;
+
+  --radio: 26px;
+  --radio-chico: 18px;
   --ancho-menu: 240px;
+  --ancho-menu-cerrado: 76px;
 
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--texto);
-  background: var(--bright-snow);
+  background: var(--fondo);
 }
 
 * {
@@ -29,7 +48,7 @@
 
 body {
   margin: 0;
-  background: var(--bright-snow);
+  background: var(--fondo);
 }
 
 h1,
@@ -47,40 +66,102 @@ select {
 }
 
 /* ===================== Estructura ===================== */
+/* El menú va pegado al borde izquierdo y ocupa todo el alto; el aire queda
+   del lado del contenido. */
 .layout {
   display: flex;
   min-height: 100vh;
-  gap: 24px;
-  padding: 12px;
 }
 
 .contenido {
   flex: 1;
   min-width: 0;
-  padding: 12px 12px 12px 0;
+  padding: 22px 26px 32px;
 }
 
 /* ===================== Menú lateral ===================== */
 .menu {
   width: var(--ancho-menu);
   flex-shrink: 0;
-  background: var(--prussian-blue);
+  background: var(--oscuro);
   color: var(--blanco);
-  border-radius: var(--radio);
-  padding: 28px 0 20px;
+  padding: 16px 14px 18px;
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 12px;
-  height: calc(100vh - 24px);
+  top: 0;
+  height: 100vh;
+  /* Pegada al borde izquierdo, redondeada del lado que da al contenido */
+  border-radius: 0 var(--radio) var(--radio) 0;
+  transition: width 0.22s ease;
+  /* sticky arma su propio contexto de apilamiento: sin este z-index el menú
+     del usuario queda por debajo de las tarjetas del contenido. El visor de
+     un elemento (z-index 20) sigue tapando todo, que es lo que se busca. */
+  z-index: 10;
 }
 
+/* Contorno degradado: se dibuja un borde de 1px relleno con un degradado y
+   se le recorta el centro con una máscara, así queda solo la línea y sigue
+   la curva de las esquinas. */
+.menu::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.45),
+    rgba(255, 255, 255, 0.22) 35%,
+    rgba(255, 255, 255, 0.16) 65%,
+    rgba(255, 255, 255, 0.3)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Botón para plegar: arriba a la derecha, centrado cuando está plegado */
+.menu-alternar {
+  align-self: flex-end;
+  border: none;
+  background: transparent;
+  color: var(--panel);
+  opacity: 0.6;
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.menu-alternar:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.menu-alternar:focus-visible {
+  outline: 2px solid var(--panel);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+/* Línea finita que separa el logo y el usuario del resto */
 .menu-logo {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-bottom: 36px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -88,59 +169,175 @@ select {
 .menu-lista {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 4px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-/* Cada opción es una "pestaña" con el borde izquierdo redondeado, como en el boceto */
+/* Cada opción es un recuadro redondeado; la activa va llena y con una
+   barrita de acento pegada al borde izquierdo del menú */
 .menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 11px 18px;
-  border-radius: 24px 0 0 24px;
-  color: var(--alice-blue);
+  padding: 11px 14px;
+  border-radius: var(--radio-chico);
+  color: var(--panel);
   text-decoration: none;
-  background: var(--space-indigo);
-  border-left: 2px solid rgba(219, 233, 238, 0.35);
-  transition: background 0.15s, color 0.15s;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .menu-item:hover {
-  background: #2a3158;
+  background: rgba(255, 255, 255, 0.11);
   color: var(--blanco);
 }
 
 .menu-item.activo {
-  background: var(--bright-snow);
-  color: var(--prussian-blue);
-  border-left-color: var(--smart-blue);
+  background: var(--gris);
+  border-color: var(--gris);
+  /* Más oscuro que --oscuro: sobre el gris, --oscuro queda en 3.6:1 y no
+     llega al mínimo para texto de este tamaño. */
+  color: #1b1d2b;
   font-weight: 600;
 }
 
-.menu-usuario {
+.menu-item.activo::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 58%;
+  border-radius: 0 999px 999px 0;
+  background: var(--gris);
+}
+
+/* Bloque de abajo: el usuario y, al pasar el mouse, sus accesos */
+.menu-usuario-caja {
+  position: relative;
   margin-top: auto;
-  margin-left: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu-usuario {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
-  border-radius: 24px 0 0 24px;
-  background: var(--space-indigo);
-  border-left: 2px solid rgba(219, 233, 238, 0.35);
+  padding: 6px;
+  border-radius: var(--radio-chico);
+  transition: background 0.15s;
+}
+
+.menu-usuario-caja:hover .menu-usuario {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-datos {
+  flex: 1;
+  min-width: 0;
+  transition: opacity 0.18s ease;
+}
+
+/* Los botones van donde está el nombre, con un poco de aire respecto del
+   avatar. Uno se desvanece y el otro aparece en su lugar. */
+.menu-acciones {
+  position: absolute;
+  inset: 6px 6px 6px 74px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.menu-usuario-caja:hover .menu-datos,
+.menu-usuario-caja:focus-within .menu-datos {
+  opacity: 0;
+}
+
+.menu-usuario-caja:hover .menu-acciones,
+.menu-usuario-caja:focus-within .menu-acciones {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.menu-acciones button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--panel);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.menu-acciones button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--blanco);
+}
+
+.menu-acciones button:focus-visible {
+  outline: 2px solid var(--panel);
+  outline-offset: 2px;
 }
 
 .menu-avatar {
-  width: 36px;
-  height: 36px;
+  position: relative;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--alice-blue);
-  color: var(--prussian-blue);
+  background: var(--panel);
+  color: var(--oscuro);
   display: grid;
   place-items: center;
   flex-shrink: 0;
+}
+
+/* Puntito de presencia: verde conectado, amarillo ausente, gris desconectado.
+   El borde imita el fondo de donde está, para que se recorte del avatar. */
+.avatar-estado {
+  position: relative;
+}
+
+.avatar-estado::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--gris);
+  border: 2px solid var(--oscuro);
+  transition: background 0.2s;
+}
+
+.avatar-estado.conectado::after {
+  background: var(--progreso-alto);
+}
+
+.avatar-estado.ausente::after {
+  background: var(--progreso-medio);
+}
+
+.docente .avatar-estado::after {
+  border-color: var(--blanco);
+}
+
+.participante .avatar-estado::after {
+  border-color: var(--panel);
 }
 
 .menu-usuario strong,
@@ -149,7 +346,7 @@ select {
 }
 
 .menu-usuario small {
-  color: var(--alice-blue);
+  color: var(--panel);
   opacity: 0.75;
 }
 
@@ -161,14 +358,14 @@ select {
 }
 
 .encabezado {
-  background: var(--alice-blue);
+  background: var(--panel);
   border-radius: var(--radio);
   padding: 36px 32px;
 }
 
 .encabezado h1 {
   font-size: 2.2rem;
-  color: var(--prussian-blue);
+  color: var(--oscuro);
 }
 
 .encabezado p {
@@ -200,7 +397,7 @@ select {
 
 .barra-vista {
   display: flex;
-  background: var(--alice-blue);
+  background: var(--panel);
   border-radius: 999px;
   padding: 4px;
 }
@@ -218,7 +415,7 @@ select {
 }
 
 .barra-vista button.activo {
-  background: var(--smart-blue);
+  background: var(--principal);
   color: var(--blanco);
 }
 
@@ -228,7 +425,7 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--alice-blue);
+  background: var(--panel);
   border-radius: 999px;
   padding: 0 16px;
   height: 42px;
@@ -249,20 +446,20 @@ select {
   border: none;
   border-radius: 999px;
   padding: 0 16px;
-  background: var(--alice-blue);
+  background: var(--panel);
   cursor: pointer;
 }
 
 .barra-busqueda:focus-within,
 .barra-select:focus-visible,
 .barra-vista button:focus-visible {
-  outline: 2px solid var(--smart-blue);
+  outline: 2px solid var(--principal);
   outline-offset: 2px;
 }
 
 /* ===================== Módulos ===================== */
 .modulos-contenedor {
-  background: var(--alice-blue);
+  background: var(--panel);
   border-radius: var(--radio);
   padding: 20px;
   min-height: 420px;
@@ -284,14 +481,14 @@ select {
   background: var(--blanco);
   border-radius: var(--radio-chico);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(3, 29, 68, 0.08);
+  box-shadow: 0 1px 2px rgba(43, 45, 66, 0.08);
   transition: transform 0.15s, box-shadow 0.15s;
   cursor: pointer;
 }
 
 .modulo-tarjeta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(3, 29, 68, 0.12);
+  box-shadow: 0 6px 16px rgba(43, 45, 66, 0.12);
 }
 
 .modulo-banda {
@@ -312,7 +509,7 @@ select {
 
 .modulo-cuerpo h3 {
   font-size: 1rem;
-  color: var(--prussian-blue);
+  color: var(--oscuro);
   margin-bottom: 6px;
 }
 
@@ -338,7 +535,7 @@ select {
 .modulo-color {
   width: 10px;
   height: 36px;
-  border-radius: 6px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
@@ -349,7 +546,7 @@ select {
 
 .modulo-fila-texto strong {
   display: block;
-  color: var(--prussian-blue);
+  color: var(--oscuro);
 }
 
 .modulo-fila-texto small,
@@ -362,13 +559,13 @@ select {
   background: transparent;
   cursor: pointer;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
   color: inherit;
   opacity: 0.7;
 }
 
 .modulo-fila .favorito {
-  color: var(--smart-blue);
+  color: var(--principal);
 }
 
 .favorito.activo,
@@ -378,7 +575,7 @@ select {
 
 /* ===================== Panel de tareas ===================== */
 .panel {
-  background: var(--alice-blue);
+  background: var(--panel);
   border-radius: var(--radio);
   padding: 22px 18px;
   display: flex;
@@ -391,7 +588,7 @@ select {
 .panel-titulo {
   font-size: 1rem;
   text-align: center;
-  color: var(--prussian-blue);
+  color: var(--oscuro);
   margin-bottom: 12px;
 }
 
@@ -416,14 +613,6 @@ select {
   padding: 10px 12px;
 }
 
-.panel-punto {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-
 .panel-tarea strong,
 .panel-tarea small {
   display: block;
@@ -439,8 +628,10 @@ select {
   margin-top: 2px;
 }
 
+/* Lo que todavía está en fecha va en el color del texto: el rojo se guarda
+   para lo atrasado, así no se confunden los dos estados. */
 .panel-tarea .plazo {
-  color: var(--smart-blue);
+  color: var(--oscuro);
   font-weight: 600;
 }
 
@@ -525,6 +716,10 @@ select {
     align-items: center;
     gap: 12px;
   }
+  /* En celular el menú es la barra de arriba: no se pliega */
+  .menu-alternar {
+    display: none;
+  }
   .menu-logo {
     flex-direction: row;
     margin: 0;
@@ -576,5 +771,1664 @@ select {
   }
   .encabezado h1 {
     font-size: 1.7rem;
+  }
+}
+
+/* ===================== Pantalla de un módulo ===================== */
+/* El enlace del nombre se estira sobre toda la tarjeta o fila */
+.modulo-tarjeta,
+.modulo-fila {
+  position: relative;
+}
+
+.enlace-tarjeta {
+  color: inherit;
+  text-decoration: none;
+}
+
+.enlace-tarjeta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radio-chico);
+}
+
+.enlace-tarjeta:focus-visible::after {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* El botón de favorito queda por encima del enlace estirado */
+.favorito {
+  position: relative;
+  z-index: 1;
+}
+
+.volver {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--principal);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.volver:hover {
+  text-decoration: underline;
+}
+
+/* Mismo color que el menú lateral, para que la pantalla cierre */
+.modulo-encabezado {
+  background: var(--oscuro);
+  border-radius: var(--radio);
+  padding: 32px;
+  color: var(--blanco);
+}
+
+.modulo-encabezado small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.modulo-encabezado h1 {
+  font-size: 2rem;
+  margin: 6px 0 8px;
+}
+
+.modulo-encabezado p {
+  opacity: 0.85;
+}
+
+/* ===================== Carpetas del módulo ===================== */
+.carpetas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.carpeta {
+  background: var(--panel);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+
+.carpeta-cabecera {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.carpeta-flecha {
+  display: grid;
+  place-items: center;
+  color: var(--texto-suave);
+  transition: transform 0.28s ease;
+}
+
+.carpeta.abierta .carpeta-flecha {
+  transform: rotate(90deg);
+}
+
+.carpeta-icono {
+  display: grid;
+  place-items: center;
+}
+
+.carpeta-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.carpeta-texto strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.carpeta-texto small {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.carpeta-cantidad {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Avance de la carpeta: cuántos recursos marcó el alumno */
+.carpeta-progreso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.carpeta-progreso small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* El texto acompaña el color de la barra. Usa las versiones oscurecidas:
+   el amarillo y el verde de la barra no llegan al contraste mínimo como texto. */
+.carpeta-progreso small.estado {
+  font-weight: 600;
+}
+
+.carpeta-progreso small.bajo {
+  color: var(--progreso-bajo);
+}
+
+.carpeta-progreso small.medio {
+  color: var(--progreso-medio-texto);
+}
+
+.carpeta-progreso small.alto {
+  color: var(--progreso-alto-texto);
+}
+
+.barra-pista {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--blanco);
+  overflow: hidden;
+}
+
+.barra-relleno {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--progreso-bajo);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.barra-relleno.medio {
+  background: var(--progreso-medio);
+}
+
+.barra-relleno.alto {
+  background: var(--progreso-alto);
+}
+
+.carpeta-items {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* La fila es el recuadro blanco: adentro van el check y el botón que abre */
+.item-fila {
+  display: flex;
+  align-items: center;
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding-left: 16px;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.item-fila:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+}
+
+/* Check redondo propio: el del navegador no se puede redondear, así que se
+   apaga con appearance y se dibuja el tilde con un seudoelemento. */
+.item-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 21px;
+  height: 21px;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--gris);
+  border-radius: 50%;
+  background: var(--blanco);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.item-check:hover {
+  border-color: var(--principal);
+}
+
+.item-check::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 2px solid var(--blanco);
+  border-bottom: 2px solid var(--blanco);
+  border-radius: 1px;
+  transform: rotate(-45deg) scale(0.4);
+  opacity: 0;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.item-check:checked {
+  background: var(--progreso-alto);
+  border-color: var(--progreso-alto);
+}
+
+.item-check:checked::after {
+  transform: rotate(-45deg) scale(1);
+  opacity: 1;
+}
+
+.item-check:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* Hueco del mismo ancho en las tareas, que no se marcan a mano,
+   para que los títulos queden alineados */
+.item-check-vacio {
+  width: 21px;
+  flex-shrink: 0;
+}
+
+/* Lo ya completado queda más apagado, sin llegar a perderse */
+.item-fila.completado .item-icono,
+.item-fila.completado .item-texto strong {
+  color: var(--texto-suave);
+}
+
+.item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radio-chico);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.item-icono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.item-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-texto strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--oscuro);
+}
+
+.item-estado {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.item-estado.atrasada {
+  color: var(--alerta);
+  font-weight: 600;
+}
+
+/* Mismo verde que el check, para que "hecho" se lea siempre igual */
+.item-estado.entregada {
+  color: var(--progreso-alto);
+  font-weight: 600;
+}
+
+.item-flecha {
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+}
+
+/* ===================== Visor de un elemento ===================== */
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--fondo);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barra oscura con la ruta: módulo › carpeta › elemento */
+.visor-ruta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--oscuro);
+  color: var(--panel);
+  font-size: 0.85rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.visor-ruta button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.visor-ruta button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.visor-ruta strong {
+  color: var(--blanco);
+}
+
+.visor-ruta-sep {
+  opacity: 0.5;
+}
+
+.visor-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 24px 60px;
+}
+
+.visor-contenido {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.visor-contenido h1 {
+  font-size: 1.8rem;
+  color: var(--oscuro);
+}
+
+.visor-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  line-height: 1.6;
+}
+
+.visor-archivo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.visor-previo {
+  width: 100%;
+  background: var(--panel);
+  border-radius: var(--radio);
+  padding: 60px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--principal);
+  text-align: center;
+}
+
+.visor-previo p {
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.boton-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  background: var(--principal);
+  color: var(--blanco);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.boton-principal:hover:not(:disabled) {
+  background: var(--tinta);
+}
+
+.boton-principal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.visor-tarea {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.visor-plazo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+  padding: 16px 20px;
+  color: var(--principal);
+}
+
+.visor-plazo.atrasado {
+  color: var(--alerta);
+}
+
+.visor-plazo strong,
+.visor-plazo span {
+  display: block;
+}
+
+.visor-plazo strong {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.visor-plazo > div span {
+  color: var(--texto);
+}
+
+.etiqueta {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--blanco);
+}
+
+.etiqueta.entregada {
+  background: var(--principal);
+}
+
+.etiqueta.atrasada {
+  background: var(--alerta);
+}
+
+.visor-entrega {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  border: 2px dashed var(--borde);
+  border-radius: var(--radio);
+  padding: 28px;
+}
+
+/* ===================== Tablero de consultas ===================== */
+.tablero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.tablero-columna {
+  background: var(--panel);
+  border-radius: var(--radio);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tablero-columna h3 {
+  font-size: 0.95rem;
+  color: var(--oscuro);
+  text-align: center;
+}
+
+.tablero-publicacion {
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding: 12px 14px;
+}
+
+.tablero-publicacion header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tablero-publicacion strong {
+  font-size: 0.85rem;
+  color: var(--oscuro);
+}
+
+.tablero-publicacion small {
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+}
+
+.tablero-publicacion p {
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.tablero-agregar {
+  border: none;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tablero-agregar:hover {
+  background: var(--tinta);
+}
+
+/* ===================== Módulo en celular ===================== */
+@media (max-width: 760px) {
+  .modulo-encabezado {
+    padding: 22px 20px;
+  }
+  .modulo-encabezado h1 {
+    font-size: 1.5rem;
+  }
+  .carpeta-cabecera {
+    padding: 14px 16px;
+  }
+  .carpeta-cantidad {
+    display: none;
+  }
+  /* En celular la barra se achica y queda solo el porcentaje */
+  .carpeta-progreso {
+    width: 70px;
+  }
+  .carpeta-progreso .detalle {
+    display: none;
+  }
+  .visor-cuerpo {
+    padding: 20px 16px 40px;
+  }
+  .visor-contenido h1 {
+    font-size: 1.4rem;
+  }
+}
+
+/* ===================== Transiciones ===================== */
+/* Todo lo que aparece en pantalla entra con un fundido, para que el cambio
+   no sea de golpe. Las duraciones se achican si el sistema pide menos
+   movimiento (ver el bloque de abajo), pero nunca llegan a cero: el visor
+   necesita que la animación termine para poder cerrarse. */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aparecer-subiendo {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes desaparecer {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Al cambiar de apartado */
+.pagina {
+  animation: aparecer 0.25s ease;
+}
+
+/* Al entrar a un módulo, cuando llega el contenido */
+.modulo-encabezado,
+.carpetas {
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+/* Al abrir y cerrar una carpeta: la altura se anima pasando la fila de la
+   grilla de 0fr a 1fr, así no hace falta saber de antemano cuánto mide.
+   Los elementos quedan siempre en el DOM; "visibility" los saca del tabulador
+   y del lector de pantalla mientras está cerrada, y se transiciona junto con
+   la altura para que recién se oculten cuando termina de cerrarse. */
+.carpeta-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transition: grid-template-rows 0.28s ease, opacity 0.28s ease, visibility 0.28s;
+}
+
+.carpeta.abierta .carpeta-panel {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+}
+
+.carpeta-panel-interior {
+  overflow: hidden;
+}
+
+/* Al abrir y cerrar un elemento */
+.visor {
+  animation: aparecer 0.2s ease;
+}
+
+.visor.saliendo {
+  animation: desaparecer 0.18s ease forwards;
+}
+
+.visor-contenido {
+  animation: aparecer-subiendo 0.3s ease 0.05s backwards;
+}
+
+/* ===================== Tareas del panel ===================== */
+/* Cada tarea pendiente es un enlace a Actividad */
+a.panel-tarea {
+  color: inherit;
+  text-decoration: none;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+a.panel-tarea:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.12);
+}
+
+a.panel-tarea:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ===================== Menos movimiento ===================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===================== Pestañas del módulo ===================== */
+.pestanas {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--borde);
+  overflow-x: auto;
+}
+
+.pestana {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 12px 18px;
+  cursor: pointer;
+  color: var(--texto-suave);
+  white-space: nowrap;
+  border-radius: var(--radio-chico) var(--radio-chico) 0 0;
+  /* El subrayado se dibuja sobre el borde del contenedor */
+  box-shadow: inset 0 -2px 0 transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.pestana:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.pestana.activa {
+  color: var(--oscuro);
+  font-weight: 600;
+  box-shadow: inset 0 -3px 0 var(--principal);
+}
+
+.pestana-cantidad {
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Título de la sección y buscador dentro del módulo */
+.modulo-barra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modulo-barra h2 {
+  flex: 1;
+  font-size: 1.3rem;
+  color: var(--oscuro);
+}
+
+.modulo-barra .barra-busqueda {
+  flex: 0 1 280px;
+}
+
+/* ===================== Anuncios ===================== */
+.anuncios,
+.participantes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.anuncio {
+  background: var(--panel);
+  border-radius: var(--radio);
+  padding: 18px 22px;
+}
+
+.anuncio h3 {
+  font-size: 1.05rem;
+  color: var(--oscuro);
+}
+
+.anuncio small {
+  display: block;
+  margin: 4px 0 10px;
+}
+
+.anuncio p {
+  line-height: 1.55;
+}
+
+/* ===================== Participantes ===================== */
+.participante {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+  padding: 12px 18px;
+}
+
+.participante strong,
+.participante small,
+.docente strong,
+.docente small {
+  display: block;
+}
+
+.participante small,
+.docente small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+/* ===================== Panel derecho del módulo ===================== */
+.docente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.docente-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--principal);
+  color: var(--blanco);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.acciones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--blanco);
+  border: none;
+  border-radius: var(--radio-chico);
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.accion:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+}
+
+.accion-icono {
+  display: grid;
+  place-items: center;
+  color: var(--principal);
+  flex-shrink: 0;
+}
+
+.accion strong,
+.accion small {
+  display: block;
+}
+
+.accion strong {
+  font-size: 0.92rem;
+  color: var(--oscuro);
+}
+
+.accion small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.avance {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.avance .carpeta-progreso {
+  width: auto;
+  flex: 1;
+}
+
+/* En el panel el fondo es blanco, así que la pista va en gris claro */
+.avance .barra-pista {
+  background: var(--panel);
+}
+
+/* Al cambiar de pestaña, el contenido entra con fundido */
+.pagina-principal {
+  animation: aparecer 0.25s ease;
+}
+
+/* ===================== Módulo en celular ===================== */
+@media (max-width: 760px) {
+  .pestana {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+  .pestana span {
+    display: none;
+  }
+  .pestana.activa span {
+    display: inline;
+  }
+  .modulo-barra .barra-busqueda {
+    flex: 1 1 100%;
+  }
+  .anuncio {
+    padding: 14px 16px;
+  }
+}
+
+/* ===================== Menú plegado ===================== */
+/* Solo de tablet para arriba: en celular el menú ya es una barra de arriba
+   con los cuatro botones, y plegarlo no tendría sentido. */
+@media (min-width: 761px) {
+  .menu.cerrado {
+    width: var(--ancho-menu-cerrado);
+  }
+
+  .menu.cerrado .menu-alternar {
+    align-self: center;
+    margin-right: 0;
+  }
+
+  /* Las etiquetas se van; quedan los íconos, que llevan title como ayuda */
+  .menu.cerrado .menu-etiqueta {
+    display: none;
+  }
+
+  .menu.cerrado .menu-logo svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .menu.cerrado .menu-item,
+  .menu.cerrado .menu-usuario {
+    justify-content: center;
+    gap: 0;
+  }
+
+  /* Plegado no hay lugar al lado del avatar: los botones salen a la derecha,
+     fuera de la barra. El ::before es un puente invisible que cubre esa
+     separación, así el mouse puede cruzar sin que se cierren. */
+  .menu.cerrado .menu-acciones {
+    inset: auto auto 2px calc(100% + 18px);
+    padding: 6px;
+    background: var(--tinta);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radio-chico);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.38);
+  }
+
+  .menu.cerrado .menu-acciones::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    width: 22px;
+  }
+
+  .menu.cerrado .menu-item {
+    padding: 12px 0;
+  }
+}
+
+/* ===================== Tareas del panel ===================== */
+/* Campanita en lugar del punto de color; el color sigue siendo el del módulo */
+.panel-campana {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.panel-campana.vencida {
+  color: var(--alerta);
+}
+
+.panel-tarea-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+/* La materia va arriba del título y el vencimiento abajo */
+.panel-tarea-curso {
+  margin-top: 0;
+  font-size: 0.78rem;
+}
+
+/* Cuánto lleva hecho el alumno en el apartado de esa tarea */
+.contador {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.contador.bajo {
+  color: var(--progreso-bajo);
+}
+
+.contador.medio {
+  color: var(--progreso-medio-texto);
+}
+
+.contador.alto {
+  color: var(--progreso-alto-texto);
+}
+
+/* ===================== Último acceso ===================== */
+/* En la lista de participantes va a la derecha, para que la fila no quede vacía */
+.participante-acceso {
+  margin-left: auto;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.participante-acceso small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+.participante-acceso small:last-child {
+  color: var(--texto);
+  font-weight: 600;
+}
+
+
+/* ===================== Novedades de un módulo ===================== */
+/* Campanita a la derecha del nombre cuando hay algo publicado esta semana.
+   Va por encima del enlace estirado, para que se pueda leer su ayuda. */
+.modulo-nombre {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.modulo-nombre .enlace-tarjeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.novedad {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--principal);
+}
+
+.modulo-fila .novedad {
+  margin-right: 2px;
+}
+
+/* ===================== Mensajería ===================== */
+/* Dos columnas: las charlas a la izquierda y el hilo abierto a la derecha */
+/* Ocupa lo que queda de la ventana debajo del encabezado, así el hilo
+   aprovecha todo el alto en vez de quedar en una caja chica. */
+.mensajeria {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  height: calc(100vh - 230px);
+  min-height: 460px;
+}
+
+/* Borde y sombra para que las dos columnas se despeguen del fondo, que es
+   de un tono muy parecido al de los paneles. */
+.charlas,
+.hilo {
+  border: 1px solid var(--borde);
+  box-shadow: 0 2px 10px rgba(43, 45, 66, 0.05);
+}
+
+.charlas {
+  background: var(--panel);
+  border-radius: var(--radio);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+/* El buscador queda fijo arriba y solo rueda la lista. El "flex: none" es
+   necesario: .barra-busqueda trae flex:1 de la barra de Módulos, y en una
+   columna eso la estiraría a lo alto. */
+.charlas .barra-busqueda {
+  background: var(--blanco);
+  flex: none;
+}
+
+.charlas-lista {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.charlas-titulo {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-suave);
+  margin: 6px 0 0 4px;
+}
+
+.charla {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.charla:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+}
+
+/* Activa: barrita de acento adentro, en vez de un outline que el panel con
+   scroll recortaba por los costados. */
+.charla {
+  position: relative;
+  overflow: hidden;
+}
+
+.charla.activa {
+  box-shadow: inset 4px 0 0 var(--principal), 0 4px 14px rgba(43, 45, 66, 0.12);
+  padding-left: 18px;
+}
+
+.charla .avatar-estado::after {
+  border-color: var(--blanco);
+}
+
+.charla-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.charla-texto strong {
+  display: block;
+  font-size: 0.92rem;
+  color: var(--oscuro);
+}
+
+/* El adelanto del último mensaje, recortado a una línea */
+.charla-texto small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.charla-lado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.charla-lado small {
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.charla-sin-leer {
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  min-width: 20px;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ===================== Hilo abierto ===================== */
+.hilo {
+  background: var(--panel);
+  border-radius: var(--radio);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hilo-vacio {
+  margin: auto;
+}
+
+.hilo-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.hilo-cabecera .avatar-estado::after {
+  border-color: var(--panel);
+}
+
+.hilo-cabecera strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.hilo-cabecera small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.hilo-mensajes {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Los míos van a la derecha y en el color principal */
+.burbuja {
+  max-width: 70%;
+  align-self: flex-start;
+  background: var(--blanco);
+  border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px;
+}
+
+.burbuja.mia {
+  align-self: flex-end;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 16px 16px 4px 16px;
+}
+
+.burbuja p {
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.burbuja small {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: var(--texto-suave);
+  text-align: right;
+}
+
+.burbuja.mia small {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.hilo-escribir {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--borde);
+}
+
+.hilo-escribir input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 0 18px;
+  height: 44px;
+  outline: none;
+}
+
+.hilo-escribir input:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+.hilo-escribir button {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--principal);
+  color: var(--blanco);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.hilo-escribir button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ===================== Escribirle a un participante ===================== */
+.participante-mensaje {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--principal);
+  background: var(--blanco);
+  transition: background 0.15s, color 0.15s;
+}
+
+.participante-mensaje:hover {
+  background: var(--principal);
+  color: var(--blanco);
+}
+
+/* ===================== Mensajería en celular ===================== */
+@media (max-width: 760px) {
+  .mensajeria {
+    grid-template-columns: 1fr;
+  }
+  .mensajeria {
+    height: auto;
+  }
+  .charlas-lista {
+    max-height: 240px;
+  }
+  .hilo {
+    min-height: 420px;
+  }
+  .burbuja {
+    max-width: 85%;
+  }
+}
+
+/* ===================== Módulos por cuatrimestre ===================== */
+.grupo-modulos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.periodo-titulo {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-suave);
+  padding-left: 4px;
+}
+
+/* Con los cuatrimestres separados cada recuadro se adapta a lo que tiene */
+.grupo-modulos .modulos-contenedor {
+  min-height: 0;
+}
+
+/* ===================== Barra de desplazamiento ===================== */
+/* Para no quedarnos con la del navegador, que rompe la estética. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c2ccd9 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* El borde del mismo color que el fondo deja la barrita más finita */
+::-webkit-scrollbar-thumb {
+  background: #c2ccd9;
+  border-radius: 999px;
+  border: 3px solid var(--fondo);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gris);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Sobre los paneles el borde tiene que imitar ese fondo, no el de la página */
+.charlas::-webkit-scrollbar-thumb,
+.hilo-mensajes::-webkit-scrollbar-thumb,
+.carpetas::-webkit-scrollbar-thumb {
+  border-color: var(--panel);
+}
+
+/* Y en el menú, que es oscuro, va al revés */
+.menu {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: var(--oscuro);
+}
+
+
+/* ===================== Cerrar la conversación ===================== */
+.hilo-quien {
+  flex: 1;
+  min-width: 0;
+}
+
+.hilo-cerrar {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.hilo-cerrar:hover {
+  background: var(--blanco);
+  color: var(--oscuro);
+}
+
+/* ===================== Adjuntos ===================== */
+/* Lo elegido antes de mandar */
+.adjuntos-elegidos {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.adjuntos-elegidos li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 5px 6px 5px 11px;
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+
+.adjuntos-elegidos button {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.adjuntos-elegidos button:hover {
+  background: var(--panel);
+  color: var(--alerta);
+}
+
+/* Y lo que ya se mandó, dentro de la burbuja */
+.adjunto {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 6px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--oscuro);
+  font-size: 0.84rem;
+}
+
+.adjunto small {
+  margin: 0 0 0 auto;
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+}
+
+.burbuja.mia .adjunto {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--blanco);
+}
+
+.burbuja.mia .adjunto small {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ===================== Caja de escribir ===================== */
+.hilo-escribir {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.hilo-escribir-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hilo-adjuntar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.hilo-adjuntar:hover {
+  background: var(--principal);
+  color: var(--blanco);
+}
+
+/* ===================== Avisos de la facultad ===================== */
+.aviso-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.aviso-categoria {
+  background: var(--oscuro);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.aviso-nuevo {
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.aviso-cabecera small {
+  margin-left: auto;
+}
+
+/* ===================== Campanitas del menú ===================== */
+.menu-aviso {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 2px 8px 2px 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+/* Plegado no entra al lado del ícono: va como globito en la esquina */
+@media (min-width: 761px) {
+  .menu.cerrado .menu-aviso {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    margin: 0;
+    gap: 0;
+    padding: 1px 6px;
+    font-size: 0.68rem;
+    border: 2px solid var(--oscuro);
+  }
+
+  .menu.cerrado .menu-aviso svg {
+    display: none;
   }
 }

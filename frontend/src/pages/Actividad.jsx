@@ -28,7 +28,10 @@ export default function Actividad() {
 
   return (
     <div className="pagina">
-      <Encabezado titulo="Actividad" descripcion="Novedades y vencimientos de todos tus módulos" />
+      <Encabezado
+        titulo="Actividad"
+        descripcion="Buzón de novedades: anuncios, notas publicadas y cambios de todos tus módulos"
+      />
 
       {error && <p className="error">No se pudo cargar la actividad. ¿Está corriendo el backend?</p>}
       {!error && !grupos && <p className="texto-suave">Cargando…</p>}
