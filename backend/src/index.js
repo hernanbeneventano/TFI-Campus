@@ -3,10 +3,11 @@ import express from 'express';
 import cors from 'cors';
 
 import cursosRoutes from './routes/cursos.routes.js';
-import actividadRoutes from './routes/actividad.routes.js';
 import tareasRoutes from './routes/tareas.routes.js';
 import mensajesRoutes from './routes/mensajes.routes.js';
-import informacionRoutes from './routes/informacion.routes.js';
+import novedadesRoutes from './routes/novedades.routes.js';
+import calendarioRoutes from './routes/calendario.routes.js';
+import foroRoutes from './routes/foro.routes.js';
 import { usuarioActual, conPresencia, resumenDeNovedades } from './data/mock.js';
 import { manejarErrores, rutaNoEncontrada } from './middleware/errores.js';
 
@@ -26,16 +27,17 @@ app.get('/api/me', (req, res) => {
   res.json(conPresencia(usuarioActual));
 });
 
-// Cuántas novedades hay en cada apartado del menú
-app.get('/api/novedades', (req, res) => {
+// Cuántas cosas nuevas hay en cada apartado del menú
+app.get('/api/contadores', (req, res) => {
   res.json(resumenDeNovedades(usuarioActual.id));
 });
 
 app.use('/api/cursos', cursosRoutes);
-app.use('/api/actividad', actividadRoutes);
 app.use('/api/tareas', tareasRoutes);
 app.use('/api/mensajes', mensajesRoutes);
-app.use('/api/informacion', informacionRoutes);
+app.use('/api/novedades', novedadesRoutes);
+app.use('/api/calendario', calendarioRoutes);
+app.use('/api/foro', foroRoutes);
 
 app.use(rutaNoEncontrada);
 app.use(manejarErrores);

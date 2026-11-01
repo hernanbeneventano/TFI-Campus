@@ -645,7 +645,7 @@ select {
   font-size: 0.9rem;
 }
 
-/* ===================== Actividad ===================== */
+/* ===================== Grupos y listas sueltas ===================== */
 .grupo-titulo {
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -804,11 +804,17 @@ select {
   z-index: 1;
 }
 
+/* Sirve igual como enlace y como botón: de ahí los reseteos */
 .volver {
   align-self: flex-start;
   display: flex;
   align-items: center;
   gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
   color: var(--principal);
   text-decoration: none;
   font-weight: 600;
@@ -1470,7 +1476,7 @@ select {
 }
 
 /* ===================== Tareas del panel ===================== */
-/* Cada tarea pendiente es un enlace a Actividad */
+/* Cada tarea pendiente es un enlace a su entrega */
 a.panel-tarea {
   color: inherit;
   text-decoration: none;
@@ -2401,34 +2407,1523 @@ a.panel-tarea:focus-visible {
 }
 
 /* ===================== Campanitas del menú ===================== */
+/* Campana rellena con el número en un círculo rojo pisándole la esquina */
 .menu-aviso {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  position: relative;
+  display: grid;
+  place-items: center;
   margin-left: auto;
   flex-shrink: 0;
-  background: var(--principal);
-  color: var(--blanco);
-  border-radius: 999px;
-  padding: 2px 8px 2px 6px;
-  font-size: 0.74rem;
-  font-weight: 700;
+  color: inherit;
 }
 
-/* Plegado no entra al lado del ícono: va como globito en la esquina */
+.menu-aviso-numero {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--principal);
+  color: var(--blanco);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* Plegado no entra la campana al lado del ícono: queda solo el número,
+   en la esquina del recuadro. */
 @media (min-width: 761px) {
   .menu.cerrado .menu-aviso {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 5px;
+    right: 7px;
     margin: 0;
-    gap: 0;
-    padding: 1px 6px;
-    font-size: 0.68rem;
-    border: 2px solid var(--oscuro);
   }
 
   .menu.cerrado .menu-aviso svg {
+    display: none;
+  }
+
+  .menu.cerrado .menu-aviso-numero {
+    position: static;
+    border: 2px solid var(--oscuro);
+  }
+}
+
+/* ===================== Novedades (muro) ===================== */
+/* Mosaico: columnas de alto libre, cada tarjeta ocupa lo que necesita.
+   Con columnas (y no grid) las alturas se acomodan solas, como en el boceto. */
+.muro {
+  column-count: 3;
+  column-gap: 16px;
+}
+
+.muro .publicacion {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1500px) {
+  .muro {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 980px) {
+  .muro {
+    column-count: 1;
+  }
+}
+
+.muro-publicar {
+  text-align: left;
+  border: 1px dashed var(--borde);
+  background: var(--blanco);
+  border-radius: var(--radio);
+  padding: 18px 22px;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.muro-publicar:hover {
+  border-color: var(--principal);
+  color: var(--principal);
+}
+
+.publicacion {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 20px 24px 22px;
+  box-shadow: 0 2px 10px rgba(43, 45, 66, 0.05);
+}
+
+.publicacion-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 14px;
+}
+
+.publicacion-quien {
+  flex: 1;
+  min-width: 0;
+}
+
+.publicacion-quien strong,
+.publicacion-quien small {
+  display: block;
+}
+
+.publicacion-quien small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.publicacion-editar {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.publicacion-editar:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.publicacion-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.publicacion-categoria {
+  background: var(--panel);
+  color: var(--texto-suave);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.publicacion h3 {
+  font-size: 1.25rem;
+  color: var(--oscuro);
+  margin-bottom: 8px;
+}
+
+.publicacion p {
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+/* Botón de verdad, abajo del todo y adentro del recuadro */
+.publicacion-mas {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--principal);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.publicacion-mas:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+/* En la portada hay lugar de sobra: no hace falta que ocupe todo el ancho */
+.portada-texto .publicacion-mas {
+  width: auto;
+  margin-top: 18px;
+}
+
+/* ===================== Formulario de novedad / tema ===================== */
+.editor-novedad {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-novedad input[type='text'],
+.editor-novedad textarea,
+.editor-novedad select {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 11px 14px;
+  background: var(--blanco);
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.editor-novedad input[type='text']:focus-visible,
+.editor-novedad textarea:focus-visible,
+.editor-novedad select:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.editor-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.editor-pie .boton-principal {
+  margin-left: auto;
+}
+
+.boton-suave {
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 9px 18px;
+  cursor: pointer;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.boton-suave:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+/* ===================== Calendario ===================== */
+.calendario-barra {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.calendario-mover {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendario-mover button:not(.boton-suave) {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--oscuro);
+}
+
+.calendario-mover button:not(.boton-suave):hover {
+  border-color: var(--principal);
+  color: var(--principal);
+}
+
+.calendario-mover .boton-suave {
+  padding: 7px 16px;
+}
+
+.calendario-periodo {
+  flex: 1;
+  font-size: 1.2rem;
+  color: var(--oscuro);
+}
+
+.calendario-barra .barra-vista button {
+  width: auto;
+  padding: 0 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* La grilla: siete columnas, una por día de la semana */
+.calendario {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 14px;
+}
+
+.calendario-dia-nombre {
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-suave);
+  padding-bottom: 2px;
+}
+
+.calendario-celda {
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 108px;
+}
+
+/* Los días del mes vecino se apagan, pero siguen visibles */
+.calendario-celda.fuera {
+  opacity: 0.45;
+}
+
+.calendario-celda.hoy {
+  box-shadow: inset 0 0 0 2px var(--principal);
+}
+
+.calendario-numero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--oscuro);
+}
+
+.calendario-nombre-corto {
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.calendario-celda.hoy .calendario-numero {
+  color: var(--principal);
+}
+
+.calendario-eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* En la vista semanal hay lugar de sobra: las celdas crecen y muestran hora y lugar */
+.calendario.semana .calendario-celda {
+  min-height: 320px;
+}
+
+/* ===================== Un evento del calendario ===================== */
+/* Cada tipo tiene su color: barrita a la izquierda y fondo con ese mismo
+   tono muy bajado, para distinguirlos de un vistazo sin recargar la celda. */
+.evento {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 6px 9px;
+  background: var(--panel);
+  color: var(--texto);
+  text-decoration: none;
+  font-size: 0.76rem;
+  border-left: 3px solid var(--gris);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.evento-icono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.evento-texto {
+  min-width: 0;
+}
+
+.evento-texto strong {
+  display: block;
+  font-weight: 600;
+  line-height: 1.25;
+  /* En la vista mensual no hay lugar para títulos largos */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendario.semana .evento-texto strong {
+  white-space: normal;
+}
+
+.evento-texto small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+a.evento:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 10px rgba(43, 45, 66, 0.16);
+}
+
+/* Con prefijo: ".evento.evento" no quiere decir "de tipo evento", quiere
+   decir "tiene la clase evento", y eso lo cumplen todos. */
+.evento.tipo-entrega {
+  border-left-color: var(--principal);
+  background: rgba(216, 0, 50, 0.09);
+}
+
+.evento.tipo-examen {
+  border-left-color: var(--progreso-medio-texto);
+  background: rgba(217, 162, 27, 0.16);
+}
+
+.evento.tipo-clase {
+  border-left-color: var(--gris);
+  background: rgba(141, 153, 174, 0.18);
+}
+
+.evento.tipo-evento {
+  border-left-color: var(--progreso-alto);
+  background: rgba(47, 143, 91, 0.13);
+}
+
+/* ===================== Foro ===================== */
+.foro-barra {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.foro-asignaturas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.asignatura {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.asignatura:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.asignatura.activa {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+}
+
+.asignatura small {
+  background: var(--panel);
+  color: var(--texto-suave);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+}
+
+.asignatura-color {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.temas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tema-fila {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 14px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.tema-fila:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+}
+
+.tema-asignatura {
+  flex-shrink: 0;
+  color: var(--blanco);
+  background: var(--oscuro);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.tema-fila-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.tema-fila-texto strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.tema-fila-texto small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.tema-respuestas {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--texto-suave);
+  font-size: 0.84rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.tema-ultima {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ===================== Un tema abierto ===================== */
+.tema {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tema-cabecera {
+  background: var(--panel);
+  border-radius: var(--radio);
+  padding: 20px 24px;
+}
+
+.tema-cabecera h2 {
+  font-size: 1.4rem;
+  color: var(--oscuro);
+  margin: 10px 0 6px;
+}
+
+.tema-mensajes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tema-mensaje {
+  display: flex;
+  gap: 12px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 16px 18px;
+}
+
+/* La consulta que abre el tema se destaca del resto */
+.tema-mensaje.consulta {
+  background: var(--panel);
+  border-color: var(--gris);
+}
+
+.tema-mensaje-quien {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.tema-mensaje-quien strong {
+  color: var(--oscuro);
+}
+
+.tema-mensaje p {
+  line-height: 1.55;
+}
+
+.tema .hilo-escribir {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  border-top: 1px solid var(--borde);
+}
+
+/* ===================== En celular ===================== */
+@media (max-width: 760px) {
+  /* Ahora el menú de abajo tiene cinco botones */
+  .menu-lista {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .calendario {
+    grid-template-columns: repeat(7, minmax(44px, 1fr));
+    overflow-x: auto;
+  }
+  .calendario-celda {
+    min-height: 84px;
+  }
+  .calendario.semana {
+    grid-template-columns: 1fr;
+  }
+  .calendario.semana .calendario-dia-nombre {
+    display: none;
+  }
+  .calendario.semana .calendario-celda {
+    min-height: 0;
+  }
+  .tema-ultima {
+    display: none;
+  }
+}
+
+/* ===================== Módulos colgando del menú ===================== */
+/* La flecha va dentro de la fila pero fuera del enlace: un botón adentro de
+   un <a> no es HTML válido. */
+.menu-fila {
+  position: relative;
+  display: flex;
+}
+
+.menu-fila .menu-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-fila.con-hijos .menu-item {
+  padding-right: 38px;
+}
+
+.menu-desplegar {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: var(--panel);
+  opacity: 0.65;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.menu-desplegar:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.menu-desplegar svg {
+  transition: transform 0.2s ease;
+}
+
+.menu-desplegar.abierto svg {
+  transform: rotate(90deg);
+}
+
+/* Si la opción está activa, la flecha va sobre el gris claro */
+.menu-fila .menu-item.activo ~ .menu-desplegar {
+  color: #1b1d2b;
+  opacity: 0.8;
+}
+
+.menu-sublista {
+  list-style: none;
+  margin: 6px 0 2px 18px;
+  padding: 0 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Línea que agrupa visualmente los módulos bajo su opción */
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.menu-subitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--panel);
+  text-decoration: none;
+  font-size: 0.86rem;
+  opacity: 0.8;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.menu-subitem:hover {
+  background: rgba(255, 255, 255, 0.09);
+  opacity: 1;
+}
+
+.menu-subitem.activo {
+  background: var(--gris);
+  color: #1b1d2b;
+  font-weight: 600;
+  opacity: 1;
+}
+
+.menu-subitem .menu-etiqueta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* El aro claro es necesario: los módulos de color oscuro desaparecerían
+   contra el fondo del menú. */
+.menu-punto {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.menu-subitem.activo .menu-punto {
+  box-shadow: 0 0 0 1px rgba(27, 29, 43, 0.35);
+}
+
+/* Campanita cuando ese módulo tiene algo nuevo: se entiende mejor que un
+   punto suelto. */
+.menu-campanita {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--principal);
+}
+
+.menu-subitem.activo .menu-campanita {
+  color: var(--principal);
+}
+
+/* Plegado no hay lugar para los nombres: la sublista desaparece */
+@media (min-width: 761px) {
+  .menu.cerrado .menu-sublista,
+  .menu.cerrado .menu-desplegar {
+    display: none;
+  }
+
+  .menu.cerrado .menu-fila.con-hijos .menu-item {
+    padding-right: 0;
+  }
+}
+
+/* En celular el menú es la barra de arriba: tampoco cuelga nada */
+@media (max-width: 760px) {
+  .menu-sublista,
+  .menu-desplegar {
+    display: none;
+  }
+}
+
+/* ===================== Novedad destacada ===================== */
+/* Va sola, a todo el ancho y entera: es la noticia importante del momento. */
+.publicacion.destacada {
+  position: relative;
+  padding: 30px 34px 32px;
+  border-left: 5px solid var(--principal);
+}
+
+/* Comillas grandes de fondo, como en el boceto */
+.publicacion.destacada::before {
+  content: '“';
+  position: absolute;
+  top: -18px;
+  right: 28px;
+  font-size: 10rem;
+  line-height: 1;
+  color: var(--panel);
+  pointer-events: none;
+  user-select: none;
+}
+
+.destacada-marca {
+  display: inline-block;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.publicacion.destacada h2 {
+  position: relative;
+  font-size: 2rem;
+  line-height: 1.15;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+  max-width: 24ch;
+}
+
+.destacada-cuerpo {
+  position: relative;
+  max-width: 78ch;
+}
+
+.destacada-cuerpo p {
+  font-size: 1.02rem;
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+
+/* Casilla para destacar, dentro del formulario */
+.editor-anclar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.editor-anclar input {
+  accent-color: var(--principal);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .publicacion.destacada {
+    padding: 22px 20px 24px;
+  }
+  .publicacion.destacada h2 {
+    font-size: 1.45rem;
+  }
+  .publicacion.destacada::before {
+    display: none;
+  }
+}
+
+/* ===================== Filtros del calendario ===================== */
+.calendario-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.filtro:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.filtro small {
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  color: var(--texto-suave);
+}
+
+.filtro-punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--gris);
+}
+
+.filtro.tipo-entrega .filtro-punto {
+  background: var(--principal);
+}
+
+.filtro.tipo-examen .filtro-punto {
+  background: var(--progreso-medio-texto);
+}
+
+.filtro.tipo-clase .filtro-punto {
+  background: var(--gris);
+}
+
+.filtro.tipo-evento .filtro-punto {
+  background: var(--progreso-alto);
+}
+
+/* Apagado: el tipo no se muestra en la grilla */
+.filtro:not(.activo) {
+  opacity: 0.5;
+}
+
+.filtro:not(.activo) .filtro-punto {
+  background: var(--gris);
+}
+
+.filtro.activo {
+  color: var(--oscuro);
+  border-color: var(--gris);
+  background: var(--panel);
+}
+
+.filtro.todo {
+  opacity: 1;
+}
+
+.filtro.todo.activo {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+}
+
+/* ===================== Desplegables del menú ===================== */
+/* Mismo truco que las carpetas de un módulo: la altura se anima pasando la
+   fila de la grilla de 0fr a 1fr, sin tener que medir nada. */
+.menu-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transition: grid-template-rows 0.26s ease, opacity 0.26s ease, visibility 0.26s;
+}
+
+.menu-panel.abierto {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+}
+
+.menu-panel-interior {
+  overflow: hidden;
+}
+
+/* ===================== Cuatrimestres dentro de Módulos ===================== */
+.menu-periodo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--panel);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 7px 10px 6px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.menu-periodo:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.menu-periodo span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-periodo small {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.menu-periodo svg {
+  flex-shrink: 0;
+  transition: transform 0.26s ease;
+}
+
+.menu-periodo.abierto svg {
+  transform: rotate(90deg);
+}
+
+.menu-modulos {
+  list-style: none;
+  margin: 2px 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ===================== Portada de Novedades ===================== */
+/* Panel de arriba: el título de la sección y las novedades importantes,
+   de a una, con flechas y puntos. */
+.portada {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.portada-cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.portada-cabecera > div {
+  flex: 1;
+  min-width: 0;
+  /* La barrita roja a la izquierda del título, como en el boceto */
+  border-left: 5px solid var(--principal);
+  padding-left: 14px;
+}
+
+.portada-cabecera h1 {
+  font-size: 2.2rem;
+  color: var(--oscuro);
+}
+
+.portada-cabecera p {
+  margin-top: 4px;
+  color: var(--texto-suave);
+}
+
+.portada-ver-todas {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--oscuro);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.portada-ver-todas:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+/* ===================== El carrusel ===================== */
+.portada-carrusel {
+  position: relative;
+}
+
+/* La ventana recorta y la pista se desliza de a un ancho completo */
+.portada-ventana {
+  overflow: hidden;
+  border-radius: var(--radio);
+}
+
+.portada-pista {
+  display: flex;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.portada-pista > .portada-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.portada-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+  gap: 26px;
+  align-items: center;
+  background: var(--blanco);
+  border-radius: var(--radio);
+  padding: 10px;
+  min-height: 260px;
+}
+
+.portada-slide.editando {
+  display: block;
+  padding: 22px;
+}
+
+/* El lugar de la ilustración: por ahora, el ícono en grande sobre un tinte */
+.portada-ilustracion {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 240px;
+  border-radius: var(--radio-chico);
+  background: linear-gradient(145deg, rgba(216, 0, 50, 0.12), rgba(43, 45, 66, 0.1));
+  color: var(--principal);
+}
+
+.portada-texto {
+  padding: 10px 20px 10px 0;
+}
+
+.portada-texto h2 {
+  font-size: 1.9rem;
+  line-height: 1.15;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+}
+
+.portada-texto p {
+  line-height: 1.6;
+  color: var(--texto-suave);
+}
+
+/* Fecha y ámbito, con sus íconos */
+.portada-datos {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.portada-datos span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.portada-separador {
+  width: 1px;
+  height: 18px;
+  background: var(--borde);
+}
+
+.destacada-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+
+/* Flechas: encimadas sobre el slide, en los bordes */
+.portada-flecha {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--oscuro);
+  box-shadow: 0 4px 14px rgba(43, 45, 66, 0.14);
+  transition: background 0.15s, color 0.15s;
+}
+
+.portada-flecha:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+.portada-flecha.atras {
+  left: -14px;
+}
+
+.portada-flecha.atras svg {
+  transform: rotate(180deg);
+}
+
+.portada-flecha.adelante {
+  right: -14px;
+}
+
+.portada-puntos {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.portada-punto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  background: var(--borde);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, width 0.15s;
+}
+
+.portada-punto.activo {
+  width: 24px;
+  border-radius: 999px;
+  background: var(--principal);
+}
+
+/* ===================== La grilla de abajo ===================== */
+/* Tres columnas fijas, como en el boceto, y la tarjeta crece con su texto */
+.muro {
+  column-count: 3;
+  column-gap: 16px;
+}
+
+@media (max-width: 1250px) {
+  .muro {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 860px) {
+  .muro {
+    column-count: 1;
+  }
+  .portada-slide {
+    grid-template-columns: 1fr;
+  }
+  .portada-ilustracion {
+    min-height: 150px;
+  }
+  .portada-texto {
+    padding: 0 14px 14px;
+  }
+  .portada-texto h2 {
+    font-size: 1.4rem;
+  }
+  .portada-cabecera h1 {
+    font-size: 1.7rem;
+  }
+  .portada-flecha.atras {
+    left: 2px;
+  }
+  .portada-flecha.adelante {
+    right: 2px;
+  }
+}
+
+/* ===================== Imágenes en las novedades ===================== */
+.portada-ilustracion.con-imagen {
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.portada-ilustracion img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* En la tarjeta la imagen se puede tocar: abre la novedad entera */
+.publicacion-imagen {
+  display: block;
+  width: 100%;
+  border: none;
+  padding: 0;
+  margin-bottom: 12px;
+  border-radius: var(--radio-chico);
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.publicacion-imagen img {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.publicacion-imagen:hover img {
+  transform: scale(1.04);
+}
+
+/* ===================== La novedad entera, superpuesta ===================== */
+.lector-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(27, 29, 43, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+  transition: background 0.3s ease;
+  animation: aparecer 0.25s ease;
+}
+
+/* Mientras se cierra, el fondo se aclara junto con el visor */
+.lector-fondo.saliendo {
+  background: rgba(27, 29, 43, 0);
+}
+
+/* La transformación que lo lleva desde la tarjeta la pone el JS (FLIP);
+   acá solo va el punto desde el que escala. */
+.lector {
+  position: relative;
+  width: min(760px, 100%);
+  background: var(--blanco);
+  border-radius: var(--radio);
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(27, 29, 43, 0.35);
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.lector-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--oscuro);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(27, 29, 43, 0.25);
+  transition: background 0.15s, color 0.15s;
+}
+
+.lector-cerrar:hover {
+  background: var(--principal);
+  color: var(--blanco);
+}
+
+.lector-imagen img {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.lector-cuerpo {
+  padding: 24px 30px 30px;
+}
+
+.lector-cuerpo h2 {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+}
+
+.lector-cuerpo p {
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 760px) {
+  .lector-fondo {
+    padding: 16px 12px;
+  }
+  .lector-imagen img {
+    height: 180px;
+  }
+  .lector-cuerpo {
+    padding: 20px;
+  }
+  .lector-cuerpo h2 {
+    font-size: 1.35rem;
+  }
+}
+
+/* ===================== Reacciones ===================== */
+/* Son anónimas: se ve cuántos fueron, nunca quiénes. */
+.reacciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borde);
+}
+
+.reaccion {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.reaccion:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.reaccion small {
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La puesta por uno mismo se marca con el color de su tipo */
+.reaccion.puesta {
+  color: var(--blanco);
+}
+
+.reaccion.puesta small {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--blanco);
+}
+
+.reaccion.leido.puesta {
+  background: var(--progreso-alto);
+  border-color: var(--progreso-alto);
+}
+
+.reaccion.util.puesta {
+  background: var(--principal);
+  border-color: var(--principal);
+}
+
+.reaccion.dudas.puesta {
+  background: var(--progreso-medio-texto);
+  border-color: var(--progreso-medio-texto);
+}
+
+/* En la portada y en el visor hay más lugar */
+.portada-texto .reacciones,
+.lector-cuerpo .reacciones {
+  margin-top: 18px;
+}
+
+/* En las tarjetas angostas el nombre sobra: alcanza el ícono y el número */
+@media (max-width: 1250px) {
+  .muro .reaccion-nombre {
     display: none;
   }
 }

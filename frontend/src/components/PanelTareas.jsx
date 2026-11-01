@@ -4,8 +4,7 @@ import { leerCompletados, avanceDeApartado, nivel } from '../services/progreso.j
 import { IconoCampana, IconoReloj } from './Iconos.jsx';
 
 // Panel derecho: tareas pendientes próximas y atrasadas.
-// Cada tarea abre la entrega dentro de su módulo (no Actividad, que es
-// solamente el buzón de novedades).
+// Cada tarea abre la entrega dentro de su módulo.
 
 const DIA = 24 * 60 * 60 * 1000;
 

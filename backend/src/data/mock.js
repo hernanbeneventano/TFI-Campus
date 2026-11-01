@@ -109,12 +109,6 @@ export const tareas = [
   { id: 6, cursoId: 2, titulo: 'Consultas SQL básicas', publicada: aDias(-15), fechaLimite: aDias(-3), entregada: true },
 ];
 
-export const actividad = [
-  { id: 1, grupo: 'importante', tipo: 'entrega', titulo: 'Trabajo práctico 3', curso: 'Programación II', fecha: aDias(1) },
-  { id: 2, grupo: 'proximo', tipo: 'entrega', titulo: 'Modelo entidad-relación', curso: 'Bases de Datos', fecha: aDias(4) },
-  { id: 3, grupo: 'hoy', tipo: 'anuncio', titulo: 'La clase de hoy pasa al aula 12', curso: 'Ingeniería de Software', fecha: aDias(0) },
-  { id: 4, grupo: 'reciente', tipo: 'nota', titulo: 'Nota publicada: Parcial 1', curso: 'Programación II', fecha: aDias(-3) },
-];
 
 // Contenido de cada módulo, organizado en carpetas (secciones).
 // Tipos de elemento: 'pagina' (texto), 'archivo' (PDF, video…), 'tarea' (enlaza con `tareas`)
@@ -459,42 +453,85 @@ export function contactosDe(personaId) {
   return [...porId.values()];
 }
 
-// ===================== Información de la facultad =====================
-// Avisos institucionales: inscripciones, biblioteca, becas, campus.
-export const avisos = [
+// ===================== Novedades =====================
+// Anuncios institucionales y académicos. Los publican los docentes; los
+// estudiantes solo los leen (ver permisos en el controlador).
+export const publicaciones = [
   {
     id: 1,
+    autorId: 2,
+    ambito: 'Institucional',
     categoria: 'Inscripciones',
     titulo: 'Inscripción a exámenes finales de noviembre',
     cuerpo:
-      'La inscripción abre el 3 de noviembre y cierra 48 horas antes de cada mesa. Se hace desde el SIU, con el usuario de la facultad.',
+      'La inscripción abre el 3 de noviembre y cierra 48 horas antes de cada mesa. Se hace desde el SIU, con el usuario de la facultad.\n\nSi tenés materias correlativas pendientes, el sistema no te va a dejar anotarte: en ese caso pasá por Alumnado antes del cierre.',
+    imagen: '/novedades/inscripciones.svg',
     fecha: aDias(-1),
+    editada: null,
+    reacciones: { leido: [2, 3, 4, 5, 8], util: [6, 7], dudas: [9] },
+    anclada: true,
   },
   {
     id: 2,
+    autorId: 8,
+    ambito: 'Institucional',
     categoria: 'Biblioteca',
     titulo: 'Nuevo horario de la biblioteca',
     cuerpo:
-      'De lunes a viernes de 8 a 20, y los sábados de 9 a 13. La sala de lectura queda abierta hasta las 22 en época de parciales.',
+      'De lunes a viernes de 8 a 20, y los sábados de 9 a 13. La sala de lectura queda abierta hasta las 22 en época de parciales.\n\nPara reservar una sala de grupo hay que anotarse en el mostrador con un día de anticipación.',
+    imagen: '/novedades/biblioteca.svg',
     fecha: aDias(-4),
+    editada: null,
+    reacciones: { leido: [1, 3, 6], util: [4], dudas: [] },
+    anclada: false,
   },
   {
     id: 3,
+    autorId: 2,
+    ambito: 'Programación II',
+    categoria: 'Académico',
+    titulo: 'Cambio de aula para la clase del jueves',
+    cuerpo:
+      'La clase del jueves pasa al laboratorio 3. Lleven la notebook con el entorno ya instalado: vamos a compilar los ejercicios en clase.',
+    fecha: aDias(-2),
+    editada: null,
+    reacciones: { leido: [2, 5, 7, 9], util: [1, 3, 6], dudas: [8] },
+    anclada: false,
+  },
+  {
+    id: 4,
+    autorId: 7,
+    ambito: 'Institucional',
     categoria: 'Becas',
     titulo: 'Resultados de las becas de ayuda económica',
     cuerpo:
       'Ya se pueden consultar los resultados en Bienestar Estudiantil. Quienes queden en lista de espera van a recibir un aviso por este mismo campus.',
     fecha: aDias(-9),
+    editada: null,
+    reacciones: { leido: [4], util: [], dudas: [2, 8] },
+    anclada: false,
   },
   {
-    id: 4,
+    id: 5,
+    autorId: 9,
+    ambito: 'Institucional',
     categoria: 'Campus',
     titulo: 'Corte de agua programado',
     cuerpo:
       'El sábado de 7 a 14 no va a haber agua en el pabellón de aulas por mantenimiento. Las clases de ese día pasan al pabellón central.',
+    imagen: '/novedades/campus.svg',
     fecha: aDias(-16),
+    editada: null,
+    reacciones: { leido: [1, 2], util: [5], dudas: [] },
+    anclada: false,
   },
 ];
+
+let proximoIdPublicacion = 100;
+
+export function nuevoIdPublicacion() {
+  return proximoIdPublicacion++;
+}
 
 // Lo publicado en la última semana, en cada apartado del menú. Es lo que
 // enciende las campanitas del menú lateral.
@@ -502,7 +539,7 @@ export function resumenDeNovedades(personaId) {
   const desde = Date.now() - DIAS_NOVEDAD * 24 * 60 * 60 * 1000;
 
   const modulos = cursos.filter((curso) => novedadesDeCurso(curso).total > 0).length;
-  const informacion = avisos.filter((a) => new Date(a.fecha) >= desde).length;
+  const novedades = publicaciones.filter((p) => new Date(p.fecha) >= desde).length;
 
   const mensajes = conversaciones
     .filter((c) => c.entre.includes(personaId))
@@ -511,5 +548,182 @@ export function resumenDeNovedades(personaId) {
       0
     );
 
-  return { modulos, mensajes, informacion };
+  return { modulos, mensajes, novedades };
+}
+
+// ===================== Calendario académico =====================
+// Las clases se repiten todas las semanas: se guardan el día (1 = lunes) y el
+// horario, y el backend las expande al rango que le pidan.
+export const clases = [
+  { cursoId: 1, dia: 2, desde: '18:00', hasta: '22:00', aula: 'Lab. 3' },
+  { cursoId: 1, dia: 5, desde: '18:00', hasta: '20:00', aula: 'Aula 7' },
+  { cursoId: 2, dia: 4, desde: '18:00', hasta: '22:00', aula: 'Aula 12' },
+  { cursoId: 3, dia: 1, desde: '20:00', hasta: '22:00', aula: 'Aula 9' },
+  { cursoId: 4, dia: 3, desde: '18:00', hasta: '21:00', aula: 'Lab. de redes' },
+];
+
+// Exámenes y actividades de la facultad, con fecha fija
+export const eventos = [
+  {
+    id: 1,
+    tipo: 'examen',
+    titulo: 'Primer parcial',
+    cursoId: 1,
+    fecha: aDias(12),
+    desde: '18:00',
+    hasta: '20:00',
+    lugar: 'Aula Magna',
+  },
+  {
+    id: 2,
+    tipo: 'examen',
+    titulo: 'Parcial de Bases de Datos',
+    cursoId: 2,
+    fecha: aDias(19),
+    desde: '18:00',
+    hasta: '20:30',
+    lugar: 'Aula 12',
+  },
+  {
+    id: 3,
+    tipo: 'examen',
+    titulo: 'Recuperatorio del primer parcial',
+    cursoId: 4,
+    fecha: aDias(-6),
+    desde: '19:00',
+    hasta: '21:00',
+    lugar: 'Lab. de redes',
+  },
+  {
+    id: 4,
+    tipo: 'evento',
+    titulo: 'Jornada de Ciencias Exactas',
+    fecha: aDias(5),
+    desde: '09:00',
+    hasta: '17:00',
+    lugar: 'Pabellón central',
+  },
+  {
+    id: 5,
+    tipo: 'evento',
+    titulo: 'Charla: salida laboral en sistemas',
+    fecha: aDias(9),
+    desde: '17:00',
+    hasta: '19:00',
+    lugar: 'Salón de actos',
+  },
+  {
+    id: 6,
+    tipo: 'evento',
+    titulo: 'Cierre de inscripción a finales',
+    fecha: aDias(2),
+    desde: '23:59',
+    hasta: '23:59',
+    lugar: 'SIU',
+  },
+];
+
+// ===================== Foro =====================
+// Un tema por consulta, con sus mensajes. El primero es el que abre el tema.
+export const temasForo = [
+  {
+    id: 1,
+    cursoId: 1,
+    titulo: '¿Cómo encaran el punto 3 del TP 3?',
+    autorId: 3,
+    fecha: haceHoras(30),
+    mensajes: [
+      {
+        id: 1,
+        autorId: 3,
+        texto:
+          'Llegué a armar la lista pero me trabo al borrar el nodo del medio. ¿Guardan el anterior en una variable o se fijan con un segundo puntero?',
+        fecha: haceHoras(30),
+      },
+      {
+        id: 2,
+        autorId: 4,
+        texto:
+          'Yo uso dos punteros, uno que va adelante y otro atrás. Cuando el de adelante encuentra el nodo, el de atrás ya quedó apuntando al anterior.',
+        fecha: haceHoras(27),
+      },
+      {
+        id: 3,
+        autorId: 2,
+        texto:
+          'Las dos formas están bien. Si hacen la lista doblemente enlazada ni siquiera necesitan el segundo puntero, porque cada nodo ya conoce al anterior.',
+        fecha: haceHoras(25),
+      },
+    ],
+  },
+  {
+    id: 2,
+    cursoId: 1,
+    titulo: 'Error en el ejemplo de Fibonacci del apunte',
+    autorId: 5,
+    fecha: haceHoras(70),
+    mensajes: [
+      {
+        id: 4,
+        autorId: 5,
+        texto: 'En la página 4 el caso base devuelve 1 para n = 0, y debería devolver 0.',
+        fecha: haceHoras(70),
+      },
+      {
+        id: 5,
+        autorId: 2,
+        texto: 'Buen ojo, Tomás. Ya subí el apunte corregido a la carpeta de la Semana 1.',
+        fecha: haceHoras(68),
+      },
+    ],
+  },
+  {
+    id: 3,
+    cursoId: 2,
+    titulo: 'Cardinalidades en el modelo entidad-relación',
+    autorId: 3,
+    fecha: haceHoras(6),
+    mensajes: [
+      {
+        id: 6,
+        autorId: 3,
+        texto:
+          '¿Una materia que tiene varios docentes y un docente que da varias materias es muchos a muchos? Me suena que sí pero quiero confirmar.',
+        fecha: haceHoras(6),
+      },
+    ],
+  },
+  {
+    id: 4,
+    cursoId: 3,
+    titulo: 'Formato del documento de requisitos',
+    autorId: 6,
+    fecha: haceHoras(96),
+    mensajes: [
+      {
+        id: 7,
+        autorId: 6,
+        texto: '¿Hay una plantilla para el documento o lo armamos con el índice que queramos?',
+        fecha: haceHoras(96),
+      },
+      {
+        id: 8,
+        autorId: 8,
+        texto:
+          'Pueden usar el índice de la IEEE 830, que está en el programa de la materia. Lo importante es que estén los requisitos funcionales y los no funcionales separados.',
+        fecha: haceHoras(94),
+      },
+    ],
+  },
+];
+
+let proximoIdTema = 100;
+let proximoIdMensajeForo = 200;
+
+export function nuevoIdTema() {
+  return proximoIdTema++;
+}
+
+export function nuevoIdMensajeForo() {
+  return proximoIdMensajeForo++;
 }

@@ -22,8 +22,8 @@ frontend/src/
   components/  MenuLateral, Encabezado, BarraHerramientas, TarjetaModulo, PanelTareas,
                CarpetaModulo, VisorItem, PestanasModulo, PanelModulo, BarraProgreso,
                Iconos (SVG propios)
-  pages/       Modulos (principal), Modulo (interior), Actividad, Mensajes,
-               EnConstruccion (Información)
+  pages/       Novedades (inicio), Modulos, Modulo (interior), Calendario, Foro, Mensajes,
+               EnConstruccion (página no encontrada)
   services/    api.js: todas las llamadas al backend (Vite redirige /api a localhost:3000)
                progreso.js: recursos completados y cuentas de avance (hoy en localStorage)
                preferencias.js: ajustes de la interfaz, como el menú plegado
@@ -32,12 +32,17 @@ frontend/src/
   styles/      global.css: paleta en variables CSS en :root
 backend/src/
   routes/ → controllers/ → data/mock.js     middleware/errores.js
-  Rutas: GET /api/salud, /api/me, /api/cursos, /api/cursos/:id, /api/actividad,
-         /api/tareas/pendientes
+  Rutas: GET /api/salud, /api/me, /api/cursos, /api/cursos/:id, /api/tareas/pendientes
          /api/cursos/:id/modulo → todo lo de la pantalla del módulo en una sola llamada:
          { curso, carpetas, anuncios, participantes }
          GET /api/mensajes (lista + total sin leer), GET /api/mensajes/:id (y la da por leída),
-         POST /api/mensajes/:id (enviar), POST /api/mensajes { paraId } (abrir o crear la charla)
+         POST /api/mensajes/:id (enviar), POST /api/mensajes { paraId } (abrir o crear la charla),
+         GET /api/mensajes/contactos (gente de tus módulos)
+         GET /api/novedades (muro), POST /api/novedades, PUT /api/novedades/:id,
+         POST /api/novedades/:id/reaccion
+         GET /api/calendario?desde&hasta → entregas, exámenes, clases y eventos del rango
+         GET /api/foro, POST /api/foro, GET /api/foro/:id, POST /api/foro/:id (responder)
+         GET /api/contadores → { novedades, modulos, mensajes }: las campanitas del menú
 equipo/        información del equipo y planificación de hitos
 ```
 
@@ -70,8 +75,8 @@ el mismo del menú lateral.
 El avatar del alumno es `IconoEstudiante`, una silueta rellena con birrete; los docentes usan
 `IconoUsuario`, de línea como el resto de los íconos.
 
-Layout de la pantalla Módulos (según boceto): menú lateral a la izquierda (logo, Información,
-Actividad, Módulos, Mensajes, usuario abajo) · encabezado con el nombre del apartado · barra
+Layout de la pantalla Módulos (según boceto): menú lateral a la izquierda (logo, Novedades,
+Módulos, Calendario, Foro, Mensajes, usuario abajo) · encabezado con el nombre del apartado · barra
 (vista tarjetas/lista, búsqueda, filtro Fechas, filtro Apartados especiales = favoritos) · grilla de
 módulos · panel derecho con tareas pendientes recientes y atrasadas. Responsive: en celular el menú
 pasa arriba con 4 botones.
@@ -154,8 +159,8 @@ Cada tarea pendiente abre la entrega: va a
 despliega la que la contiene y abre el visor. El parámetro queda en la URL, así el enlace sirve
 para compartir o recargar. Si la tarea no aparece en ninguna carpeta, se abre el módulo sin más.
 
-Actividad **no** es un lugar donde se actúa: es el buzón de novedades (anuncios, notas publicadas,
-cambios). Lo que haya que entregar o mirar se abre siempre dentro del módulo.
+Lo que haya que entregar o mirar se abre siempre dentro del módulo: ni Novedades ni el Calendario
+son lugares donde se actúa, solo llevan al módulo.
 
 ## Planificación (21 días)
 1. Definición: alcance, stack, modelo ER, endpoints, wireframes.
@@ -164,9 +169,11 @@ cambios). Lo que haya que entregar o mirar se abre siempre dentro del módulo.
 4. Testing, validaciones, pulido responsive y presentación.
 
 Alcance de la primera versión: login y roles, cursos e inscripciones, contenido por semana,
-tareas con entrega de archivos, corrección con nota y comentario, Actividad, Notas, anuncios.
-Queda para después: control de plagio/IA, foro, grupos, rúbricas detalladas, mails.
-Mensajes entró al alcance: las instituciones no quieren que la comunicación pase por WhatsApp.
+tareas con entrega de archivos, corrección con nota y comentario, Novedades, Calendario, Foro,
+Mensajes, Notas.
+Queda para después: control de plagio/IA, grupos, rúbricas detalladas, mails.
+Mensajes y Foro entraron al alcance: las instituciones no quieren que la comunicación pase por
+WhatsApp. La pantalla Actividad se reemplazó por el Calendario académico.
 
 ## Cómo levantar
 ```
@@ -198,8 +205,10 @@ abre la charla con esa persona o la crea si no existía. Es solo el ícono, sin 
 Las conversaciones viven en memoria en `mock.js` y se reinician con el servidor. Mientras no haya
 login, el que escribe es siempre `usuarioActual` (la constante `YO` del controlador).
 
-Pendiente: el contador de mensajes sin leer en el menú lateral (el backend ya lo devuelve en
-`GET /api/mensajes`).
+La conversación abierta se cierra con la X de su cabecera. La caja de escribir tiene un clip para
+adjuntar imágenes o archivos: se pueden elegir hasta 5, se ven como fichas antes de mandar y
+quedan dentro de la burbuja. **De los adjuntos solo se guarda el nombre y el tamaño**: todavía no
+hay dónde subir el archivo, eso llega con multer.
 
 ## Personas
 `mock.js` tiene una sola lista `personas`, cada una con su id. Los módulos guardan los ids de sus
@@ -217,3 +226,126 @@ interruptor para verlas todas juntas, que va en Ajustes** cuando esa pantalla ex
 Está estilada en `global.css` (`::-webkit-scrollbar` y `scrollbar-color`) para no quedarnos con la
 del navegador. El pulgar lleva un borde del color del fondo que lo rodea, que es lo que lo hace
 ver finito: por eso hay variantes para los paneles y para el menú, que es oscuro.
+
+
+## Novedades
+Pantalla `/novedades`, que además es el inicio. Es un muro al estilo de una red social: cada
+publicación es una tarjeta con el autor y su avatar, cuánto hace, las etiquetas de ámbito y
+categoría, el título y el texto. Los textos largos se recortan con "Leer la novedad completa".
+
+Arriba va una **portada**: el título de la sección con su bajada, el botón "Ver todas" (que baja
+a la lista completa) y un carrusel con las tres novedades más importantes, de a una, con flechas
+y puntos. Cada slide tiene el lugar de la ilustración a la izquierda y el texto a la derecha, con
+la fecha y el ámbito en una fila de datos.
+
+La primera del carrusel es la **destacada** (`anclada` en los datos) y es la única que lleva esa
+etiqueta. Solo puede haber una: al anclar otra, el backend desancla la anterior. Los docentes la
+eligen con la casilla "Destacar arriba de todo" del formulario.
+
+Abajo va la lista completa en un mosaico de tres columnas con `column-count`, no con grid: así
+cada tarjeta ocupa el alto que necesita y las columnas se acomodan solas. Las del carrusel también
+aparecen ahí: la portada destaca, no reemplaza.
+
+**Imágenes**: cada publicación puede tener una (`imagen`), y se ve tanto en el carrusel como en la
+tarjeta. Si no tiene, el carrusel cae en el ícono de megáfono y la tarjeta va sin imagen. Por ahora
+el campo es una dirección, no una subida: el formulario pide la ruta y las de prueba son SVG
+propios en `frontend/public/novedades/`. Cuando esté multer, ese campo pasa a ser un selector de
+archivo.
+
+**Leer la novedad completa**: las tarjetas recortan el texto pasados 170 caracteres y el botón
+(abajo del todo, adentro del recuadro) abre la novedad entera superpuesta, con el fondo oscurecido
+(`.lector`). Se cierra con la X, con Escape o tocando afuera, y mientras está abierta la página de
+atrás no se mueve (`body.style.overflow`). La imagen de la tarjeta también la abre.
+
+El visor **vuela desde la tarjeta** hasta el centro y vuelve a ella al cerrarse (`volarDesde`, la
+técnica FLIP: el visor ya está en su lugar final y se lo transforma para que parezca que todavía
+está en la tarjeta; después se saca la transformación y el navegador anima la diferencia). Dos
+cosas importantes ahí: se mide el visor **sin transformación**, porque en modo estricto React
+corre el efecto dos veces y la segunda mediría un rectángulo ya deformado; y la escala es una sola
+para los dos ejes, porque con dos distintas el texto se estira.
+
+El carrusel de la portada desliza una pista con todas las novedades al lado (`transform`
++ `transition`), en vez de cambiar el contenido de golpe. Las que no se ven llevan `inert`.
+
+## Reacciones
+Cada novedad tiene tres reacciones: "Lo leí", "Me sirve" y "Me genera dudas". Cada persona pone
+una sola; tocar otra reemplaza la anterior y tocar la misma la saca.
+
+Son **anónimas**: el backend guarda los ids de quienes reaccionaron, pero `conAutor()` nunca los
+manda — saca el campo `reacciones` de la respuesta y en su lugar devuelve `cuenta` (los totales) y
+`miReaccion` (la del que pregunta). Se ve cuántos fueron, nunca quiénes.
+
+`POST /api/novedades/:id/reaccion` con `{ tipo }` (o `null`) devuelve la publicación actualizada,
+así el frontend reemplaza esa sola en la lista en vez de volver a pedir todo.
+
+**Permisos**: publicar y editar es solo para docentes, y editar solo la propia. El backend lo
+verifica en `novedades.controller.js` (403 si no corresponde) y además manda `puedePublicar` y
+`puedeEditar` para que el frontend no muestre botones que no van. El usuario de prueba es
+estudiante, así que no ve el compositor: para verlo, cambiar el `id` de `usuarioActual` en
+`mock.js` al de un docente (por ejemplo 2).
+
+## Campanitas del menú
+Cada apartado del menú muestra una campana rellena con la cantidad en un círculo rojo encima:
+Novedades (publicaciones de la semana), Módulos (cuántos módulos tienen algo nuevo) y Mensajes
+(mensajes sin leer). Calendario y Foro no llevan, porque no acumulan pendientes.
+
+Los números salen de `GET /api/contadores`, que `App.jsx` vuelve a pedir en cada cambio de ruta:
+así al salir de Mensajes el contador ya refleja lo que se acaba de leer. Con el menú plegado no
+entra la campana al lado del ícono, así que queda solo el número en la esquina del recuadro.
+
+Ojo al probar: el estado de "leído" vive en memoria en el backend, así que una vez que se abre una
+conversación el contador baja hasta que se reinicie el servidor.
+
+
+## Calendario
+Pantalla `/calendario`, debajo de Módulos en el menú. Muestra cuatro tipos de cosas, que se
+distinguen por el color del borde izquierdo: entregas (rojo), exámenes (ámbar), clases (gris) y
+eventos de la facultad (verde). Las entregas son enlaces: llevan a la pantalla de entrega del
+módulo.
+
+Arriba hay filtros para elegir qué ver: "Ver todo" y un botón por tipo, con cuántos hay de cada
+uno en el período. No se pueden apagar los cuatro (dejaría la grilla vacía sin motivo) y la
+elección se recuerda en `preferencias.js`.
+
+En la vista mensual las clases se muestran solo con el código de la materia: el título completo no
+entra en la celda, y que sea una clase ya lo dicen el ícono y el color. El título entero está en
+el globito de ayuda y en la vista semanal.
+
+Cuidado con los nombres de clase: el tipo va con prefijo (`tipo-clase`, `tipo-evento`…) porque
+`.evento.evento` no significa "de tipo evento", significa "tiene la clase evento", y eso lo
+cumplen todos los chips.
+
+Dos vistas, **mes** y **semana**, con flechas para moverse y un botón "Hoy". La grilla es siempre
+de siete columnas: en la vista mensual arranca el lunes de la semana del día 1 y termina el
+domingo de la semana del último día, así que se ven días del mes vecino, apagados. El día de hoy
+va recuadrado.
+
+Las clases son semanales: en `mock.js` se guardan el día y el horario (`clases`), y
+`calendario.controller.js` las expande a las fechas del rango pedido. Las entregas salen de
+`tareas` y el resto de `eventos`.
+
+## Foro
+Pantalla `/foro`. Los temas se listan de la última actividad hacia atrás, con filtros por
+asignatura arriba. Abrir un tema muestra la consulta (destacada) y sus respuestas, con una caja
+para contestar. "Nuevo tema" pide asignatura, título y consulta.
+
+El tema y sus respuestas son la misma lista `mensajes`: el primero es el que abre el tema, por eso
+`respuestas` es `mensajes.length - 1`. Igual que en Mensajes, todo vive en memoria y el que
+escribe es siempre `usuarioActual`.
+
+
+## Módulos colgando del menú
+La opción Módulos del menú lateral se despliega y lista las materias, para saltar de una a otra
+sin pasar por la grilla. Van **separadas por cuatrimestre**, y cada cuatrimestre se puede
+minimizar por su cuenta (se guarda en `preferencias.js`, los cerrados). Cada materia lleva su
+color (con un aro claro, si no los módulos oscuros desaparecerían contra el fondo del menú) y una
+campanita si tiene novedades.
+
+Tanto la lista entera como cada cuatrimestre se abren y se cierran animando la altura con
+`grid-template-rows: 0fr → 1fr` (`.menu-panel`), el mismo truco que las carpetas de un módulo. La opción Módulos
+usa `end` en su NavLink: estando dentro de un módulo se marca el módulo en la sublista, no el
+padre. La lista se abre sola al entrar a un módulo y su estado se recuerda en `preferencias.js`.
+
+Con el menú plegado la sublista no se muestra: no hay lugar para los nombres. **Ojo**: al entrar a
+un módulo el menú también se pliega solo, así que ahí la sublista queda oculta hasta desplegarlo a
+mano. Si molesta, conviene sacar el plegado automático.

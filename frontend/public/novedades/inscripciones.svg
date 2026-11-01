@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-label="Inscripciones">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2B2D42" />
+      <stop offset="1" stop-color="#4A5068" />
+    </linearGradient>
+  </defs>
+  <rect width="480" height="320" fill="url(#fondo)" />
+  <circle cx="400" cy="60" r="90" fill="#D80032" opacity="0.18" />
+  <circle cx="70" cy="280" r="70" fill="#8D99AE" opacity="0.14" />
+
+  <!-- Hoja de inscripción -->
+  <rect x="140" y="62" width="200" height="200" rx="14" fill="#EDF2F4" />
+  <rect x="140" y="62" width="200" height="40" rx="14" fill="#D80032" />
+  <rect x="140" y="88" width="200" height="14" fill="#D80032" />
+  <g fill="#8D99AE">
+    <rect x="166" y="126" width="110" height="12" rx="6" />
+    <rect x="166" y="156" width="148" height="12" rx="6" />
+    <rect x="166" y="186" width="92" height="12" rx="6" />
+  </g>
+  <!-- Tilde de confirmado -->
+  <circle cx="300" cy="222" r="26" fill="#2F8F5B" />
+  <path d="M288 222l9 9 16-18" fill="none" stroke="#fff" stroke-width="5"
+        stroke-linecap="round" stroke-linejoin="round" />
+</svg>

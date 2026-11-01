@@ -4,15 +4,16 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import MenuLateral from './components/MenuLateral.jsx';
 import Modulos from './pages/Modulos.jsx';
 import Modulo from './pages/Modulo.jsx';
-import Actividad from './pages/Actividad.jsx';
 import Mensajes from './pages/Mensajes.jsx';
-import Informacion from './pages/Informacion.jsx';
+import Novedades from './pages/Novedades.jsx';
+import Calendario from './pages/Calendario.jsx';
+import Foro from './pages/Foro.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
-import { obtenerUsuarioActual, obtenerNovedades } from './services/api.js';
+import { obtenerUsuarioActual, obtenerContadores } from './services/api.js';
 
 export default function App() {
   const [usuario, setUsuario] = useState(null);
-  const [novedades, setNovedades] = useState(null);
+  const [contadores, setContadores] = useState(null);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -22,19 +23,20 @@ export default function App() {
   // Se vuelven a contar al cambiar de apartado: así, por ejemplo, al salir de
   // Mensajes el contador ya refleja lo que se acaba de leer.
   useEffect(() => {
-    obtenerNovedades().then(setNovedades).catch(() => setNovedades(null));
+    obtenerContadores().then(setContadores).catch(() => setContadores(null));
   }, [pathname]);
 
   return (
     <div className="layout">
-      <MenuLateral usuario={usuario} novedades={novedades} />
+      <MenuLateral usuario={usuario} contadores={contadores} />
       <main className="contenido">
         <Routes>
-          <Route path="/" element={<Navigate to="/modulos" replace />} />
-          <Route path="/informacion" element={<Informacion />} />
-          <Route path="/actividad" element={<Actividad />} />
+          <Route path="/" element={<Navigate to="/novedades" replace />} />
+          <Route path="/novedades" element={<Novedades />} />
           <Route path="/modulos" element={<Modulos />} />
           <Route path="/modulos/:id" element={<Modulo />} />
+          <Route path="/calendario" element={<Calendario />} />
+          <Route path="/foro" element={<Foro />} />
           <Route path="/mensajes" element={<Mensajes />} />
           <Route path="*" element={<EnConstruccion titulo="Página no encontrada" />} />
         </Routes>
