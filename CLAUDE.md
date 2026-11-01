@@ -12,7 +12,13 @@ para estudiantes y docentes. Inspiración propia; Blackboard es solo una referen
 ## Stack
 - Frontend: React 18 + Vite + React Router (`frontend/`)
 - Backend: Node.js + Express (`backend/`)
-- Base de datos: **todavía no definida** (propuesta: PostgreSQL + Prisma). Hoy se usan datos de prueba en `backend/src/data/mock.js`.
+- Base de datos: **sin definir del todo**. Hoy se usan datos de prueba en `backend/src/data/mock.js`.
+  Hay dos caminos abiertos y **hay que elegir uno antes de seguir**: la propuesta original era
+  PostgreSQL + Prisma detrás del backend de Express, y Hernán ya dejó configurado **Firebase** en
+  el frontend (`frontend/src/services/firebase.js`, con las claves en `frontend/.env.local`, que
+  está ignorado). No son compatibles como están: con Firebase el frontend hablaría directo con la
+  base y buena parte de `backend/` quedaría de más; con PostgreSQL el frontend sigue pasando por
+  `api.js`. Por ahora nadie importa `firebase.js`, así que la app funciona igual.
 - Futuro: bcrypt + jsonwebtoken (login), multer (subida de archivos).
 - Todo en JavaScript. Código, nombres y textos de la interfaz en **español**.
 
@@ -182,7 +188,10 @@ cd frontend && npm install && npm run dev                          # http://loca
 ```
 
 ## Pendiente inmediato
-- Elegir y configurar la base de datos.
+- **Elegir la base de datos**: PostgreSQL + Prisma o Firebase (ver arriba). De eso dependen el
+  login, la subida de archivos y si el backend de Express sigue siendo el que habla con los datos.
+- Pedirle a Hernán el `frontend/.env.local` con las claves de Firebase: está ignorado y no viaja
+  por el repo.
 - Subida y descarga real de archivos (hoy la pantalla del módulo los muestra pero no los sirve).
 - Publicar en el tablero de consultas (el botón todavía no hace nada).
 - Guardar el progreso del alumno en la base por usuario, en vez de en localStorage.
