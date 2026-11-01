@@ -12,14 +12,13 @@ para estudiantes y docentes. Inspiración propia; Blackboard es solo una referen
 ## Stack
 - Frontend: React 18 + Vite + React Router (`frontend/`)
 - Backend: Node.js + Express (`backend/`)
-- Base de datos: **sin definir del todo**. Hoy se usan datos de prueba en `backend/src/data/mock.js`.
-  Hay dos caminos abiertos y **hay que elegir uno antes de seguir**: la propuesta original era
-  PostgreSQL + Prisma detrás del backend de Express, y Hernán ya dejó configurado **Firebase** en
-  el frontend (`frontend/src/services/firebase.js`, con las claves en `frontend/.env.local`, que
-  está ignorado). No son compatibles como están: con Firebase el frontend hablaría directo con la
-  base y buena parte de `backend/` quedaría de más; con PostgreSQL el frontend sigue pasando por
-  `api.js`. Por ahora nadie importa `firebase.js`, así que la app funciona igual.
-- Futuro: bcrypt + jsonwebtoken (login), multer (subida de archivos).
+- Base de datos: **Firebase** (decidido). Queda descartado PostgreSQL + Prisma, que era la
+  propuesta original. Ya está inicializado en `frontend/src/services/firebase.js`, con las claves
+  en `frontend/.env.local` (ignorado: pedírselo a Hernán, no viaja por el repo).
+- Login y archivos: **Firebase Authentication** y **Firebase Storage**. Eso reemplaza lo que
+  figuraba antes como futuro (bcrypt, jsonwebtoken y multer): ya no hacen falta.
+- Los datos **todavía no están migrados**: hoy siguen saliendo de `backend/src/data/mock.js` a
+  través de Express. Hasta que se migren, la app funciona igual y nadie importa `firebase.js`.
 - Todo en JavaScript. Código, nombres y textos de la interfaz en **español**.
 
 ## Estructura
@@ -188,11 +187,18 @@ cd frontend && npm install && npm run dev                          # http://loca
 ```
 
 ## Pendiente inmediato
-- **Elegir la base de datos**: PostgreSQL + Prisma o Firebase (ver arriba). De eso dependen el
-  login, la subida de archivos y si el backend de Express sigue siendo el que habla con los datos.
+- **Pasar los datos de `mock.js` a Firestore**, colección por colección. Conviene empezar por las
+  que ya tienen forma estable: `personas`, `cursos`, `publicaciones`.
+- **Definir qué pasa con `backend/`**: con Firebase el frontend puede hablar directo con la base,
+  y entonces los controladores de Express quedan de más. La alternativa es dejarlo como capa
+  intermedia con el SDK de administrador. Decidirlo antes de migrar, porque cambia si `api.js`
+  sigue existiendo o si cada pantalla consulta Firestore por su cuenta.
+- Las reglas de seguridad de Firestore tienen que reflejar los permisos que hoy están en el
+  backend: por ejemplo, que solo los docentes puedan publicar o editar novedades.
 - Pedirle a Hernán el `frontend/.env.local` con las claves de Firebase: está ignorado y no viaja
   por el repo.
-- Subida y descarga real de archivos (hoy la pantalla del módulo los muestra pero no los sirve).
+- Subida y descarga real de archivos con Firebase Storage (hoy la pantalla del módulo los
+  muestra pero no los sirve, y en Mensajes y Novedades solo se guarda el nombre o la dirección).
 - Publicar en el tablero de consultas (el botón todavía no hace nada).
 - Guardar el progreso del alumno en la base por usuario, en vez de en localStorage.
 - Login y roles.
@@ -217,7 +223,7 @@ login, el que escribe es siempre `usuarioActual` (la constante `YO` del controla
 La conversación abierta se cierra con la X de su cabecera. La caja de escribir tiene un clip para
 adjuntar imágenes o archivos: se pueden elegir hasta 5, se ven como fichas antes de mandar y
 quedan dentro de la burbuja. **De los adjuntos solo se guarda el nombre y el tamaño**: todavía no
-hay dónde subir el archivo, eso llega con multer.
+hay dónde subir el archivo, eso llega con Firebase Storage.
 
 ## Personas
 `mock.js` tiene una sola lista `personas`, cada una con su id. Los módulos guardan los ids de sus
@@ -258,7 +264,7 @@ aparecen ahí: la portada destaca, no reemplaza.
 **Imágenes**: cada publicación puede tener una (`imagen`), y se ve tanto en el carrusel como en la
 tarjeta. Si no tiene, el carrusel cae en el ícono de megáfono y la tarjeta va sin imagen. Por ahora
 el campo es una dirección, no una subida: el formulario pide la ruta y las de prueba son SVG
-propios en `frontend/public/novedades/`. Cuando esté multer, ese campo pasa a ser un selector de
+propios en `frontend/public/novedades/`. Cuando esté Firebase Storage, ese campo pasa a ser un selector de
 archivo.
 
 **Leer la novedad completa**: las tarjetas recortan el texto pasados 170 caracteres y el botón
