@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { obtenerCursos, obtenerTareasPendientes } from '../services/api.js';
-import { leerAgruparPorPeriodo } from '../services/preferencias.js';
+import { obtenerCursos, obtenerTareasPendientes, marcarFavorito } from '../services/api.js';
 import Encabezado from '../components/Encabezado.jsx';
 import BarraHerramientas from '../components/BarraHerramientas.jsx';
 import TarjetaModulo from '../components/TarjetaModulo.jsx';
@@ -16,8 +15,6 @@ export default function Modulos() {
   const [busqueda, setBusqueda] = useState('');
   const [periodo, setPeriodo] = useState('');
   const [apartado, setApartado] = useState('todos');
-  // Se cambia desde Ajustes, cuando esa pantalla exista
-  const [agrupar] = useState(leerAgruparPorPeriodo);
 
   useEffect(() => {
     obtenerCursos().then(setModulos).catch((e) => setError(e.message));
@@ -46,11 +43,9 @@ export default function Modulos() {
       .sort((a, b) => Number(b.favorito) - Number(a.favorito));
   }, [modulos, busqueda, periodo, apartado]);
 
-  // Los módulos van separados por cuatrimestre, cada uno en su propio recuadro.
-  // Los más nuevos arriba. Si la preferencia está apagada, va todo junto.
+  // Los módulos van separados por cuatrimestre, cada uno en su propio
+  // recuadro, con los más nuevos arriba.
   const grupos = useMemo(() => {
-    if (!agrupar) return [{ periodo: null, modulos: visibles }];
-
     const porPeriodo = new Map();
     for (const modulo of visibles) {
       if (!porPeriodo.has(modulo.periodo)) porPeriodo.set(modulo.periodo, []);
@@ -60,11 +55,12 @@ export default function Modulos() {
     return [...porPeriodo.entries()]
       .sort(([a], [b]) => b.localeCompare(a, 'es'))
       .map(([periodo, modulos]) => ({ periodo, modulos }));
-  }, [visibles, agrupar]);
+  }, [visibles]);
 
-  // Por ahora el favorito se guarda solo en pantalla. Más adelante se guardará en el backend.
   function alternarFavorito(id) {
-    setModulos((lista) => lista.map((m) => (m.id === id ? { ...m, favorito: !m.favorito } : m)));
+    marcarFavorito(id)
+      .then((curso) => setModulos((lista) => lista.map((m) => (m.id === id ? curso : m))))
+      .catch((e) => setError(e.message));
   }
 
   const descripcion = modulos
@@ -99,16 +95,20 @@ export default function Modulos() {
             <div key={cuatrimestre ?? 'todos'} className="grupo-modulos">
               {cuatrimestre && <h2 className="periodo-titulo">{cuatrimestre}</h2>}
               <div className="modulos-contenedor">
-                <div className={vista === 'grilla' ? 'modulos-grilla' : 'modulos-lista'}>
-                  {delGrupo.map((m) => (
+                {/* La `key` con la vista hace que al cambiar de tarjetas a
+                    lista se vuelva a montar, y con eso se reproduce la
+                    animación de entrada de cada módulo. */}
+                <div
+                  key={vista}
+                  className={vista === 'grilla' ? 'modulos-grilla' : 'modulos-lista'}
+                >
+                  {delGrupo.map((m, i) => (
                     <TarjetaModulo
                       key={m.id}
                       modulo={m}
                       vista={vista}
+                      indice={i}
                       onFavorito={alternarFavorito}
-                      // Con los cuatrimestres separados, repetirlo en cada
-                      // tarjeta sobra: ya está en el título del grupo.
-                      mostrarPeriodo={!agrupar}
                     />
                   ))}
                 </div>

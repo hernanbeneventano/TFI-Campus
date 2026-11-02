@@ -20,6 +20,14 @@ function cursoDe(id) {
   return curso ? { id: curso.id, nombre: curso.nombre, codigo: curso.codigo, color: curso.color } : null;
 }
 
+// Los votos y los seguidores salen contados, nunca con la lista de quiénes
+// fueron: igual que las reacciones de Novedades.
+function conVotos(mensaje) {
+  const votos = mensaje.votos ?? [];
+  const { votos: _, ...resto } = mensaje;
+  return { ...resto, utiles: votos.length, loVote: votos.includes(YO) };
+}
+
 // En la lista no hacen falta los mensajes, solo cuántos hay y cuándo fue el último
 function resumir(tema) {
   const ultimo = tema.mensajes.at(-1);
@@ -58,14 +66,20 @@ export function obtenerTema(req, res) {
     return res.status(404).json({ error: 'Tema no encontrado' });
   }
 
-  res.json({
+  res.json(detalleDe(tema));
+}
+
+function detalleDe(tema) {
+  return {
     id: tema.id,
     titulo: tema.titulo,
     curso: cursoDe(tema.cursoId),
     autor: autorDe(tema.autorId),
     fecha: tema.fecha,
-    mensajes: tema.mensajes.map((m) => ({ ...m, autor: autorDe(m.autorId) })),
-  });
+    siguiendo: (tema.siguen ?? []).includes(YO),
+    seguidores: (tema.siguen ?? []).length,
+    mensajes: tema.mensajes.map((m) => ({ ...conVotos(m), autor: autorDe(m.autorId) })),
+  };
 }
 
 export function crearTema(req, res) {
@@ -87,7 +101,8 @@ export function crearTema(req, res) {
     titulo,
     autorId: YO,
     fecha: ahora,
-    mensajes: [{ id: nuevoIdMensajeForo(), autorId: YO, texto, fecha: ahora }],
+    siguen: [YO],
+    mensajes: [{ id: nuevoIdMensajeForo(), autorId: YO, texto, fecha: ahora, votos: [] }],
   };
   temasForo.push(tema);
 
@@ -110,8 +125,42 @@ export function responder(req, res) {
     autorId: YO,
     texto,
     fecha: new Date().toISOString(),
+    votos: [],
   };
   tema.mensajes.push(mensaje);
 
-  res.status(201).json({ ...mensaje, autor: autorDe(YO) });
+  res.status(201).json({ ...conVotos(mensaje), autor: autorDe(YO) });
+}
+
+
+// Marcar una respuesta como útil, o sacar el voto si ya estaba
+export function votar(req, res) {
+  const tema = temasForo.find((t) => t.id === Number(req.params.id));
+  const mensaje = tema?.mensajes.find((m) => m.id === Number(req.params.mensajeId));
+  if (!mensaje) {
+    return res.status(404).json({ error: 'Mensaje no encontrado' });
+  }
+
+  mensaje.votos ??= [];
+  mensaje.votos = mensaje.votos.includes(YO)
+    ? mensaje.votos.filter((id) => id !== YO)
+    : [...mensaje.votos, YO];
+
+  res.json({ ...conVotos(mensaje), autor: autorDe(mensaje.autorId) });
+}
+
+// Seguir el tema para enterarse de las respuestas. Por ahora solo se guarda:
+// los avisos van a llegar cuando haya notificaciones de verdad.
+export function seguir(req, res) {
+  const tema = temasForo.find((t) => t.id === Number(req.params.id));
+  if (!tema) {
+    return res.status(404).json({ error: 'Tema no encontrado' });
+  }
+
+  tema.siguen ??= [];
+  tema.siguen = tema.siguen.includes(YO)
+    ? tema.siguen.filter((id) => id !== YO)
+    : [...tema.siguen, YO];
+
+  res.json(detalleDe(tema));
 }

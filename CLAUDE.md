@@ -28,7 +28,7 @@ frontend/src/
                CarpetaModulo, VisorItem, PestanasModulo, PanelModulo, BarraProgreso,
                Iconos (SVG propios)
   pages/       Novedades (inicio), Modulos, Modulo (interior), Calendario, Foro, Mensajes,
-               EnConstruccion (página no encontrada)
+               Ajustes, EnConstruccion (página no encontrada)
   services/    api.js: todas las llamadas al backend (Vite redirige /api a localhost:3000)
                progreso.js: recursos completados y cuentas de avance (hoy en localStorage)
                preferencias.js: ajustes de la interfaz, como el menú plegado
@@ -40,6 +40,7 @@ backend/src/
   Rutas: GET /api/salud, /api/me, /api/cursos, /api/cursos/:id, /api/tareas/pendientes
          /api/cursos/:id/modulo → todo lo de la pantalla del módulo en una sola llamada:
          { curso, carpetas, anuncios, participantes }
+         POST /api/cursos/:id/favorito → marca o desmarca el módulo y devuelve el curso
          GET /api/mensajes (lista + total sin leer), GET /api/mensajes/:id (y la da por leída),
          POST /api/mensajes/:id (enviar), POST /api/mensajes { paraId } (abrir o crear la charla),
          GET /api/mensajes/contactos (gente de tus módulos)
@@ -230,11 +231,29 @@ hay dónde subir el archivo, eso llega con Firebase Storage.
 participantes (`participantes` / `participantesDeCurso`) y los cursos su `docenteId`, en vez de
 repetir nombre y rol en cada lado. Los mensajes también las referencian por id.
 
+## Cambio de vista y reflejo en Módulos
+Al pasar de tarjetas a lista, el contenedor lleva `key={vista}`: con eso se vuelve a montar y
+cada módulo reproduce su animación de entrada, escalonada con la variable `--retraso`
+(35 ms por posición, con tope en la 12.ª para que una lista larga no tarde una eternidad).
+
+Los módulos con novedades llevan la clase `con-novedades` y un brillo que les cruza por encima
+cada tanto (`@keyframes reflejo`, un `::before` con `pointer-events: none`). Cruza rápido y
+después espera: un movimiento constante cansa. En las tarjetas el brillo es blanco, porque se ve
+sobre la banda de color; en la vista lista el recuadro es blanco, así que ahí lleva un tinte del
+color de acento o no se vería.
+
 ## Módulos por cuatrimestre
 La pantalla Módulos separa las materias por período, cada grupo con su título y su propio
 recuadro, y los más nuevos arriba. Con los grupos separados la tarjeta no repite el período.
-La preferencia está en `preferencias.js` (`leerAgruparPorPeriodo`, por defecto sí); **falta el
-interruptor para verlas todas juntas, que va en Ajustes** cuando esa pantalla exista.
+Es así siempre: no hay interruptor para verlas todas juntas y la preferencia que lo permitía se
+borró. Las materias de un mismo cuatrimestre ya están juntas, y poder mezclarlas no agregaba nada.
+
+Los favoritos van arriba dentro de su cuatrimestre, con una estrella amarilla; los demás no llevan
+marca. Marcar uno pega en `POST /api/cursos/:id/favorito`, que lo da vuelta y devuelve el curso.
+Como el menú lateral tiene su propia copia de los módulos y la pide una sola vez al arrancar,
+`marcarFavorito` (en `api.js`) dispara el evento `campustfi:cursos` y el menú vuelve a pedirlos:
+sin eso la estrella aparecía en la grilla pero no en la barra. Es el mismo truco que
+`campustfi:perfil`.
 
 
 ## Barra de desplazamiento

@@ -1,4 +1,5 @@
 import { IconoBuscar, IconoGrilla, IconoLista } from './Iconos.jsx';
+import Desplegable from './Desplegable.jsx';
 
 // Barra sobre los módulos: tipo de vista, búsqueda, filtro por fecha y apartados especiales
 export default function BarraHerramientas({
@@ -45,29 +46,27 @@ export default function BarraHerramientas({
         />
       </label>
 
-      <select
+      <Desplegable
         className="barra-select"
-        value={periodo}
-        onChange={(e) => onPeriodo(e.target.value)}
-        aria-label="Filtrar por fecha"
-      >
-        <option value="">Todas las fechas</option>
-        {periodos.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
+        etiqueta="Filtrar por fecha"
+        valor={periodo}
+        onCambiar={onPeriodo}
+        opciones={[
+          { valor: '', nombre: 'Todas las fechas' },
+          ...periodos.map((p) => ({ valor: p, nombre: p })),
+        ]}
+      />
 
-      <select
+      <Desplegable
         className="barra-select"
-        value={apartado}
-        onChange={(e) => onApartado(e.target.value)}
-        aria-label="Apartados especiales"
-      >
-        <option value="todos">Todos los módulos</option>
-        <option value="favoritos">Favoritos</option>
-      </select>
+        etiqueta="Apartados especiales"
+        valor={apartado}
+        onCambiar={onApartado}
+        opciones={[
+          { valor: 'todos', nombre: 'Todos los módulos' },
+          { valor: 'favoritos', nombre: 'Favoritos' },
+        ]}
+      />
     </div>
   );
 }

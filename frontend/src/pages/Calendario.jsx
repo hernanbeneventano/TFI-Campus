@@ -282,7 +282,9 @@ export default function Calendario() {
 
       {error && <p className="error">No se pudo cargar el calendario. ¿Está corriendo el backend?</p>}
 
-      <div className={vista === 'mes' ? 'calendario mes' : 'calendario semana'}>
+      {/* La `key` con la vista la vuelve a montar: con eso la grilla entra
+          con su animación en vez de cambiar de golpe. */}
+      <div key={vista} className={vista === 'mes' ? 'calendario mes' : 'calendario semana'}>
         {DIAS.map((dia) => (
           <div key={dia} className="calendario-dia-nombre">
             {dia}

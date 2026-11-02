@@ -203,7 +203,7 @@ export default function Modulo() {
     );
   }
 
-  const { curso, anuncios, participantes } = datos;
+  const { curso, anuncios, participantes, cursada, proximas } = datos;
   const buscando = busqueda.trim().length > 0;
 
   const pestanas = [
@@ -264,7 +264,6 @@ export default function Modulo() {
                     <CarpetaModulo
                       key={carpeta.id}
                       carpeta={carpeta}
-                      color={curso.color}
                       // Mientras se busca, las carpetas con resultados van abiertas
                       abierta={buscando || abiertas.includes(carpeta.id)}
                       onAlternar={() => alternarCarpeta(carpeta.id)}
@@ -311,9 +310,9 @@ export default function Modulo() {
         <PanelModulo
           curso={curso}
           participantes={participantes}
-          anuncios={anuncios}
+          cursada={cursada}
+          proximas={proximas}
           avance={avance}
-          onIrA={setPestana}
         />
       </div>
     </div>

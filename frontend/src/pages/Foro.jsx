@@ -1,19 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
-import { obtenerForo, obtenerTema, crearTema, responderTema, obtenerCursos } from '../services/api.js';
+import {
+  obtenerForo,
+  obtenerTema,
+  crearTema,
+  responderTema,
+  obtenerCursos,
+  votarMensaje,
+  seguirTema,
+} from '../services/api.js';
 import { hace } from '../services/fechas.js';
 import Encabezado from '../components/Encabezado.jsx';
+import Desplegable from '../components/Desplegable.jsx';
 import {
   IconoUsuario,
   IconoEstudiante,
   IconoForo,
   IconoVolver,
   IconoEnviar,
+  IconoPulgar,
+  IconoCampana,
+  IconoBuscar,
 } from '../components/Iconos.jsx';
 
-function Avatar({ persona }) {
+function Avatar({ persona, grande }) {
   const Icono = persona?.rol === 'Estudiante' ? IconoEstudiante : IconoUsuario;
   return (
-    <span className="docente-avatar">
+    <span className={grande ? 'docente-avatar grande' : 'docente-avatar'}>
       <Icono />
     </span>
   );
@@ -33,13 +45,12 @@ function NuevoTema({ cursos, onCrear, onCancelar }) {
 
   return (
     <form className="editor-novedad" onSubmit={enviar}>
-      <select value={cursoId} onChange={(e) => setCursoId(e.target.value)} aria-label="Asignatura">
-        {cursos.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.codigo} · {c.nombre}
-          </option>
-        ))}
-      </select>
+      <Desplegable
+        etiqueta="Asignatura"
+        valor={cursoId}
+        onCambiar={setCursoId}
+        opciones={cursos.map((c) => ({ valor: c.id, nombre: `${c.codigo} · ${c.nombre}` }))}
+      />
       <input
         type="text"
         placeholder="¿Sobre qué es tu consulta?"
@@ -58,11 +69,7 @@ function NuevoTema({ cursos, onCrear, onCancelar }) {
         <button type="button" className="boton-suave" onClick={onCancelar}>
           Cancelar
         </button>
-        <button
-          type="submit"
-          className="boton-principal"
-          disabled={!titulo.trim() || !texto.trim()}
-        >
+        <button type="submit" className="boton-principal" disabled={!titulo.trim() || !texto.trim()}>
           Abrir el tema
         </button>
       </div>
@@ -70,7 +77,24 @@ function NuevoTema({ cursos, onCrear, onCancelar }) {
   );
 }
 
-// Un tema abierto: la consulta y sus respuestas
+// "Me resultó útil", con su cuenta. Los votos son anónimos: se ve cuántos,
+// nunca quiénes.
+function Util({ mensaje, onVotar }) {
+  return (
+    <button
+      type="button"
+      className={mensaje.loVote ? 'voto puesto' : 'voto'}
+      onClick={() => onVotar(mensaje.id)}
+      aria-pressed={mensaje.loVote}
+      title={`${mensaje.utiles} ${mensaje.utiles === 1 ? 'persona lo marcó' : 'personas lo marcaron'} como útil`}
+    >
+      <IconoPulgar width={15} height={15} />
+      {mensaje.utiles > 0 ? `${mensaje.utiles} útil${mensaje.utiles === 1 ? '' : 'es'}` : 'Útil'}
+    </button>
+  );
+}
+
+// Un tema abierto: la consulta arriba y las respuestas en su propia tarjeta
 function Tema({ id, onVolver, onCambio }) {
   const [tema, setTema] = useState(null);
   const [texto, setTexto] = useState('');
@@ -94,57 +118,119 @@ function Tema({ id, onVolver, onCambio }) {
       .catch((e) => setError(e.message));
   }
 
+  function votar(mensajeId) {
+    votarMensaje(id, mensajeId)
+      .then((actualizado) => {
+        setTema((t) => ({
+          ...t,
+          mensajes: t.mensajes.map((m) => (m.id === mensajeId ? actualizado : m)),
+        }));
+      })
+      .catch((e) => setError(e.message));
+  }
+
+  function alternarSeguir() {
+    seguirTema(id).then(setTema).catch((e) => setError(e.message));
+  }
+
   if (error) return <p className="error">No se pudo cargar el tema.</p>;
   if (!tema) return <p className="texto-suave">Cargando…</p>;
 
+  const [consulta, ...respuestas] = tema.mensajes;
+
   return (
     <div className="tema">
-      <button type="button" className="volver" onClick={onVolver}>
-        <IconoVolver />
-        Todos los temas
-      </button>
+      {/* La consulta que abre el tema */}
+      <article className="tema-consulta">
+        <header className="tema-barra">
+          <button type="button" className="tema-atras" onClick={onVolver} aria-label="Volver a los temas">
+            <IconoVolver width={18} height={18} />
+          </button>
+          <span className="tema-asignatura" style={{ background: tema.curso?.color }}>
+            {tema.curso?.codigo}
+          </span>
+          <span className="texto-suave">{tema.curso?.nombre}</span>
+        </header>
 
-      <header className="tema-cabecera">
-        <span className="tema-asignatura" style={{ background: tema.curso?.color }}>
-          {tema.curso?.codigo}
-        </span>
+        <div className="tema-autor">
+          <Avatar persona={tema.autor} grande />
+          <div>
+            <strong>{tema.autor?.nombre}</strong>
+            <small className="texto-suave">
+              {hace(tema.fecha)} · {tema.autor?.rol}
+            </small>
+          </div>
+        </div>
+
         <h2>{tema.titulo}</h2>
-        <small className="texto-suave">
-          Abierto por {tema.autor?.nombre} · {hace(tema.fecha)}
-        </small>
-      </header>
+        <p className="tema-texto">{consulta?.texto}</p>
 
-      <ul className="tema-mensajes">
-        {tema.mensajes.map((m, i) => (
-          <li key={m.id} className={i === 0 ? 'tema-mensaje consulta' : 'tema-mensaje'}>
-            <Avatar persona={m.autor} />
-            <div>
-              <div className="tema-mensaje-quien">
-                <strong>{m.autor?.nombre}</strong>
-                <small className="texto-suave">
-                  {m.autor?.rol} · {hace(m.fecha)}
-                </small>
-              </div>
-              <p>{m.texto}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+        <div className="tema-cuentas">
+          <span>
+            {respuestas.length} {respuestas.length === 1 ? 'respuesta' : 'respuestas'}
+          </span>
+          {tema.seguidores > 0 && <span>{tema.seguidores} siguiendo</span>}
+        </div>
 
-      <form className="hilo-escribir" onSubmit={responder}>
-        <div className="hilo-escribir-fila">
-          <input
-            type="text"
-            placeholder="Escribí tu respuesta…"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            aria-label="Respuesta"
-          />
-          <button type="submit" disabled={!texto.trim()} aria-label="Responder">
-            <IconoEnviar />
+        <div className="tema-acciones">
+          {consulta && <Util mensaje={consulta} onVotar={votar} />}
+          <button
+            type="button"
+            className={tema.siguiendo ? 'voto puesto' : 'voto'}
+            onClick={alternarSeguir}
+            aria-pressed={tema.siguiendo}
+          >
+            <IconoCampana width={15} height={15} />
+            {tema.siguiendo ? 'Siguiendo' : 'Seguir'}
           </button>
         </div>
-      </form>
+      </article>
+
+      {/* Las respuestas, en su propia tarjeta */}
+      <section className="tema-respuestas">
+        <h3>
+          {respuestas.length} {respuestas.length === 1 ? 'respuesta' : 'respuestas'}
+        </h3>
+
+        {/* La caja para responder va arriba de las respuestas: así no hay que
+            bajar hasta el final de un hilo largo para contestar. */}
+        <form className="hilo-escribir" onSubmit={responder}>
+          <div className="hilo-escribir-fila">
+            <input
+              type="text"
+              placeholder="Escribí tu respuesta…"
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              aria-label="Respuesta"
+            />
+            <button type="submit" disabled={!texto.trim()} aria-label="Responder">
+              <IconoEnviar />
+            </button>
+          </div>
+        </form>
+
+        {respuestas.length === 0 && (
+          <p className="texto-suave">Todavía nadie respondió. Podés ser la primera persona.</p>
+        )}
+
+        <ul>
+          {respuestas.map((m) => (
+            <li key={m.id} className="tema-respuesta">
+              <Avatar persona={m.autor} />
+              <div>
+                <div className="tema-mensaje-quien">
+                  <strong>{m.autor?.nombre}</strong>
+                  <small className="texto-suave">
+                    {m.autor?.rol} · {hace(m.fecha)}
+                  </small>
+                </div>
+                <p>{m.texto}</p>
+                <Util mensaje={m} onVotar={votar} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
@@ -153,6 +239,7 @@ export default function Foro() {
   const [datos, setDatos] = useState(null);
   const [cursos, setCursos] = useState([]);
   const [asignatura, setAsignatura] = useState('todas');
+  const [busqueda, setBusqueda] = useState('');
   const [abierto, setAbierto] = useState(null);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState(null);
@@ -166,11 +253,20 @@ export default function Foro() {
     obtenerCursos().then(setCursos).catch(() => setCursos([]));
   }, []);
 
+  // Filtra por asignatura y, si se escribió algo, por título, por quién lo
+  // abrió o por la materia.
   const visibles = useMemo(() => {
     if (!datos) return [];
-    if (asignatura === 'todas') return datos.temas;
-    return datos.temas.filter((t) => String(t.curso?.id) === asignatura);
-  }, [datos, asignatura]);
+    const texto = busqueda.trim().toLowerCase();
+
+    return datos.temas
+      .filter((t) => asignatura === 'todas' || String(t.curso?.id) === asignatura)
+      .filter((t) => {
+        if (!texto) return true;
+        const donde = [t.titulo, t.autor?.nombre, t.curso?.nombre, t.curso?.codigo];
+        return donde.some((d) => (d ?? '').toLowerCase().includes(texto));
+      });
+  }, [datos, asignatura, busqueda]);
 
   if (abierto) {
     return (
@@ -219,6 +315,16 @@ export default function Foro() {
           ))}
         </div>
 
+        <label className="barra-busqueda foro-buscador">
+          <IconoBuscar />
+          <input
+            type="search"
+            placeholder="Buscar una discusión"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </label>
+
         {!creando && (
           <button type="button" className="boton-principal" onClick={() => setCreando(true)}>
             Nuevo tema
@@ -248,21 +354,27 @@ export default function Foro() {
         {visibles.map((t) => (
           <li key={t.id}>
             <button type="button" className="tema-fila" onClick={() => setAbierto(t.id)}>
-              <span className="tema-asignatura" style={{ background: t.curso?.color }}>
-                {t.curso?.codigo}
-              </span>
+              <Avatar persona={t.autor} />
+
               <span className="tema-fila-texto">
-                <strong>{t.titulo}</strong>
+                <span className="tema-fila-titulo">
+                  <span className="tema-asignatura chica" style={{ background: t.curso?.color }}>
+                    {t.curso?.codigo}
+                  </span>
+                  <strong>{t.titulo}</strong>
+                </span>
                 <small>
                   {t.autor?.nombre} · {hace(t.fecha)}
                 </small>
               </span>
-              <span className="tema-respuestas" title={`${t.respuestas} respuestas`}>
+
+              <span className="tema-respuestas-cuenta" title={`${t.respuestas} respuestas`}>
                 <IconoForo width={16} height={16} />
                 {t.respuestas}
               </span>
+
               <small className="tema-ultima">
-                {t.ultimoAutor ? `${t.ultimoAutor.nombre} · ` : ''}
+                {t.ultimoAutor ? `Última: ${t.ultimoAutor.nombre} · ` : ''}
                 {hace(t.ultimaActividad)}
               </small>
             </button>
@@ -271,7 +383,11 @@ export default function Foro() {
       </ul>
 
       {datos && visibles.length === 0 && (
-        <p className="texto-suave">Todavía no hay temas en esta asignatura.</p>
+        <p className="texto-suave">
+          {busqueda.trim()
+            ? 'Ningún tema coincide con la búsqueda.'
+            : 'Todavía no hay temas en esta asignatura.'}
+        </p>
       )}
     </div>
   );

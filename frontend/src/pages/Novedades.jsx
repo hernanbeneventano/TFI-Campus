@@ -6,6 +6,7 @@ import {
   reaccionar,
 } from '../services/api.js';
 import { hace } from '../services/fechas.js';
+import Desplegable from '../components/Desplegable.jsx';
 import {
   IconoUsuario,
   IconoAjustes,
@@ -147,21 +148,27 @@ function Editor({ inicial, onGuardar, onCancelar }) {
         {/* En una publicación ya hecha no se cambian el ámbito ni la categoría */}
         {!inicial && (
           <>
-            <select value={ambito} onChange={(e) => setAmbito(e.target.value)} aria-label="Ámbito">
-              <option>Institucional</option>
-              <option>Académico</option>
-            </select>
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              aria-label="Categoría"
-            >
-              <option>Académico</option>
-              <option>Inscripciones</option>
-              <option>Biblioteca</option>
-              <option>Becas</option>
-              <option>Campus</option>
-            </select>
+            <Desplegable
+              etiqueta="Ámbito"
+              valor={ambito}
+              onCambiar={setAmbito}
+              opciones={[
+                { valor: 'Institucional', nombre: 'Institucional' },
+                { valor: 'Académico', nombre: 'Académico' },
+              ]}
+            />
+            <Desplegable
+              etiqueta="Categoría"
+              valor={categoria}
+              onCambiar={setCategoria}
+              opciones={[
+                { valor: 'Académico', nombre: 'Académico' },
+                { valor: 'Inscripciones', nombre: 'Inscripciones' },
+                { valor: 'Biblioteca', nombre: 'Biblioteca' },
+                { valor: 'Becas', nombre: 'Becas' },
+                { valor: 'Campus', nombre: 'Campus' },
+              ]}
+            />
           </>
         )}
 

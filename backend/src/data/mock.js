@@ -32,6 +32,7 @@ export const usuarioActual = {
   id: 1,
   nombre: 'Santiago',
   apellido: 'Sosa',
+  correo: 'santiago.sosa@comunidad.unne.edu.ar',
   rol: 'Estudiante',
   accesoHaceMin: 135,
 };
@@ -54,7 +55,7 @@ export const cursos = [
     docente: 'Ing. Pablo Ruiz',
     docenteId: 7,
     periodo: '2026 – 2.º cuatrimestre',
-    color: '#2B2D42',
+    color: '#1D2B4C',
     favorito: true,
   },
   {
@@ -646,6 +647,7 @@ export const temasForo = [
         texto:
           'Yo uso dos punteros, uno que va adelante y otro atrás. Cuando el de adelante encuentra el nodo, el de atrás ya quedó apuntando al anterior.',
         fecha: haceHoras(27),
+        votos: [1, 5, 6],
       },
       {
         id: 3,
@@ -653,6 +655,7 @@ export const temasForo = [
         texto:
           'Las dos formas están bien. Si hacen la lista doblemente enlazada ni siquiera necesitan el segundo puntero, porque cada nodo ya conoce al anterior.',
         fecha: haceHoras(25),
+        votos: [1, 3, 4, 6],
       },
     ],
   },
@@ -674,6 +677,7 @@ export const temasForo = [
         autorId: 2,
         texto: 'Buen ojo, Tomás. Ya subí el apunte corregido a la carpeta de la Semana 1.',
         fecha: haceHoras(68),
+        votos: [5],
       },
     ],
   },
@@ -712,6 +716,7 @@ export const temasForo = [
         texto:
           'Pueden usar el índice de la IEEE 830, que está en el programa de la materia. Lo importante es que estén los requisitos funcionales y los no funcionales separados.',
         fecha: haceHoras(94),
+        votos: [6, 2],
       },
     ],
   },

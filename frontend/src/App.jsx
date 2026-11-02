@@ -8,6 +8,7 @@ import Mensajes from './pages/Mensajes.jsx';
 import Novedades from './pages/Novedades.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Foro from './pages/Foro.jsx';
+import Ajustes from './pages/Ajustes.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
 import { obtenerUsuarioActual, obtenerContadores } from './services/api.js';
 
@@ -17,7 +18,12 @@ export default function App() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    obtenerUsuarioActual().then(setUsuario).catch(() => setUsuario(null));
+    function traerUsuario() {
+      obtenerUsuarioActual().then(setUsuario).catch(() => setUsuario(null));
+    }
+    traerUsuario();
+    window.addEventListener('campustfi:perfil', traerUsuario);
+    return () => window.removeEventListener('campustfi:perfil', traerUsuario);
   }, []);
 
   // Se vuelven a contar al cambiar de apartado: así, por ejemplo, al salir de
@@ -38,6 +44,7 @@ export default function App() {
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/foro" element={<Foro />} />
           <Route path="/mensajes" element={<Mensajes />} />
+          <Route path="/ajustes" element={<Ajustes />} />
           <Route path="*" element={<EnConstruccion titulo="Página no encontrada" />} />
         </Routes>
       </main>

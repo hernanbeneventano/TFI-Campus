@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   leerMenuCerrado,
   guardarMenuCerrado,
@@ -10,6 +10,7 @@ import {
 } from '../services/preferencias.js';
 import { obtenerCursos } from '../services/api.js';
 import usePresencia from '../hooks/usePresencia.js';
+import usePreferencia from '../hooks/usePreferencia.js';
 import {
   Logo,
   IconoAnuncio,
@@ -24,6 +25,7 @@ import {
   IconoSalir,
   IconoCampanaLlena,
   IconoFlecha,
+  IconoEstrella,
 } from './Iconos.jsx';
 
 const textoEstado = {
@@ -62,7 +64,7 @@ function periodoCorto(periodo) {
 
 export default function MenuLateral({ usuario, contadores }) {
   // Plegado: quedan solo los íconos. Se recuerda para la próxima visita.
-  const [cerrado, setCerrado] = useState(leerMenuCerrado);
+  const [cerrado, setCerrado] = usePreferencia(leerMenuCerrado);
 
   const enModulo = esPantallaDeModulo(useLocation().pathname);
   const estado = usePresencia();
@@ -70,11 +72,17 @@ export default function MenuLateral({ usuario, contadores }) {
   // Los módulos se listan colgando de su opción, para saltar de uno a otro
   // sin pasar por la grilla.
   const [modulos, setModulos] = useState([]);
-  const [desplegados, setDesplegados] = useState(leerModulosDesplegados);
+  const [desplegados, setDesplegados] = usePreferencia(leerModulosDesplegados);
   const [periodosCerrados, setPeriodosCerrados] = useState(leerPeriodosCerrados);
 
   useEffect(() => {
-    obtenerCursos().then(setModulos).catch(() => setModulos([]));
+    function traerModulos() {
+      obtenerCursos().then(setModulos).catch(() => setModulos([]));
+    }
+    traerModulos();
+    // Al marcar un favorito desde Módulos hay que volver a pedirlos
+    window.addEventListener('campustfi:cursos', traerModulos);
+    return () => window.removeEventListener('campustfi:cursos', traerModulos);
   }, []);
 
   // Los módulos van separados por cuatrimestre, los más nuevos arriba
@@ -86,7 +94,11 @@ export default function MenuLateral({ usuario, contadores }) {
     }
     return [...mapa.entries()]
       .sort(([a], [b]) => b.localeCompare(a, 'es'))
-      .map(([periodo, suyos]) => ({ periodo, modulos: suyos }));
+      .map(([periodo, suyos]) => ({
+        periodo,
+        // Los favoritos van arriba de su cuatrimestre
+        modulos: [...suyos].sort((a, b) => Number(b.favorito) - Number(a.favorito)),
+      }));
   }, [modulos]);
 
   function alternarPeriodo(periodo) {
@@ -226,10 +238,14 @@ export default function MenuLateral({ usuario, contadores }) {
                                             isActive ? 'menu-subitem activo' : 'menu-subitem'
                                           }
                                         >
-                                          <span
-                                            className="menu-punto"
-                                            style={{ background: modulo.color }}
-                                          />
+                                          {/* Solo los favoritos llevan marca */}
+                                          {modulo.favorito ? (
+                                            <span className="menu-estrella" aria-label="Favorito">
+                                              <IconoEstrella llena width={13} height={13} />
+                                            </span>
+                                          ) : (
+                                            <span className="menu-hueco" aria-hidden="true" />
+                                          )}
                                           <span className="menu-etiqueta">{modulo.nombre}</span>
                                           {modulo.novedades?.total > 0 && (
                                             <span
@@ -274,10 +290,15 @@ export default function MenuLateral({ usuario, contadores }) {
           </div>
 
           <div className="menu-acciones">
-            <button type="button" title="Ajustes" aria-label="Ajustes">
+            <Link to="/ajustes" title="Ajustes" aria-label="Ajustes">
               <IconoAjustes />
-            </button>
-            <button type="button" title="Cerrar sesión" aria-label="Cerrar sesión">
+            </Link>
+            {/* Todavía no hace nada: llega con el login */}
+            <button
+              type="button"
+              title="Cerrar sesión (disponible cuando esté el login)"
+              aria-label="Cerrar sesión"
+            >
               <IconoSalir />
             </button>
           </div>
