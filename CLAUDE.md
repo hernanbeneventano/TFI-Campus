@@ -28,7 +28,7 @@ frontend/src/
                CarpetaModulo, VisorItem, PestanasModulo, PanelModulo, BarraProgreso,
                Iconos (SVG propios)
   pages/       Novedades (inicio), Modulos, Modulo (interior), Calendario, Foro, Mensajes,
-               Ajustes, EnConstruccion (página no encontrada)
+               Biblioteca, Ajustes, EnConstruccion (página no encontrada)
   services/    api.js: todas las llamadas al backend (Vite redirige /api a localhost:3000)
                progreso.js: recursos completados y cuentas de avance (hoy en localStorage)
                preferencias.js: ajustes de la interfaz, como el menú plegado
@@ -37,6 +37,7 @@ frontend/src/
   styles/      global.css: paleta en variables CSS en :root
 backend/src/
   routes/ → controllers/ → data/mock.js     middleware/errores.js
+  services/  librosExternos.js: Google Books y Open Library, consultados desde el servidor
   Rutas: GET /api/salud, /api/me, /api/cursos, /api/cursos/:id, /api/tareas/pendientes
          /api/cursos/:id/modulo → todo lo de la pantalla del módulo en una sola llamada:
          { curso, carpetas, anuncios, participantes }
@@ -49,6 +50,7 @@ backend/src/
          GET /api/calendario?desde&hasta → entregas, exámenes, clases y eventos del rango
          GET /api/foro, POST /api/foro, GET /api/foro/:id, POST /api/foro/:id (responder)
          GET /api/contadores → { novedades, modulos, mensajes }: las campanitas del menú
+         /api/biblioteca/... → catálogo, aportes, moderación y archivos (ver Biblioteca)
 equipo/        información del equipo y planificación de hitos
 ```
 
@@ -383,3 +385,127 @@ padre. La lista se abre sola al entrar a un módulo y su estado se recuerda en `
 Con el menú plegado la sublista no se muestra: no hay lugar para los nombres. **Ojo**: al entrar a
 un módulo el menú también se pliega solo, así que ahí la sublista queda oculta hasta desplegarlo a
 mano. Si molesta, conviene sacar el plegado automático.
+
+## Biblioteca
+Pantalla `/biblioteca`, debajo de Mensajes en el menú. Junta dos cosas que se ven distinto:
+los **materiales del campus** (etiqueta oscura "En el campus") y los **libros de catálogos
+externos** (etiqueta clara con el nombre de la fuente). La diferencia importa: de un libro
+externo nunca tenemos el archivo, solo adónde ir a buscarlo.
+
+Cuatro pestañas: Catálogo, Guardados, Mis aportes y, solo para quien modera, Revisión con su
+contador. Arriba, el buscador, el desplegable de dónde buscar (todo, título, autor, ISBN, tema)
+y el botón de aportar. Debajo, las categorías como chips con cuántos hay, y la fila de filtros
+(fuente, tipo, carrera, materia, idioma, orden) con "Limpiar filtros" cuando hay alguno puesto.
+
+Lo que se escribe no se busca en el acto: se espera 400 ms a que pares de teclear, porque cada
+búsqueda pega contra dos APIs externas.
+
+### Catálogos externos
+`services/librosExternos.js` consulta **Google Books** y **Open Library** en paralelo, del lado
+del servidor. Va en el backend a propósito: la clave de Google (si se usa) no viaja al navegador,
+la caché sirve para todos y, si una fuente se cae, la pantalla sigue andando con la otra.
+
+Las dos respuestas se normalizan a la misma forma y se **unen por ISBN** o, si no hay, por título
+y autor sin tildes. Cuando un libro está en las dos se queda el de Google (trae descripción y
+portada más seguido), se completan los huecos con el de Open Library y se anota "También en".
+
+**Solo se muestran las acciones que la fuente ofrece de verdad.** Nada de inventar un botón de
+descarga: el PDF solo aparece si Google dice que el libro es de dominio público, el préstamo solo
+si Open Library lo marca como `borrowable`. Si no hay nada, se dice que no lo hay.
+
+Hay caché en memoria de 10 minutos (las mismas búsquedas se repiten muchísimo), espera máxima de
+9 s por fuente — Open Library ronda los 4 s — y un freno de 30 búsquedas por minuto. Cuando una
+fuente falla, el listado trae `fuentes` con el estado y la pantalla lo avisa arriba de los
+resultados.
+
+Ojo: **sin `GOOGLE_BOOKS_API_KEY` Google devuelve 429 casi siempre**, porque el cupo por IP es
+bajo. La clave va en `backend/.env` (ver `.env.example`). Open Library no pide nada.
+
+### Materiales propios
+Están en `mock.js` (`materiales`, `categorias`, `carreras`, `favoritosBiblioteca`,
+`moderacionBiblioteca`). Son ocho de ejemplo, uno o dos por área: alcanza para ver cómo queda, el
+catálogo de verdad sale de la búsqueda externa.
+
+Cada material tiene **`enlace` o `archivo`, nunca los dos**. Si no tenemos derecho a alojar el
+libro, va el enlace a la fuente legítima; si el archivo está en el campus, el enlace se borra al
+subirlo. Los de ejemplo son todos de licencia abierta o con enlace a donde consultarlos.
+
+### El archivo
+No hay Firebase Storage todavía, así que los bytes viven en un `Map` en memoria en `mock.js`
+(`guardarArchivo` / `leerArchivo`), aparte de la ficha: el material guarda nombre, tamaño y tipo.
+Se pierden al reiniciar, como todo lo demás. Cuando esté Storage, eso pasa a ser una referencia
+al bucket y el resto no cambia.
+
+Suben en base64 dentro del JSON por `POST /api/biblioteca/:id/archivo`, con su propio
+`express.json` de límite más alto: no hay motivo para que el foro pueda recibir 20 MB. El frontend
+usa `XMLHttpRequest` y no `fetch`, porque es lo único que avisa cómo va la subida.
+
+Validación, toda del lado del servidor: solo PDF y EPUB, **se miran los bytes** (`%PDF-` y, en el
+EPUB, que sea un ZIP que declare `application/epub+zip`), que el tipo coincida con la extensión,
+que no esté vacío y que no pase de `BIBLIOTECA_MAX_MB` (15 por defecto). La extensión sola no
+prueba nada: cualquiera renombra un `.exe` a `.pdf`. El nombre se limpia antes de usarlo
+(`../../etc/passwd` queda en `passwd.pdf`).
+
+La descarga (`GET /api/biblioteca/:id/archivo`) pasa por el mismo control de acceso que la ficha y
+va siempre como `attachment` con `nosniff`: un archivo de otra persona no se abre dentro del
+campus.
+
+### Permisos y moderación
+**La facultad todavía no tiene rol de administrador**: en `personas` solo hay Estudiante y
+Docente. Hasta que exista, **modera el docente**, que es quien responde por el material de su
+cátedra. Está en una sola función (`puedeModerar` en el controlador): el día que se agregue el
+rol, se cambia ahí y nada más.
+
+- Cualquiera puede aportar, pero lo de un estudiante queda **pendiente** hasta que un docente lo
+  apruebe. Lo que sube quien modera se publica directo.
+- Un pendiente o un rechazado lo ven **solo quien lo subió y los docentes**, tanto la ficha como
+  el archivo. No aparece en el catálogo.
+- Editar y retirar: quien lo subió o un docente. Si lo edita quien lo subió y no modera, vuelve a
+  la cola: el texto que se aprobó ya no es el que está.
+- **Rechazar exige motivo** (400 si no viene): sin eso, quien aportó no sabe qué corregir. El
+  motivo se le muestra en Mis aportes y queda en `moderacionBiblioteca` con quién y cuándo.
+
+Todo se verifica en el backend, no solo escondiendo botones: `puedeAportar` / `puedeEditar` /
+`puedeModerar` viajan en la respuesta para que el frontend no muestre lo que no va, pero la que
+manda es la comprobación del servidor.
+
+Al aportar hay que **confirmar que se tiene autorización** para compartir el material. Es la
+casilla destacada del formulario y el backend la exige (400 si no viene): compartir material
+ajeno sin permiso es el riesgo principal de toda la sección.
+
+Los enlaces se validan: solo `http` y `https`, para que nadie deje un `javascript:` en la ficha.
+
+### Favoritos
+La estrella guarda tanto un material propio como un libro externo: el id externo
+(`google:xxx`, `openlibrary:/works/OL1W`) es estable y se guarda tal cual. Por eso los ids van
+codificados en la ruta (`encodeURIComponent`), si no las barras romperían el camino.
+
+### Rutas
+```
+GET    /api/biblioteca/opciones      categorías con cuántos hay, carreras, materias, idiomas,
+                                     tipos y qué puede hacer quien pregunta
+GET    /api/biblioteca               catálogo: ?q &campo &fuente &categoria &tipo &carrera
+                                     &materia &idioma &orden &pagina &porPagina
+GET    /api/biblioteca/mis-aportes   los propios, con estado e historial
+GET    /api/biblioteca/pendientes    la cola de revisión (solo docentes)
+GET    /api/biblioteca/favoritos
+GET    /api/biblioteca/:id           ficha, relacionados e historial
+POST   /api/biblioteca               aportar
+PATCH  /api/biblioteca/:id           editar
+DELETE /api/biblioteca/:id           retirar
+POST   /api/biblioteca/:id/archivo   subir (base64)
+GET    /api/biblioteca/:id/archivo   descargar
+POST   /api/biblioteca/:id/aprobar
+POST   /api/biblioteca/:id/rechazar  { motivo } obligatorio
+POST   /api/biblioteca/:id/favorito  y DELETE para quitarla
+```
+Las rutas con nombre fijo van **antes** que `/:id`, si no `favoritos` se tomaría como un id
+(el mismo cuidado que `contactos` en Mensajes).
+
+### Pendiente de la Biblioteca
+- Mover los archivos a Firebase Storage y dejar en la base solo la referencia.
+- Conseguir la `GOOGLE_BOOKS_API_KEY`, o la mitad de las búsquedas se queda sin Google.
+- Las reglas de Firestore tienen que repetir estos permisos: que un pendiente no lo lea nadie
+  más que su autor y los docentes.
+- Rol de administrador de verdad, en vez de que modere cualquier docente.
+- Reportar contenido (la tabla de moderación ya está, falta quién lo denuncia).

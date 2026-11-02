@@ -732,3 +732,301 @@ export function nuevoIdTema() {
 export function nuevoIdMensajeForo() {
   return proximoIdMensajeForo++;
 }
+
+// ===================== Biblioteca =====================
+// Materiales de la biblioteca institucional. Lo que se busca en Google Books
+// y Open Library no se guarda acá: se consulta en vivo y se muestra marcado
+// como externo (ver services/librosExternos.js).
+//
+// Cada material tiene `enlace` (la fuente legítima, cuando no tenemos
+// derecho a alojar el archivo) o `archivo` (subido al campus). Nunca los dos
+// a la vez: si no hay autorización para hospedarlo, se enlaza y listo.
+
+// Las carreras de la facultad. Hoy son fijas; cuando estén en la base salen
+// de ahí, igual que los cursos.
+export const carreras = [
+  'Licenciatura en Sistemas de Información',
+  'Profesorado en Matemática',
+  'Licenciatura en Ciencias Químicas',
+  'Común a todas',
+];
+
+// Las categorías del catálogo. Las primeras siguen a las materias de la
+// carrera; las últimas son por tipo de material.
+export const categorias = [
+  { id: 'programacion', nombre: 'Programación' },
+  { id: 'bases-de-datos', nombre: 'Bases de datos' },
+  { id: 'ingenieria-de-software', nombre: 'Ingeniería de software' },
+  { id: 'redes-y-sistemas', nombre: 'Redes y sistemas' },
+  { id: 'matematica', nombre: 'Matemática' },
+  { id: 'ingles', nombre: 'Inglés' },
+  { id: 'manuales-tecnicos', nombre: 'Manuales técnicos' },
+  { id: 'libros-academicos', nombre: 'Libros académicos' },
+  { id: 'apuntes-y-resumenes', nombre: 'Apuntes y resúmenes' },
+  { id: 'guias-y-ejercicios', nombre: 'Guías y ejercicios' },
+  { id: 'otros', nombre: 'Otros materiales' },
+];
+
+// Qué clase de material es. El tipo cambia el ícono y entra en los filtros.
+export const TIPOS_MATERIAL = ['libro', 'apunte', 'resumen', 'manual', 'guia', 'ejercicio', 'otro'];
+
+// Un aporte pasa por acá antes de verse: nadie publica sin que un docente lo
+// revise (ver `moderacion` en el controlador).
+export const ESTADOS_MATERIAL = ['pendiente', 'aprobado', 'rechazado'];
+
+export const materiales = [
+  {
+    id: 1,
+    titulo: 'Think Python: How to Think Like a Computer Scientist',
+    autor: 'Allen B. Downey',
+    descripcion:
+      'Introducción a la programación con Python pensada para quien empieza de cero. Arranca por los tipos y las funciones y llega a objetos y estructuras de datos, con ejercicios al final de cada capítulo.',
+    editorial: 'Green Tea Press',
+    isbn: '9781491939369',
+    idioma: 'en',
+    tipo: 'libro',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Programación II',
+    categoria: 'programacion',
+    anio: '1.º año',
+    portada: null,
+    // Licencia abierta, pero el PDF lo sirve el autor: enlazamos la fuente en
+    // vez de quedarnos una copia.
+    enlace: 'https://greenteapress.com/wp/think-python-2e/',
+    licencia: 'CC BY-NC 3.0',
+    archivo: null,
+    subidoPor: 2,
+    estado: 'aprobado',
+    moderadoPor: 8,
+    motivo: null,
+    creado: aDias(-40),
+    actualizado: aDias(-40),
+  },
+  {
+    id: 2,
+    titulo: 'Eloquent JavaScript (3rd edition)',
+    autor: 'Marijn Haverbeke',
+    descripcion:
+      'Libro de JavaScript moderno con ejemplos que se pueden correr en el navegador. Útil para la parte de programación web de la carrera.',
+    editorial: 'No Starch Press',
+    isbn: '9781593279509',
+    idioma: 'en',
+    tipo: 'libro',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Programación II',
+    categoria: 'programacion',
+    anio: '2.º año',
+    portada: null,
+    enlace: 'https://eloquentjavascript.net/',
+    licencia: 'CC BY-NC 3.0',
+    archivo: null,
+    subidoPor: 2,
+    estado: 'aprobado',
+    moderadoPor: 2,
+    motivo: null,
+    creado: aDias(-33),
+    actualizado: aDias(-33),
+  },
+  {
+    id: 3,
+    titulo: 'Apunte de normalización: de 1FN a forma normal de Boyce-Codd',
+    autor: 'Ing. Pablo Ruiz',
+    descripcion:
+      'Resumen de las formas normales con los ejemplos que se usaron en clase, incluidas las dependencias funcionales del caso de la biblioteca.',
+    editorial: 'Cátedra de Bases de Datos – FaCENA',
+    isbn: null,
+    idioma: 'es',
+    tipo: 'apunte',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Bases de Datos',
+    categoria: 'bases-de-datos',
+    anio: '2.º año',
+    portada: null,
+    enlace: 'https://exa.unne.edu.ar/',
+    licencia: 'Material de cátedra',
+    archivo: null,
+    subidoPor: 7,
+    estado: 'aprobado',
+    moderadoPor: 7,
+    motivo: null,
+    creado: aDias(-12),
+    actualizado: aDias(-12),
+  },
+  {
+    id: 4,
+    titulo: 'Guía de ejercicios: álgebra relacional y SQL',
+    autor: 'Ing. Pablo Ruiz',
+    descripcion:
+      'Treinta ejercicios resueltos y veinte a resolver, sobre el mismo esquema de ejemplo que se usa en el práctico de la materia.',
+    editorial: 'Cátedra de Bases de Datos – FaCENA',
+    isbn: null,
+    idioma: 'es',
+    tipo: 'guia',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Bases de Datos',
+    categoria: 'guias-y-ejercicios',
+    anio: '2.º año',
+    portada: null,
+    enlace: 'https://exa.unne.edu.ar/',
+    licencia: 'Material de cátedra',
+    archivo: null,
+    subidoPor: 7,
+    estado: 'aprobado',
+    moderadoPor: 7,
+    motivo: null,
+    creado: aDias(-6),
+    actualizado: aDias(-6),
+  },
+  {
+    id: 5,
+    titulo: 'The Mythical Man-Month: ensayos sobre ingeniería de software',
+    autor: 'Frederick P. Brooks Jr.',
+    descripcion:
+      'Clásico sobre por qué agregar gente a un proyecto atrasado lo atrasa más. Se trabaja en la unidad de gestión de proyectos.',
+    editorial: 'Addison-Wesley',
+    isbn: '9780201835953',
+    idioma: 'en',
+    tipo: 'libro',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Ingeniería de Software',
+    categoria: 'ingenieria-de-software',
+    anio: '3.º año',
+    portada: null,
+    // Con derechos: solo la ficha y dónde conseguirlo, nunca una copia.
+    enlace: 'https://openlibrary.org/isbn/9780201835953',
+    licencia: 'Con derechos reservados · consultar en biblioteca',
+    archivo: null,
+    subidoPor: 8,
+    estado: 'aprobado',
+    moderadoPor: 8,
+    motivo: null,
+    creado: aDias(-21),
+    actualizado: aDias(-21),
+  },
+  {
+    id: 6,
+    titulo: 'Computer Networks: a systems approach',
+    autor: 'Larry Peterson, Bruce Davie',
+    descripcion:
+      'Libro de redes de acceso abierto, con el modelo de capas trabajado desde los protocolos reales. Cubre casi todo el programa de la materia.',
+    editorial: 'Systems Approach LLC',
+    isbn: '9780128182000',
+    idioma: 'en',
+    tipo: 'libro',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Redes de Computadoras',
+    categoria: 'redes-y-sistemas',
+    anio: '3.º año',
+    portada: null,
+    enlace: 'https://book.systemsapproach.org/',
+    licencia: 'CC BY 4.0',
+    archivo: null,
+    subidoPor: 9,
+    estado: 'aprobado',
+    moderadoPor: 9,
+    motivo: null,
+    creado: aDias(-15),
+    actualizado: aDias(-15),
+  },
+  {
+    id: 7,
+    titulo: 'Resumen de probabilidad: variables aleatorias discretas',
+    autor: 'Lucía Acosta',
+    descripcion:
+      'Resumen armado para el primer parcial, con las distribuciones binomial, Poisson y geométrica y un cuadro comparativo al final.',
+    editorial: null,
+    isbn: null,
+    idioma: 'es',
+    tipo: 'resumen',
+    carrera: 'Licenciatura en Sistemas de Información',
+    materia: 'Probabilidad y Estadística',
+    categoria: 'apuntes-y-resumenes',
+    anio: '1.º año',
+    portada: null,
+    enlace: null,
+    licencia: 'Material propio del autor',
+    archivo: null,
+    subidoPor: 4,
+    // Un aporte de estudiante esperando que lo revise un docente
+    estado: 'pendiente',
+    moderadoPor: null,
+    motivo: null,
+    creado: aDias(-2),
+    actualizado: aDias(-2),
+  },
+  {
+    id: 8,
+    titulo: 'English for Information Technology: vocabulario técnico',
+    autor: 'Cátedra de Inglés',
+    descripcion:
+      'Listado de vocabulario técnico con ejemplos de uso, agrupado por área: hardware, redes, desarrollo y bases de datos.',
+    editorial: 'Cátedra de Inglés – FaCENA',
+    isbn: null,
+    idioma: 'en',
+    tipo: 'manual',
+    carrera: 'Común a todas',
+    materia: 'Inglés Técnico',
+    categoria: 'ingles',
+    anio: '1.º año',
+    portada: null,
+    enlace: 'https://exa.unne.edu.ar/',
+    licencia: 'Material de cátedra',
+    archivo: null,
+    subidoPor: 10,
+    estado: 'aprobado',
+    moderadoPor: 10,
+    motivo: null,
+    creado: aDias(-50),
+    actualizado: aDias(-50),
+  },
+];
+
+// Favoritos de la biblioteca, por persona. Guardan el id del material propio
+// o, para un libro externo, su identificador estable ("google:xxx").
+export const favoritosBiblioteca = [
+  { personaId: 1, materialId: 1, creado: aDias(-9) },
+  { personaId: 1, materialId: 6, creado: aDias(-4) },
+];
+
+// Quién aprobó o rechazó qué, y por qué. Se muestra en el detalle del
+// material y le sirve a quien lo subió para saber qué corregir.
+export const moderacionBiblioteca = [
+  {
+    id: 1,
+    materialId: 5,
+    moderadorId: 8,
+    accion: 'aprobado',
+    motivo: null,
+    fecha: aDias(-21),
+  },
+];
+
+let proximoIdMaterial = 100;
+let proximoIdModeracion = 100;
+
+export function nuevoIdMaterial() {
+  return proximoIdMaterial++;
+}
+
+export function nuevoIdModeracion() {
+  return proximoIdModeracion++;
+}
+
+// Los bytes de los archivos subidos. Van en un Map aparte y no en `materiales`
+// porque el contenido del archivo no es un dato de la ficha: el material
+// guarda el nombre, el tamaño y el tipo, y acá está lo que se descarga.
+// Vive en memoria y se pierde al reiniciar, como el resto de los datos de
+// prueba; con Firebase Storage esto pasa a ser una referencia al bucket.
+const archivos = new Map();
+
+export function guardarArchivo(materialId, buffer) {
+  archivos.set(materialId, buffer);
+}
+
+export function leerArchivo(materialId) {
+  return archivos.get(materialId) ?? null;
+}
+
+export function borrarArchivo(materialId) {
+  archivos.delete(materialId);
+}

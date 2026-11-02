@@ -4615,3 +4615,779 @@ a.proxima:hover {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* ===================== Biblioteca ===================== */
+.biblioteca-barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* El buscador manda: ocupa todo el ancho que sobra */
+.biblioteca-barra .barra-busqueda {
+  flex: 1;
+  min-width: 240px;
+}
+
+.biblioteca-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------- Categorías ---------- */
+.biblioteca-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--blanco);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.08s;
+}
+
+.chip:hover {
+  border-color: var(--principal);
+  color: var(--oscuro);
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
+.chip.activo {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+}
+
+.chip small {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+.chip.activo small {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--blanco);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ---------- Resultados ---------- */
+.biblioteca-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: aparecer 0.25s ease;
+}
+
+.biblioteca-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+  margin-top: 6px;
+}
+
+.biblioteca-titulo small {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.biblioteca-nota {
+  margin-top: -6px;
+  max-width: 70ch;
+}
+
+.biblioteca-aviso {
+  padding: 10px 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--progreso-alto-texto);
+  font-weight: 600;
+  animation: aparecer 0.25s ease;
+}
+
+/* Una fuente externa caída se avisa, no se esconde */
+.biblioteca-fuente-caida {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.libros-grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.biblioteca-paginas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.biblioteca-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 54px 20px;
+  border-radius: var(--radio);
+  background: var(--panel);
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.biblioteca-vacio h3 {
+  color: var(--oscuro);
+}
+
+.biblioteca-vacio button {
+  margin-top: 8px;
+}
+
+/* ---------- Tarjeta de un libro ---------- */
+.libro-tarjeta {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.3s ease backwards;
+  animation-delay: var(--retraso, 0ms);
+  transition: border-color 0.15s, transform 0.12s;
+}
+
+.libro-tarjeta:hover {
+  border-color: var(--principal);
+  transform: translateY(-2px);
+}
+
+/* Mientras llegan los datos, un recuadro del mismo alto para que la grilla
+   no pegue un salto cuando aparecen las tarjetas de verdad. */
+.libro-tarjeta.esqueleto {
+  min-height: 148px;
+  border-style: dashed;
+  background: var(--panel);
+  animation: latir 1.4s ease-in-out infinite;
+}
+
+@keyframes latir {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.libro-portada {
+  flex-shrink: 0;
+  width: 78px;
+  height: 112px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.libro-portada img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.libro-portada-vacia {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--gris);
+}
+
+.libro-portada-vacia.grande {
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.libro-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.libro-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+/* De dónde salió: lo propio y lo externo se distinguen de un vistazo */
+.libro-fuente,
+.libro-tipo,
+.libro-libre,
+.libro-estado {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.libro-fuente {
+  background: var(--oscuro);
+  color: var(--blanco);
+}
+
+.libro-fuente.externa {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.libro-tipo {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.libro-libre {
+  background: rgba(47, 143, 91, 0.14);
+  color: var(--progreso-alto-texto);
+}
+
+/* El estado solo se ve en lo propio sin publicar: en revisión o rechazado */
+.libro-estado.pendiente {
+  background: rgba(217, 162, 27, 0.18);
+  color: var(--progreso-medio-texto);
+}
+
+.libro-estado.rechazado {
+  background: rgba(216, 0, 50, 0.12);
+  color: var(--alerta);
+}
+
+.libro-estado.aprobado {
+  background: rgba(47, 143, 91, 0.14);
+  color: var(--progreso-alto-texto);
+}
+
+.libro-titulo {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--oscuro);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.libro-titulo:hover {
+  color: var(--principal);
+}
+
+.libro-autor {
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.libro-datos {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.libro-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.libro-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--principal);
+  color: var(--blanco);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.libro-accion:hover {
+  background: var(--tinta);
+}
+
+.libro-accion-nota {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.libro-favorito {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 5px;
+  border-radius: 10px;
+  color: var(--gris);
+  cursor: pointer;
+  transition: color 0.15s, transform 0.08s;
+}
+
+.libro-favorito:hover {
+  color: var(--progreso-medio);
+}
+
+.libro-favorito:active {
+  transform: scale(0.9);
+}
+
+.libro-favorito.activo {
+  color: var(--progreso-medio);
+}
+
+.libro-favorito:focus-visible,
+.libro-portada:focus-visible,
+.libro-titulo:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ---------- La ficha ---------- */
+.lector.ficha,
+.lector.aporte {
+  max-width: 760px;
+  padding: 30px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ficha-cabecera {
+  display: flex;
+  gap: 20px;
+  padding-right: 40px;
+}
+
+.ficha-portada {
+  flex-shrink: 0;
+  width: 128px;
+  height: 184px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.ficha-portada img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ficha-titulo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ficha-titulo h2 {
+  font-size: 1.5rem;
+  color: var(--oscuro);
+  line-height: 1.25;
+}
+
+.ficha-subtitulo {
+  color: var(--texto-suave);
+}
+
+.ficha-descripcion {
+  color: var(--texto);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.ficha-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px 20px;
+  padding: 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+}
+
+.ficha-dato span {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.ficha-dato strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--oscuro);
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+.ficha-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.ficha-acciones a {
+  text-decoration: none;
+}
+
+/* Cuando la fuente no ofrece nada, se dice en vez de dejar botones muertos */
+.ficha-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.ficha-aviso.rechazo {
+  background: rgba(216, 0, 50, 0.08);
+  color: var(--alerta);
+}
+
+.ficha-relacionados h3 {
+  font-size: 1rem;
+  color: var(--oscuro);
+  margin-bottom: 8px;
+}
+
+.ficha-relacionados ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ficha-relacionados button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  text-align: left;
+  cursor: pointer;
+  color: var(--texto-suave);
+}
+
+.ficha-relacionados button:hover {
+  border-color: var(--principal);
+}
+
+.ficha-relacionados strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.92rem;
+}
+
+.ficha-relacionados small {
+  display: block;
+  margin-top: 2px;
+}
+
+.boton-suave.peligro {
+  color: var(--alerta);
+}
+
+.boton-suave.activo {
+  color: var(--progreso-medio-texto);
+}
+
+/* ---------- Aportar material ---------- */
+.aporte-cabecera {
+  padding-right: 40px;
+}
+
+.aporte-cabecera h2 {
+  font-size: 1.4rem;
+  color: var(--oscuro);
+}
+
+.aporte-campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.aporte-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.aporte-campos .ancho-completo {
+  grid-column: 1 / -1;
+}
+
+.aporte-campos label > span,
+.aporte-etiqueta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.aporte-campos input,
+.aporte-campos textarea {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 11px 14px;
+  background: var(--blanco);
+  outline: none;
+  font: inherit;
+  resize: vertical;
+}
+
+.aporte-campos input:focus-visible,
+.aporte-campos textarea:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.aporte-campos input:disabled {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.aporte-archivo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.aporte-ficha-archivo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  max-width: 100%;
+}
+
+.aporte-ficha-archivo strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.aporte-ficha-archivo button {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.aporte-ficha-archivo button:hover {
+  color: var(--alerta);
+}
+
+/* Compartir material ajeno sin permiso es el riesgo de todo esto: la
+   confirmación va destacada, no como una casilla más. */
+.aporte-autorizacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.aporte-autorizacion strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.94rem;
+}
+
+.aporte-autorizacion small {
+  display: block;
+  margin-top: 3px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.aporte-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.aporte-avance {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aporte-avance small {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.aporte-pie {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--borde);
+}
+
+/* ---------- Mis aportes y la cola de revisión ---------- */
+.aportes-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aporte-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+.aporte-fila-titulo {
+  flex: 1;
+  min-width: 200px;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.aporte-fila-titulo strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.aporte-fila-titulo small {
+  display: block;
+  margin-top: 3px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.aporte-fila-titulo:hover strong {
+  color: var(--principal);
+}
+
+.aporte-fila-acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.aporte-motivo {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--alerta);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 760px) {
+  .aporte-campos {
+    grid-template-columns: 1fr;
+  }
+  .ficha-cabecera {
+    flex-direction: column;
+  }
+  .ficha-portada {
+    width: 104px;
+    height: 150px;
+  }
+  .lector.ficha,
+  .lector.aporte {
+    padding: 22px 20px 20px;
+  }
+  .libros-grilla {
+    grid-template-columns: 1fr;
+  }
+}

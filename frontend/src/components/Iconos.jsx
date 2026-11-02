@@ -310,3 +310,32 @@ export const IconoDuda = (p) => (
     <path d="M12 17h.01" />
   </svg>
 );
+
+export const IconoBiblioteca = (p) => (
+  <svg {...base} {...p}>
+    <path d="M4 4h4v16H4zM10 4h4v16h-4z" />
+    <path d="m16.5 5.2 3.4.9-3.1 13-3.4-.9z" />
+  </svg>
+);
+
+export const IconoLibro = (p) => (
+  <svg {...base} width={20} height={20} {...p}>
+    <path d="M12 6.5S10 5 6.5 5H4v12h2.5C10 17 12 18.5 12 18.5s2-1.5 5.5-1.5H20V5h-2.5C14 5 12 6.5 12 6.5z" />
+    <path d="M12 6.5v12" />
+  </svg>
+);
+
+export const IconoSubir = (p) => (
+  <svg {...base} width={20} height={20} {...p}>
+    <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+    <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+  </svg>
+);
+
+export const IconoEnlaceExterno = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M14 4h6v6" />
+    <path d="M20 4 11 13" />
+    <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+  </svg>
+);

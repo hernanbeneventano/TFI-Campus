@@ -26,6 +26,7 @@ import {
   IconoCampanaLlena,
   IconoFlecha,
   IconoEstrella,
+  IconoBiblioteca,
 } from './Iconos.jsx';
 
 const textoEstado = {
@@ -42,6 +43,7 @@ const secciones = [
   { ruta: '/calendario', nombre: 'Calendario', Icono: IconoCalendario },
   { ruta: '/foro', nombre: 'Foro', Icono: IconoForo },
   { ruta: '/mensajes', nombre: 'Mensajes', Icono: IconoMensajes, aviso: 'mensajes' },
+  { ruta: '/biblioteca', nombre: 'Biblioteca', Icono: IconoBiblioteca },
 ];
 
 const textoAviso = {

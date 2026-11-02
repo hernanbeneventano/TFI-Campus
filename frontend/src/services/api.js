@@ -86,3 +86,80 @@ export const reaccionar = (id, tipo) => enviar(`/novedades/${id}/reaccion`, { ti
 export const votarMensaje = (temaId, mensajeId) =>
   enviar(`/foro/${temaId}/mensajes/${mensajeId}/voto`, {});
 export const seguirTema = (id) => enviar(`/foro/${id}/seguir`, {});
+
+// --- Biblioteca ---
+// Los ids externos traen dos puntos y barras ("openlibrary:/works/OL1W"), así
+// que van codificados o romperían la ruta.
+const idEnRuta = (id) => encodeURIComponent(String(id));
+
+export const obtenerOpcionesBiblioteca = () => pedir('/biblioteca/opciones');
+
+export const buscarEnBiblioteca = (filtros) => {
+  const parametros = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(filtros)) {
+    if (valor !== '' && valor != null) parametros.set(clave, valor);
+  }
+  return pedir(`/biblioteca?${parametros}`);
+};
+
+export const obtenerMaterial = (id) => pedir(`/biblioteca/${idEnRuta(id)}`);
+export const obtenerMisAportes = () => pedir('/biblioteca/mis-aportes');
+export const obtenerPendientesBiblioteca = () => pedir('/biblioteca/pendientes');
+export const obtenerFavoritosBiblioteca = () => pedir('/biblioteca/favoritos');
+
+export const aportarMaterial = (datos) => enviar('/biblioteca', datos);
+export const editarMaterial = (id, datos) => parchear(`/biblioteca/${idEnRuta(id)}`, datos);
+export const retirarMaterial = (id) => borrar(`/biblioteca/${idEnRuta(id)}`);
+
+export const aprobarMaterial = (id) => enviar(`/biblioteca/${idEnRuta(id)}/aprobar`, {});
+export const rechazarMaterial = (id, motivo) =>
+  enviar(`/biblioteca/${idEnRuta(id)}/rechazar`, { motivo });
+
+export const marcarFavoritoBiblioteca = (id, puesto) =>
+  puesto ? enviar(`/biblioteca/${idEnRuta(id)}/favorito`, {}) : borrar(`/biblioteca/${idEnRuta(id)}/favorito`);
+
+// La dirección de descarga: el navegador la abre, el backend comprueba los
+// permisos y manda el archivo.
+export const enlaceDescarga = (id) => `/api/biblioteca/${idEnRuta(id)}/archivo`;
+
+// El archivo viaja en base64 dentro del JSON. Es lo que se puede hacer sin
+// Firebase Storage; cuando esté, sube al bucket y acá queda la referencia.
+export function subirArchivoMaterial(id, archivo, alAvanzar) {
+  return new Promise((resolve, rechazar) => {
+    const lector = new FileReader();
+    lector.onerror = () => rechazar(new Error('No se pudo leer el archivo'));
+    lector.onload = () => {
+      const peticion = new XMLHttpRequest();
+      peticion.open('POST', `/api/biblioteca/${idEnRuta(id)}/archivo`);
+      peticion.setRequestHeader('Content-Type', 'application/json');
+
+      // XMLHttpRequest en vez de fetch porque es lo único que avisa cómo va
+      // la subida, y un PDF de 10 MB sin barra de progreso se siente colgado.
+      peticion.upload.onprogress = (e) => {
+        if (e.lengthComputable) alAvanzar?.(Math.round((e.loaded / e.total) * 100));
+      };
+      peticion.onload = () => {
+        let cuerpo = null;
+        try {
+          cuerpo = JSON.parse(peticion.responseText);
+        } catch {
+          cuerpo = null;
+        }
+        if (peticion.status >= 200 && peticion.status < 300) resolve(cuerpo);
+        else rechazar(new Error(cuerpo?.error ?? `Error ${peticion.status} al subir el archivo`));
+      };
+      peticion.onerror = () => rechazar(new Error('No se pudo conectar con el servidor'));
+
+      peticion.send(
+        JSON.stringify({
+          nombre: archivo.name,
+          tipo: archivo.type,
+          extension: archivo.name.split('.').pop(),
+          // data:application/pdf;base64,XXXX → solo la parte de después de la coma
+          contenido: String(lector.result).split(',')[1] ?? '',
+        })
+      );
+    };
+    lector.readAsDataURL(archivo);
+  });
+}

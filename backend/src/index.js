@@ -8,6 +8,7 @@ import mensajesRoutes from './routes/mensajes.routes.js';
 import novedadesRoutes from './routes/novedades.routes.js';
 import calendarioRoutes from './routes/calendario.routes.js';
 import foroRoutes from './routes/foro.routes.js';
+import bibliotecaRoutes from './routes/biblioteca.routes.js';
 import { usuarioActual, personas, conPresencia, resumenDeNovedades } from './data/mock.js';
 import { manejarErrores, rutaNoEncontrada } from './middleware/errores.js';
 
@@ -63,6 +64,7 @@ app.use('/api/mensajes', mensajesRoutes);
 app.use('/api/novedades', novedadesRoutes);
 app.use('/api/calendario', calendarioRoutes);
 app.use('/api/foro', foroRoutes);
+app.use('/api/biblioteca', bibliotecaRoutes);
 
 app.use(rutaNoEncontrada);
 app.use(manejarErrores);

@@ -8,6 +8,7 @@ import Mensajes from './pages/Mensajes.jsx';
 import Novedades from './pages/Novedades.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Foro from './pages/Foro.jsx';
+import Biblioteca from './pages/Biblioteca.jsx';
 import Ajustes from './pages/Ajustes.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
 import { obtenerUsuarioActual, obtenerContadores } from './services/api.js';
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/foro" element={<Foro />} />
           <Route path="/mensajes" element={<Mensajes />} />
+          <Route path="/biblioteca" element={<Biblioteca />} />
           <Route path="/ajustes" element={<Ajustes />} />
           <Route path="*" element={<EnConstruccion titulo="Página no encontrada" />} />
         </Routes>
