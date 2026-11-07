@@ -1,0 +1,959 @@
+openapi: 3.0.3
+
+info:
+  title: CampusTFI - Interfaz de programación
+  version: 0.1.0
+  description: |
+    Interfaz de programación del campus virtual CampusTFI.
+
+    **Estado actual.** Todavía no hay inicio de sesión. Todas las operaciones se
+    resuelven como si las realizara un usuario de prueba fijo, definido en
+    `backend/app/datos.py`. El servidor usa FastAPI.
+
+    **Datos.** Residen en memoria y se reinician al reiniciar el servidor. La
+    persistencia en una base de datos todavía no está implementada.
+
+    Para probar los puntos de acceso se puede importar este archivo en Postman o
+    abrirlo con Swagger Editor.
+
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de desarrollo
+
+tags:
+  - name: General
+    description: Estado del servidor, perfil y contadores
+  - name: Cursos
+    description: Módulos del estudiante y su contenido
+  - name: Tareas
+  - name: Mensajes
+    description: Conversaciones entre dos personas
+  - name: Novedades
+    description: Muro institucional
+  - name: Calendario
+  - name: Foro
+    description: Consultas por asignatura
+  - name: Biblioteca
+    description: Catálogo propio y consulta de catálogos externos
+
+paths:
+  # ------------------------------------------------------------------
+  /salud:
+    get:
+      tags: [General]
+      summary: Comprobar que el servidor responde
+      responses:
+        '200':
+          description: El servidor está en marcha
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estado: { type: string, example: ok }
+                  app: { type: string, example: CampusTFI }
+
+  /me:
+    get:
+      tags: [General]
+      summary: Obtener el perfil de quien consulta
+      responses:
+        '200':
+          description: Datos del perfil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Persona' }
+    put:
+      tags: [General]
+      summary: Editar el perfil propio
+      description: El rol no se modifica desde acá, porque lo define la institución.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, apellido]
+              properties:
+                nombre: { type: string }
+                apellido: { type: string }
+                correo: { type: string, format: email }
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Persona' }
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+
+  /contadores:
+    get:
+      tags: [General]
+      summary: Cantidad de elementos nuevos en cada apartado del menú
+      responses:
+        '200':
+          description: Totales por apartado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  informacion: { type: integer, example: 2 }
+                  novedades: { type: integer, example: 3 }
+                  modulos: { type: integer, example: 2 }
+                  mensajes: { type: integer, example: 2 }
+
+  /informacion:
+    get:
+      tags: [General]
+      summary: Avisos institucionales para la interfaz actual
+      responses:
+        '200':
+          description: Avisos ordenados del más nuevo al más viejo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, categoria, titulo, cuerpo, fecha]
+                  properties:
+                    id: { type: integer }
+                    categoria: { type: string }
+                    titulo: { type: string }
+                    cuerpo: { type: string }
+                    fecha: { type: string, format: date-time }
+
+  /actividad:
+    get:
+      tags: [General]
+      summary: Actividad agrupada para la interfaz actual
+      responses:
+        '200':
+          description: Entregas y novedades agrupadas por momento
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [importante, proximo, hoy, reciente]
+                properties:
+                  importante: { type: array, items: { $ref: '#/components/schemas/Actividad' } }
+                  proximo: { type: array, items: { $ref: '#/components/schemas/Actividad' } }
+                  hoy: { type: array, items: { $ref: '#/components/schemas/Actividad' } }
+                  reciente: { type: array, items: { $ref: '#/components/schemas/Actividad' } }
+
+  # ------------------------------------------------------------------
+  /cursos:
+    get:
+      tags: [Cursos]
+      summary: Listar los módulos del estudiante
+      responses:
+        '200':
+          description: Lista de módulos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Curso' }
+
+  /cursos/{id}:
+    get:
+      tags: [Cursos]
+      summary: Obtener un módulo
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      responses:
+        '200':
+          description: Datos del módulo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Curso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /cursos/{id}/modulo:
+    get:
+      tags: [Cursos]
+      summary: Todo el contenido de la pantalla de un módulo
+      description: |
+        Devuelve en una sola consulta el curso, su cursada, las próximas fechas, las
+        carpetas de contenido, los anuncios y los participantes. Resolverlo con cuatro
+        consultas separadas multiplicaba los estados intermedios de carga en la pantalla.
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      responses:
+        '200':
+          description: Contenido completo del módulo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  curso: { $ref: '#/components/schemas/Curso' }
+                  cursada: { type: array, items: { type: object } }
+                  proximas: { type: array, items: { type: object } }
+                  carpetas: { type: array, items: { $ref: '#/components/schemas/Carpeta' } }
+                  anuncios: { type: array, items: { type: object } }
+                  participantes: { type: array, items: { $ref: '#/components/schemas/Persona' } }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /cursos/{id}/favorito:
+    post:
+      tags: [Cursos]
+      summary: Marcar o desmarcar un módulo como favorito
+      description: Invierte el estado actual y devuelve el curso ya actualizado.
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      responses:
+        '200':
+          description: Curso con el favorito invertido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Curso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # ------------------------------------------------------------------
+  /tareas/pendientes:
+    get:
+      tags: [Tareas]
+      summary: Tareas pendientes y atrasadas
+      description: |
+        Cada tarea incluye la carpeta donde vive y los elementos de esa carpeta, para
+        que el panel pueda mostrar cuánto lleva hecho el estudiante sin consultas extra.
+      responses:
+        '200':
+          description: Tareas agrupadas por estado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recientes: { type: array, items: { $ref: '#/components/schemas/Tarea' } }
+                  atrasadas: { type: array, items: { $ref: '#/components/schemas/Tarea' } }
+
+  # ------------------------------------------------------------------
+  /mensajes:
+    get:
+      tags: [Mensajes]
+      summary: Listar las conversaciones y el total sin leer
+      responses:
+        '200':
+          description: Conversaciones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversaciones: { type: array, items: { type: object } }
+                  sinLeer: { type: integer }
+    post:
+      tags: [Mensajes]
+      summary: Abrir una conversación con alguien, o crearla si no existía
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paraId]
+              properties:
+                paraId: { type: integer }
+      responses:
+        '200':
+          description: Conversación abierta o creada
+
+  /mensajes/contactos:
+    get:
+      tags: [Mensajes]
+      summary: Personas con las que se puede iniciar una conversación
+      description: |
+        Devuelve únicamente a quienes comparten un módulo con quien consulta, y no a
+        todo el campus. En la definición de rutas va declarada antes que `/{id}`, de lo
+        contrario "contactos" se tomaría como un identificador.
+      responses:
+        '200':
+          description: Contactos disponibles
+
+  /mensajes/{id}:
+    get:
+      tags: [Mensajes]
+      summary: Abrir una conversación y darla por leída
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      responses:
+        '200': { description: Conversación con sus mensajes }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    post:
+      tags: [Mensajes]
+      summary: Enviar un mensaje
+      description: De los adjuntos se conserva el nombre y el tamaño, hasta que esté Firebase Storage.
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texto]
+              properties:
+                texto: { type: string }
+                adjuntos:
+                  type: array
+                  maxItems: 5
+                  items:
+                    type: object
+                    properties:
+                      nombre: { type: string }
+                      tamano: { type: integer }
+      responses:
+        '201': { description: Mensaje enviado }
+
+  # ------------------------------------------------------------------
+  /novedades:
+    get:
+      tags: [Novedades]
+      summary: Listar las publicaciones del muro
+      description: |
+        Las reacciones son anónimas. El servidor guarda quiénes reaccionaron pero nunca
+        los incluye en la respuesta: devuelve los totales y la reacción propia.
+      responses:
+        '200':
+          description: Publicaciones y permisos de quien consulta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  publicaciones: { type: array, items: { $ref: '#/components/schemas/Publicacion' } }
+                  puedePublicar: { type: boolean }
+    post:
+      tags: [Novedades]
+      summary: Publicar una novedad
+      description: Solo los docentes. Los estudiantes reciben 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, cuerpo]
+              properties:
+                titulo: { type: string }
+                cuerpo: { type: string }
+                categoria: { type: string }
+                ambito: { type: string }
+                imagen: { type: string }
+                anclada: { type: boolean, description: Destacar arriba de todo. Solo puede haber una. }
+      responses:
+        '201': { description: Publicación creada }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /novedades/{id}:
+    put:
+      tags: [Novedades]
+      summary: Editar una novedad propia
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, cuerpo]
+              properties:
+                titulo: { type: string }
+                cuerpo: { type: string }
+      responses:
+        '200': { description: Publicación actualizada }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /novedades/{id}/reaccion:
+    post:
+      tags: [Novedades]
+      summary: Reaccionar, o quitar la reacción
+      description: Cada persona registra una sola. Enviar la misma que ya tenía la quita.
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipo:
+                  type: string
+                  nullable: true
+                  enum: [leido, util, dudas, null]
+      responses:
+        '200': { description: Publicación con los totales actualizados }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+
+  # ------------------------------------------------------------------
+  /calendario:
+    get:
+      tags: [Calendario]
+      summary: Entregas, exámenes, clases y eventos de un rango
+      description: Las clases son semanales y el servidor las expande a las fechas del rango.
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Elementos del rango
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tipo: { type: string, enum: [entrega, examen, clase, evento] }
+                    fecha: { type: string, format: date-time }
+                    titulo: { type: string }
+                    cursoId: { type: integer, nullable: true }
+
+  # ------------------------------------------------------------------
+  /foro:
+    get:
+      tags: [Foro]
+      summary: Listar los temas, del más activo al más antiguo
+      responses:
+        '200': { description: Temas del foro }
+    post:
+      tags: [Foro]
+      summary: Abrir un tema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, consulta]
+              properties:
+                asignatura: { type: string }
+                titulo: { type: string }
+                consulta: { type: string }
+      responses:
+        '201': { description: Tema creado }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+
+  /foro/{id}:
+    get:
+      tags: [Foro]
+      summary: Abrir un tema con sus respuestas
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      responses:
+        '200': { description: Tema y mensajes }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    post:
+      tags: [Foro]
+      summary: Responder un tema
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texto]
+              properties:
+                texto: { type: string }
+      responses:
+        '201': { description: Respuesta agregada }
+
+  /foro/{id}/seguir:
+    post:
+      tags: [Foro]
+      summary: Seguir o dejar de seguir un tema
+      parameters: [{ $ref: '#/components/parameters/IdNumerico' }]
+      responses:
+        '200': { description: Estado de seguimiento invertido }
+
+  /foro/{id}/mensajes/{mensajeId}/voto:
+    post:
+      tags: [Foro]
+      summary: Votar un mensaje
+      parameters:
+        - { $ref: '#/components/parameters/IdNumerico' }
+        - { name: mensajeId, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Voto registrado }
+
+  # ------------------------------------------------------------------
+  /biblioteca/opciones:
+    get:
+      tags: [Biblioteca]
+      summary: Datos para armar los filtros de la pantalla
+      description: Categorías con su cantidad, carreras, materias, tipos, idiomas y permisos.
+      responses:
+        '200':
+          description: Opciones disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categorias: { type: array, items: { type: object } }
+                  carreras: { type: array, items: { type: string } }
+                  materias: { type: array, items: { type: string } }
+                  tipos: { type: array, items: { type: string } }
+                  idiomas: { type: array, items: { type: string } }
+                  total: { type: integer }
+                  puedeAportar: { type: boolean }
+                  puedeModerar: { type: boolean }
+                  pendientes: { type: integer }
+
+  /biblioteca:
+    get:
+      tags: [Biblioteca]
+      summary: Buscar en el catálogo propio y en los catálogos externos
+      description: |
+        Con `fuente=campus` consulta solo los materiales de la institución. Con
+        `fuente=externos` consulta solo Google Books y Open Library. El valor
+        predeterminado consulta ambos.
+
+        Los catálogos externos se consultan únicamente si hay al menos dos caracteres de
+        búsqueda. Si una fuente falla, el campo `fuentes` lo informa y la respuesta llega
+        igual con lo que haya devuelto la otra.
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Texto a buscar }
+        - name: campo
+          in: query
+          schema: { type: string, enum: [todo, titulo, autor, isbn, tema], default: todo }
+        - name: fuente
+          in: query
+          schema: { type: string, enum: [todo, campus, externos], default: todo }
+        - { name: categoria, in: query, schema: { type: string } }
+        - { name: tipo, in: query, schema: { type: string, enum: [libro, apunte, resumen, manual, guia, ejercicio, otro] } }
+        - { name: carrera, in: query, schema: { type: string } }
+        - { name: materia, in: query, schema: { type: string } }
+        - { name: idioma, in: query, schema: { type: string } }
+        - { name: orden, in: query, schema: { type: string, enum: [fecha, titulo, autor], default: fecha } }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: porPagina, in: query, schema: { type: integer, minimum: 1, maximum: 48, default: 12 } }
+      responses:
+        '200':
+          description: Resultados propios y externos, por separado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  materiales: { type: array, items: { $ref: '#/components/schemas/Material' } }
+                  total: { type: integer }
+                  pagina: { type: integer }
+                  paginas: { type: integer }
+                  externos: { type: array, items: { $ref: '#/components/schemas/LibroExterno' } }
+                  fuentes:
+                    type: array
+                    description: Estado de cada catálogo externo en esta consulta
+                    items:
+                      type: object
+                      properties:
+                        fuente: { type: string, enum: [google, openlibrary] }
+                        estado: { type: string, enum: [ok, error, limite] }
+                        cuantos: { type: integer }
+    post:
+      tags: [Biblioteca]
+      summary: Aportar material
+      description: |
+        Lo que aporta un estudiante queda en estado `pendiente`. Lo que aporta quien
+        modera se publica directamente. Es obligatorio confirmar que se dispone de
+        autorización para compartir el material.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, autorizado]
+              properties:
+                titulo: { type: string, maxLength: 200 }
+                autor: { type: string }
+                descripcion: { type: string }
+                tipo: { type: string, enum: [libro, apunte, resumen, manual, guia, ejercicio, otro] }
+                carrera: { type: string }
+                materia: { type: string }
+                anio: { type: string }
+                idioma: { type: string }
+                isbn: { type: string }
+                categoria: { type: string }
+                editorial: { type: string }
+                enlace: { type: string, format: uri, description: Solo http o https }
+                licencia: { type: string }
+                portada: { type: string, format: uri }
+                autorizado:
+                  type: boolean
+                  description: Confirmación de que se tiene permiso para compartir el material
+      responses:
+        '201':
+          description: Material registrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Material' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '429': { $ref: '#/components/responses/DemasiadasConsultas' }
+
+  /biblioteca/mis-aportes:
+    get:
+      tags: [Biblioteca]
+      summary: Aportes propios, con su estado y el historial de moderación
+      responses:
+        '200': { description: Aportes de quien consulta }
+
+  /biblioteca/pendientes:
+    get:
+      tags: [Biblioteca]
+      summary: Cola de moderación
+      description: Solo para quienes moderan. El resto recibe 403.
+      responses:
+        '200': { description: Materiales esperando revisión }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /biblioteca/favoritos:
+    get:
+      tags: [Biblioteca]
+      summary: Materiales guardados
+      description: Incluye los propios resueltos y los externos como identificadores.
+      responses:
+        '200': { description: Favoritos de quien consulta }
+
+  /biblioteca/{id}:
+    get:
+      tags: [Biblioteca]
+      summary: Ficha de un material
+      description: |
+        Acepta tanto un identificador numérico, para material propio, como uno externo
+        con el formato `google:xxx` u `openlibrary:/works/OL1W`. Los externos deben ir
+        codificados, porque contienen barras.
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      responses:
+        '200':
+          description: Ficha, materiales relacionados e historial
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Material' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    patch:
+      tags: [Biblioteca]
+      summary: Editar un material
+      description: |
+        Solo quien lo aportó o quien modera. Si lo edita quien lo aportó y no modera, el
+        material vuelve a la cola de revisión, porque el texto aprobado ya no es el que está.
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Material actualizado }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    delete:
+      tags: [Biblioteca]
+      summary: Retirar un material
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      responses:
+        '200': { description: Material retirado }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /biblioteca/{id}/archivo:
+    post:
+      tags: [Biblioteca]
+      summary: Subir el archivo de un material
+      description: |
+        El archivo viaja codificado en base64 dentro del JSON. Esta ruta admite un cuerpo
+        mayor que el resto de la aplicación.
+
+        La validación comprueba la extensión, que el tipo declarado coincida con ella,
+        que el contenido corresponda efectivamente al formato (se inspeccionan los
+        primeros bytes), que no esté vacío y que no supere el tamaño máximo. El nombre se
+        depura antes de usarse.
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extension, contenido]
+              properties:
+                nombre: { type: string }
+                extension: { type: string, enum: [pdf, epub] }
+                tipo: { type: string, enum: ['application/pdf', 'application/epub+zip'] }
+                contenido: { type: string, format: byte }
+      responses:
+        '201': { description: Archivo almacenado }
+        '400': { description: El archivo está vacío o no se pudo leer }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '413': { description: El archivo supera el tamaño máximo }
+        '415': { description: El formato no se acepta o el contenido no corresponde al declarado }
+        '429': { $ref: '#/components/responses/DemasiadasConsultas' }
+    get:
+      tags: [Biblioteca]
+      summary: Descargar el archivo
+      description: |
+        Pasa por el mismo control de acceso que la ficha. Se entrega siempre como archivo
+        adjunto y con `X-Content-Type-Options: nosniff`, de modo que un archivo de otra
+        persona no se abra dentro del campus.
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      responses:
+        '200':
+          description: El archivo
+          headers:
+            Content-Disposition:
+              schema: { type: string, example: 'attachment; filename="apunte.pdf"' }
+            X-Content-Type-Options:
+              schema: { type: string, example: nosniff }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { description: El material no tiene un archivo alojado en el campus }
+
+  /biblioteca/{id}/aprobar:
+    post:
+      tags: [Biblioteca]
+      summary: Aprobar un aporte
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      responses:
+        '200': { description: Material aprobado }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /biblioteca/{id}/rechazar:
+    post:
+      tags: [Biblioteca]
+      summary: Rechazar un aporte
+      description: El motivo es obligatorio. Sin él, quien aportó no sabe qué corregir.
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string }
+      responses:
+        '200': { description: Material rechazado }
+        '400': { description: Falta indicar el motivo }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /biblioteca/{id}/favorito:
+    post:
+      tags: [Biblioteca]
+      summary: Guardar en favoritos
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      responses:
+        '201': { description: Guardado }
+    delete:
+      tags: [Biblioteca]
+      summary: Quitar de favoritos
+      parameters: [{ $ref: '#/components/parameters/IdMaterial' }]
+      responses:
+        '200': { description: Quitado }
+
+# --------------------------------------------------------------------
+components:
+  parameters:
+    IdNumerico:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+
+    IdMaterial:
+      name: id
+      in: path
+      required: true
+      description: Numérico para material propio, o `google:xxx` / `openlibrary:/works/OL1W` codificado para externos.
+      schema: { type: string }
+
+  responses:
+    NoEncontrado:
+      description: El recurso no existe
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    SinPermiso:
+      description: La operación no corresponde al rol de quien consulta
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DatosInvalidos:
+      description: Falta un dato obligatorio o alguno no es válido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DemasiadasConsultas:
+      description: Se superó el límite de consultas en la ventana de tiempo
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Actividad:
+      type: object
+      required: [id, tipo, titulo, curso, fecha]
+      properties:
+        id: { type: string }
+        tipo: { type: string }
+        titulo: { type: string }
+        curso: { type: string }
+        fecha: { type: string, format: date-time }
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Motivo en castellano, pensado para mostrarse al usuario
+          example: Solo los docentes pueden revisar los aportes
+
+    Persona:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        apellido: { type: string }
+        rol: { type: string, enum: [Estudiante, Docente] }
+        correo: { type: string, format: email }
+        ultimoAcceso: { type: string, format: date-time }
+        estado: { type: string, enum: [conectado, ausente, desconectado] }
+
+    Curso:
+      type: object
+      properties:
+        id: { type: integer }
+        codigo: { type: string, example: PROG-2 }
+        nombre: { type: string, example: Programación II }
+        docente: { type: string }
+        docenteId: { type: integer }
+        periodo: { type: string, example: '2026 – 2.º cuatrimestre' }
+        color: { type: string, example: '#D80032' }
+        favorito: { type: boolean }
+        novedades:
+          type: object
+          properties:
+            total: { type: integer }
+
+    Carpeta:
+      type: object
+      properties:
+        id: { type: integer }
+        titulo: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              tipo: { type: string, enum: [pagina, archivo, tarea, tablero] }
+              titulo: { type: string }
+
+    Tarea:
+      type: object
+      properties:
+        id: { type: integer }
+        titulo: { type: string }
+        cursoId: { type: integer }
+        vence: { type: string, format: date-time }
+        entregada: { type: boolean }
+        apartado:
+          type: object
+          description: La carpeta donde vive la tarea, para calcular el avance
+          properties:
+            titulo: { type: string }
+            items: { type: array, items: { type: object } }
+
+    Publicacion:
+      type: object
+      properties:
+        id: { type: integer }
+        titulo: { type: string }
+        cuerpo: { type: string }
+        ambito: { type: string }
+        categoria: { type: string }
+        imagen: { type: string, nullable: true }
+        fecha: { type: string, format: date-time }
+        anclada: { type: boolean }
+        autor: { $ref: '#/components/schemas/Persona' }
+        cuenta:
+          type: object
+          description: Totales de cada reacción. Nunca se informa quiénes reaccionaron.
+          properties:
+            leido: { type: integer }
+            util: { type: integer }
+            dudas: { type: integer }
+        miReaccion: { type: string, nullable: true, enum: [leido, util, dudas, null] }
+        puedeEditar: { type: boolean }
+
+    Material:
+      type: object
+      properties:
+        id: { type: integer }
+        titulo: { type: string }
+        autor: { type: string, nullable: true }
+        descripcion: { type: string, nullable: true }
+        editorial: { type: string, nullable: true }
+        isbn: { type: string, nullable: true }
+        idioma: { type: string }
+        tipo: { type: string, enum: [libro, apunte, resumen, manual, guia, ejercicio, otro] }
+        carrera: { type: string }
+        materia: { type: string }
+        categoria: { type: string }
+        nombreCategoria: { type: string }
+        anio: { type: string, nullable: true }
+        portada: { type: string, nullable: true }
+        enlace:
+          type: string
+          nullable: true
+          description: Fuente legítima, cuando no se tiene derecho a alojar el archivo
+        licencia: { type: string, nullable: true }
+        archivo:
+          type: object
+          nullable: true
+          description: Datos del archivo alojado. Los bytes se piden aparte.
+          properties:
+            nombre: { type: string }
+            tamano: { type: integer }
+            tipo: { type: string }
+        tieneArchivo: { type: boolean }
+        externo: { type: boolean, example: false }
+        estado: { type: string, enum: [pendiente, aprobado, rechazado] }
+        motivo: { type: string, nullable: true, description: Motivo del rechazo }
+        subidoPor: { type: integer }
+        subidoPorNombre: { type: string }
+        favorito: { type: boolean }
+        puedeEditar: { type: boolean }
+        puedeModerar: { type: boolean }
+        creado: { type: string, format: date-time }
+
+    LibroExterno:
+      type: object
+      description: |
+        Resultado de un catálogo externo. Los campos de acción solo aparecen si la fuente
+        los ofrece efectivamente: no se construyen enlaces que la fuente no entregó.
+      properties:
+        id: { type: string, example: 'google:zyTCAlFPjgYC' }
+        fuente: { type: string, enum: [google, openlibrary] }
+        nombreFuente: { type: string }
+        externo: { type: boolean, example: true }
+        titulo: { type: string }
+        autor: { type: string, nullable: true }
+        descripcion: { type: string, nullable: true }
+        editorial: { type: string, nullable: true }
+        anioPublicacion: { type: string, nullable: true }
+        isbn: { type: string, nullable: true }
+        idioma: { type: string, nullable: true }
+        categorias: { type: array, items: { type: string } }
+        portada: { type: string, nullable: true }
+        enlaceLectura: { type: string, nullable: true, description: Solo si la obra se puede leer completa }
+        enlacePrestamo: { type: string, nullable: true, description: Solo si admite préstamo digital }
+        enlaceDescarga: { type: string, nullable: true, description: Solo si es de dominio público }
+        enlaceFicha: { type: string, nullable: true }
+        dominioPublico: { type: boolean }
+        tambienEn: { type: string, nullable: true, description: La otra fuente, si el libro aparece en ambas }
+        favorito: { type: boolean }

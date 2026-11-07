@@ -36,4 +36,4 @@ export const enviarMensaje = (id, texto, adjuntos = []) =>
 export const abrirConversacionCon = (paraId) => enviar('/mensajes', { paraId });
 export const obtenerContactos = () => pedir('/mensajes/contactos');
 export const obtenerAvisos = () => pedir('/informacion');
-export const obtenerNovedades = () => pedir('/novedades');
+export const obtenerContadores = () => pedir('/contadores');

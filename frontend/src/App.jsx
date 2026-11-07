@@ -8,7 +8,7 @@ import Actividad from './pages/Actividad.jsx';
 import Mensajes from './pages/Mensajes.jsx';
 import Informacion from './pages/Informacion.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
-import { obtenerUsuarioActual, obtenerNovedades } from './services/api.js';
+import { obtenerUsuarioActual, obtenerContadores } from './services/api.js';
 
 export default function App() {
   const [usuario, setUsuario] = useState(null);
@@ -22,7 +22,7 @@ export default function App() {
   // Se vuelven a contar al cambiar de apartado: así, por ejemplo, al salir de
   // Mensajes el contador ya refleja lo que se acaba de leer.
   useEffect(() => {
-    obtenerNovedades().then(setNovedades).catch(() => setNovedades(null));
+    obtenerContadores().then(setNovedades).catch(() => setNovedades(null));
   }, [pathname]);
 
   return (

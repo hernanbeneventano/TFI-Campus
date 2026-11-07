@@ -1,65 +1,52 @@
 # CampusTFI
 
-Campus virtual web pensado para ser intuitivo y fácil de usar, para estudiantes y docentes.
-
-> Estado: **base inicial del proyecto**. Solo incluye la estructura de carpetas y un esqueleto mínimo que funciona. La base de datos y gran parte de las funciones todavía no están implementadas.
+Campus virtual para estudiantes y docentes de FaCENA – UNNE, con una interfaz
+React y una API en Python.
 
 ## Estructura
 
-```
-campustfi/
-├── frontend/          Interfaz web (React + Vite)
-│   └── src/
-│       ├── components/   Piezas reutilizables (menú lateral, tarjetas...)
-│       ├── pages/        Pantallas (Módulos, Actividad...)
-│       ├── services/     Llamadas a la API del backend
-│       └── styles/       Estilos globales y colores
-├── equipo/            Información del equipo y planificación de hitos
-├── backend/           API (Node.js + Express)
-│   └── src/
-│       ├── routes/       Rutas de la API
-│       ├── controllers/  Lógica de cada ruta
-│       ├── data/         Datos de prueba (hasta definir la base de datos)
-│       └── middleware/   Funciones intermedias (errores, autenticación...)
-└── docs/              Documentación del proyecto
-```
+- `frontend/`: interfaz React 18 y Vite.
+- `backend/`: API FastAPI y sus datos de prueba.
+- `docs/`: decisiones técnicas y especificación OpenAPI.
+- `equipo/`: información del equipo y planificación.
 
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) 20 o superior (incluye npm)
+- Python 3.11 o superior.
+- Node.js 20 o superior (incluye npm), para el frontend.
 
-## Cómo levantarlo
+## Cómo levantarlo en Windows
 
-Abrir dos terminales.
+Abrir dos terminales desde la carpeta del proyecto.
 
-**1. Backend** (queda en http://localhost:3000)
+**1. Backend** (http://localhost:3000):
 
-```bash
+```powershell
 cd backend
-npm install
-cp .env.example .env
-npm run dev
+python -m venv .venv  # solo la primera vez
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+python -m app.main
 ```
 
-**2. Frontend** (queda en http://localhost:5173)
+**2. Frontend** (http://localhost:5173):
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Luego abrir http://localhost:5173 en el navegador.
+Abrir http://localhost:5173. Vite redirige las llamadas `/api` al backend.
+FastAPI publica documentación interactiva en http://localhost:3000/docs y
+http://localhost:3000/redoc.
 
-## Qué hay hecho
+## Estado
 
-- [x] Estructura de carpetas
-- [x] Servidor con rutas de prueba: `/api/salud`, `/api/me`, `/api/cursos`, `/api/actividad`, `/api/tareas/pendientes`
-- [x] Paleta de colores y menú lateral (Información, Actividad, Módulos, Mensajes)
-- [x] Pantalla **Módulos**: vista en tarjetas o lista, búsqueda, filtro por fecha, favoritos y panel de tareas pendientes y atrasadas
-- [x] Pantalla **Actividad**
-- [ ] Pantallas Información y Mensajes
-- [ ] Base de datos (a definir)
-- [ ] Inicio de sesión y roles
-- [ ] Entregas, rúbricas y correcciones
-- [ ] Anuncios, calendario y demás secciones
+La API incluye módulos, tareas, mensajería, novedades, calendario, foro y
+biblioteca. Los datos siguen siendo de prueba y viven en memoria; todavía no
+hay autenticación real ni persistencia en una base de datos.
+
+Ver [decisiones técnicas](docs/decisiones-tecnicas.md) y la
+[especificación de la API](docs/api/openapi.yaml).

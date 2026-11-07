@@ -1,0 +1,1244 @@
+{
+ "usuarioActual": {
+  "id": 1,
+  "nombre": "Santiago",
+  "apellido": "Sosa",
+  "correo": "santiago.sosa@comunidad.unne.edu.ar",
+  "rol": "Estudiante",
+  "accesoHaceMin": 135
+ },
+ "cursos": [
+  {
+   "id": 1,
+   "codigo": "PROG-2",
+   "nombre": "Programación II",
+   "docente": "Lic. María Gómez",
+   "docenteId": 2,
+   "periodo": "2026 – 2.º cuatrimestre",
+   "color": "#D80032",
+   "favorito": true
+  },
+  {
+   "id": 2,
+   "codigo": "BD-1",
+   "nombre": "Bases de Datos",
+   "docente": "Ing. Pablo Ruiz",
+   "docenteId": 7,
+   "periodo": "2026 – 2.º cuatrimestre",
+   "color": "#1D2B4C",
+   "favorito": true
+  },
+  {
+   "id": 3,
+   "codigo": "IS-1",
+   "nombre": "Ingeniería de Software",
+   "docente": "Mgter. Laura Benítez",
+   "docenteId": 8,
+   "periodo": "2026 – 2.º cuatrimestre",
+   "color": "#A4193D",
+   "favorito": false
+  },
+  {
+   "id": 4,
+   "codigo": "RED-1",
+   "nombre": "Redes de Computadoras",
+   "docente": "Ing. Diego Fernández",
+   "docenteId": 9,
+   "periodo": "2026 – 2.º cuatrimestre",
+   "color": "#4A5068",
+   "favorito": false
+  },
+  {
+   "id": 5,
+   "codigo": "MAT-3",
+   "nombre": "Probabilidad y Estadística",
+   "docente": "Lic. Ana Martínez",
+   "docenteId": 10,
+   "periodo": "2026 – 1.er cuatrimestre",
+   "color": "#5F6C82",
+   "favorito": false
+  },
+  {
+   "id": 6,
+   "codigo": "ALG-2",
+   "nombre": "Algoritmos y Estructuras de Datos",
+   "docente": "Lic. Jorge Romero",
+   "docenteId": 11,
+   "periodo": "2026 – 1.er cuatrimestre",
+   "color": "#C41235",
+   "favorito": false
+  }
+ ],
+ "tareas": [
+  {
+   "id": 1,
+   "cursoId": 1,
+   "titulo": "Trabajo práctico 3: Listas enlazadas",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -3
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": 1
+   },
+   "entregada": false
+  },
+  {
+   "id": 2,
+   "cursoId": 2,
+   "titulo": "Modelo entidad-relación",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -11
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": 4
+   },
+   "entregada": false
+  },
+  {
+   "id": 3,
+   "cursoId": 3,
+   "titulo": "Documento de requisitos",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": 9
+   },
+   "entregada": false
+  },
+  {
+   "id": 4,
+   "cursoId": 4,
+   "titulo": "Cuestionario: modelo OSI",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -14
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "entregada": false
+  },
+  {
+   "id": 5,
+   "cursoId": 1,
+   "titulo": "Ejercicios de recursividad",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -20
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": -5
+   },
+   "entregada": false
+  },
+  {
+   "id": 6,
+   "cursoId": 2,
+   "titulo": "Consultas SQL básicas",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -15
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": -3
+   },
+   "entregada": true
+  }
+ ],
+ "contenidos": {
+  "1": [
+   {
+    "id": 1,
+    "titulo": "Información del módulo",
+    "descripcion": "Bienvenida, programa y cronograma de la materia",
+    "items": [
+     {
+      "id": "1-1",
+      "tipo": "pagina",
+      "titulo": "Bienvenida al módulo",
+      "cuerpo": [
+       "¡Bienvenidos a Programación II! En este módulo vamos a trabajar con estructuras de datos dinámicas, recursividad y una introducción a la programación orientada a objetos.",
+       "Cada semana vas a encontrar una carpeta con el material de lectura, los videos de la clase y las actividades. Las entregas se hacen desde el mismo campus.",
+       "Ante cualquier duda, usá el tablero de consultas: así las respuestas quedan visibles para todo el curso."
+      ]
+     },
+     {
+      "id": "1-2",
+      "tipo": "archivo",
+      "titulo": "Programa de la materia",
+      "formato": "PDF",
+      "tamano": "320 KB"
+     },
+     {
+      "id": "1-3",
+      "tipo": "archivo",
+      "titulo": "Cronograma de clases y parciales",
+      "formato": "PDF",
+      "tamano": "96 KB"
+     }
+    ]
+   },
+   {
+    "id": 2,
+    "titulo": "Semana 1: Recursividad",
+    "descripcion": "Funciones recursivas, caso base y pila de llamadas",
+    "items": [
+     {
+      "id": "1-4",
+      "tipo": "archivo",
+      "titulo": "Clase 1: Recursividad",
+      "formato": "Video",
+      "tamano": "42 min"
+     },
+     {
+      "id": "1-5",
+      "tipo": "archivo",
+      "titulo": "Apunte: pensar en recursivo",
+      "formato": "PDF",
+      "tamano": "1,2 MB"
+     },
+     {
+      "id": "1-6",
+      "tipo": "tarea",
+      "titulo": "Ejercicios de recursividad",
+      "tareaId": 5
+     }
+    ]
+   },
+   {
+    "id": 3,
+    "titulo": "Semana 2: Listas enlazadas",
+    "descripcion": "Nodos, inserción, borrado y recorrido",
+    "items": [
+     {
+      "id": "1-7",
+      "tipo": "archivo",
+      "titulo": "Clase 2: Listas enlazadas",
+      "formato": "Video",
+      "tamano": "51 min"
+     },
+     {
+      "id": "1-8",
+      "tipo": "archivo",
+      "titulo": "Diapositivas de la clase",
+      "formato": "PDF",
+      "tamano": "2,4 MB"
+     },
+     {
+      "id": "1-9",
+      "tipo": "tarea",
+      "titulo": "Trabajo práctico 3: Listas enlazadas",
+      "tareaId": 1
+     }
+    ]
+   },
+   {
+    "id": 4,
+    "titulo": "Consultas",
+    "descripcion": "Preguntas, comentarios e inquietudes sobre la materia",
+    "items": [
+     {
+      "id": "1-10",
+      "tipo": "tablero",
+      "titulo": "Preguntas, comentarios e inquietudes",
+      "columnas": [
+       {
+        "titulo": "Preguntas",
+        "publicaciones": [
+         {
+          "id": 1,
+          "autor": "Lucía Acosta",
+          "fecha": {
+           "__fecha": "aDias",
+           "n": -1
+          },
+          "texto": "¿El TP 3 se puede hacer en grupos de dos o es individual?"
+         },
+         {
+          "id": 2,
+          "autor": "Lic. María Gómez",
+          "fecha": {
+           "__fecha": "aDias",
+           "n": -1
+          },
+          "texto": "Es individual. La defensa oral sí puede ser en el horario de consulta de los jueves."
+         }
+        ]
+       },
+       {
+        "titulo": "Comentarios",
+        "publicaciones": [
+         {
+          "id": 3,
+          "autor": "Lic. María Gómez",
+          "fecha": {
+           "__fecha": "aDias",
+           "n": -2
+          },
+          "texto": "Ya está subido el video de la clase 2 en la carpeta de la semana."
+         }
+        ]
+       },
+       {
+        "titulo": "Inquietudes",
+        "publicaciones": [
+         {
+          "id": 4,
+          "autor": "Tomás Herrera",
+          "fecha": {
+           "__fecha": "aDias",
+           "n": -3
+          },
+          "texto": "El apunte de recursividad tiene un error en el ejemplo de Fibonacci (página 4)."
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "anuncios": {
+  "1": [
+   {
+    "id": 1,
+    "titulo": "Cambio de aula para la clase del jueves",
+    "cuerpo": "La clase del jueves pasa al laboratorio 3. Lleven la notebook con el entorno ya instalado.",
+    "autor": "Lic. María Gómez",
+    "fecha": {
+     "__fecha": "aDias",
+     "n": -1
+    }
+   },
+   {
+    "id": 2,
+    "titulo": "Ya está disponible el video de la clase 2",
+    "cuerpo": "Lo subí a la carpeta de la Semana 2, junto con las diapositivas.",
+    "autor": "Lic. María Gómez",
+    "fecha": {
+     "__fecha": "aDias",
+     "n": -2
+    }
+   },
+   {
+    "id": 3,
+    "titulo": "Fechas de los parciales",
+    "cuerpo": "El primer parcial es el 12 de noviembre y el segundo el 10 de diciembre, ambos en el horario de clase.",
+    "autor": "Lic. María Gómez",
+    "fecha": {
+     "__fecha": "aDias",
+     "n": -8
+    }
+   }
+  ]
+ },
+ "personas": [
+  {
+   "id": 1,
+   "nombre": "Santiago Sosa",
+   "rol": "Estudiante",
+   "accesoHaceMin": 1
+  },
+  {
+   "id": 2,
+   "nombre": "María Gómez",
+   "rol": "Docente",
+   "accesoHaceMin": 3
+  },
+  {
+   "id": 3,
+   "nombre": "Hernán Beneventano",
+   "rol": "Estudiante",
+   "accesoHaceMin": 12
+  },
+  {
+   "id": 4,
+   "nombre": "Lucía Acosta",
+   "rol": "Estudiante",
+   "accesoHaceMin": 95
+  },
+  {
+   "id": 5,
+   "nombre": "Tomás Herrera",
+   "rol": "Estudiante",
+   "accesoHaceMin": 1560
+  },
+  {
+   "id": 6,
+   "nombre": "Camila Duarte",
+   "rol": "Estudiante",
+   "accesoHaceMin": 69120
+  },
+  {
+   "id": 7,
+   "nombre": "Pablo Ruiz",
+   "rol": "Docente",
+   "accesoHaceMin": 35
+  },
+  {
+   "id": 8,
+   "nombre": "Laura Benítez",
+   "rol": "Docente",
+   "accesoHaceMin": 8
+  },
+  {
+   "id": 9,
+   "nombre": "Diego Fernández",
+   "rol": "Docente",
+   "accesoHaceMin": 300
+  },
+  {
+   "id": 10,
+   "nombre": "Ana Martínez",
+   "rol": "Docente",
+   "accesoHaceMin": 1800
+  },
+  {
+   "id": 11,
+   "nombre": "Jorge Romero",
+   "rol": "Docente",
+   "accesoHaceMin": 720
+  }
+ ],
+ "participantes": {
+  "1": [
+   2,
+   1,
+   3,
+   4,
+   5,
+   6
+  ]
+ },
+ "conversaciones": [
+  {
+   "id": 1,
+   "entre": [
+    1,
+    2
+   ],
+   "mensajes": [
+    {
+     "id": 1,
+     "deId": 1,
+     "texto": "Hola profe, una consulta sobre el TP 3: ¿la lista tiene que ser doblemente enlazada o alcanza con simple?",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 26
+     },
+     "leido": true
+    },
+    {
+     "id": 2,
+     "deId": 2,
+     "texto": "Hola Santiago. Con simple alcanza. Si hacés la doble, suma, pero no es obligatorio.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 25
+     },
+     "leido": true
+    },
+    {
+     "id": 3,
+     "deId": 2,
+     "texto": "Ah, y acordate de incluir el informe en el mismo archivo .zip.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 3
+     },
+     "leido": false
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "entre": [
+    1,
+    3
+   ],
+   "mensajes": [
+    {
+     "id": 4,
+     "deId": 3,
+     "texto": "¿Arrancaste el modelo entidad-relación? Me está costando la parte de las cardinalidades.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 5
+     },
+     "leido": false
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "entre": [
+    1,
+    4
+   ],
+   "mensajes": [
+    {
+     "id": 5,
+     "deId": 1,
+     "texto": "Lucía, ¿tenés el apunte de recursividad corregido? El de la página 4 tiene el error de Fibonacci.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 50
+     },
+     "leido": true
+    },
+    {
+     "id": 6,
+     "deId": 4,
+     "texto": "Sí, lo subió la profe de nuevo ayer a la carpeta de la semana 1.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 48
+     },
+     "leido": true
+    }
+   ]
+  }
+ ],
+ "publicaciones": [
+  {
+   "id": 1,
+   "autorId": 2,
+   "ambito": "Institucional",
+   "categoria": "Inscripciones",
+   "titulo": "Inscripción a exámenes finales de noviembre",
+   "cuerpo": "La inscripción abre el 3 de noviembre y cierra 48 horas antes de cada mesa. Se hace desde el SIU, con el usuario de la facultad.\n\nSi tenés materias correlativas pendientes, el sistema no te va a dejar anotarte: en ese caso pasá por Alumnado antes del cierre.",
+   "imagen": "/novedades/inscripciones.svg",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1
+   },
+   "editada": null,
+   "reacciones": {
+    "leido": [
+     2,
+     3,
+     4,
+     5,
+     8
+    ],
+    "util": [
+     6,
+     7
+    ],
+    "dudas": [
+     9
+    ]
+   },
+   "anclada": true
+  },
+  {
+   "id": 2,
+   "autorId": 8,
+   "ambito": "Institucional",
+   "categoria": "Biblioteca",
+   "titulo": "Nuevo horario de la biblioteca",
+   "cuerpo": "De lunes a viernes de 8 a 20, y los sábados de 9 a 13. La sala de lectura queda abierta hasta las 22 en época de parciales.\n\nPara reservar una sala de grupo hay que anotarse en el mostrador con un día de anticipación.",
+   "imagen": "/novedades/biblioteca.svg",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "editada": null,
+   "reacciones": {
+    "leido": [
+     1,
+     3,
+     6
+    ],
+    "util": [
+     4
+    ],
+    "dudas": []
+   },
+   "anclada": false
+  },
+  {
+   "id": 3,
+   "autorId": 2,
+   "ambito": "Programación II",
+   "categoria": "Académico",
+   "titulo": "Cambio de aula para la clase del jueves",
+   "cuerpo": "La clase del jueves pasa al laboratorio 3. Lleven la notebook con el entorno ya instalado: vamos a compilar los ejercicios en clase.",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "editada": null,
+   "reacciones": {
+    "leido": [
+     2,
+     5,
+     7,
+     9
+    ],
+    "util": [
+     1,
+     3,
+     6
+    ],
+    "dudas": [
+     8
+    ]
+   },
+   "anclada": false
+  },
+  {
+   "id": 4,
+   "autorId": 7,
+   "ambito": "Institucional",
+   "categoria": "Becas",
+   "titulo": "Resultados de las becas de ayuda económica",
+   "cuerpo": "Ya se pueden consultar los resultados en Bienestar Estudiantil. Quienes queden en lista de espera van a recibir un aviso por este mismo campus.",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   },
+   "editada": null,
+   "reacciones": {
+    "leido": [
+     4
+    ],
+    "util": [],
+    "dudas": [
+     2,
+     8
+    ]
+   },
+   "anclada": false
+  },
+  {
+   "id": 5,
+   "autorId": 9,
+   "ambito": "Institucional",
+   "categoria": "Campus",
+   "titulo": "Corte de agua programado",
+   "cuerpo": "El sábado de 7 a 14 no va a haber agua en el pabellón de aulas por mantenimiento. Las clases de ese día pasan al pabellón central.",
+   "imagen": "/novedades/campus.svg",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   },
+   "editada": null,
+   "reacciones": {
+    "leido": [
+     1,
+     2
+    ],
+    "util": [
+     5
+    ],
+    "dudas": []
+   },
+   "anclada": false
+  }
+ ],
+ "clases": [
+  {
+   "cursoId": 1,
+   "dia": 2,
+   "desde": "18:00",
+   "hasta": "22:00",
+   "aula": "Lab. 3"
+  },
+  {
+   "cursoId": 1,
+   "dia": 5,
+   "desde": "18:00",
+   "hasta": "20:00",
+   "aula": "Aula 7"
+  },
+  {
+   "cursoId": 2,
+   "dia": 4,
+   "desde": "18:00",
+   "hasta": "22:00",
+   "aula": "Aula 12"
+  },
+  {
+   "cursoId": 3,
+   "dia": 1,
+   "desde": "20:00",
+   "hasta": "22:00",
+   "aula": "Aula 9"
+  },
+  {
+   "cursoId": 4,
+   "dia": 3,
+   "desde": "18:00",
+   "hasta": "21:00",
+   "aula": "Lab. de redes"
+  }
+ ],
+ "eventos": [
+  {
+   "id": 1,
+   "tipo": "examen",
+   "titulo": "Primer parcial",
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 12
+   },
+   "desde": "18:00",
+   "hasta": "20:00",
+   "lugar": "Aula Magna"
+  },
+  {
+   "id": 2,
+   "tipo": "examen",
+   "titulo": "Parcial de Bases de Datos",
+   "cursoId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 19
+   },
+   "desde": "18:00",
+   "hasta": "20:30",
+   "lugar": "Aula 12"
+  },
+  {
+   "id": 3,
+   "tipo": "examen",
+   "titulo": "Recuperatorio del primer parcial",
+   "cursoId": 4,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   },
+   "desde": "19:00",
+   "hasta": "21:00",
+   "lugar": "Lab. de redes"
+  },
+  {
+   "id": 4,
+   "tipo": "evento",
+   "titulo": "Jornada de Ciencias Exactas",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 5
+   },
+   "desde": "09:00",
+   "hasta": "17:00",
+   "lugar": "Pabellón central"
+  },
+  {
+   "id": 5,
+   "tipo": "evento",
+   "titulo": "Charla: salida laboral en sistemas",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 9
+   },
+   "desde": "17:00",
+   "hasta": "19:00",
+   "lugar": "Salón de actos"
+  },
+  {
+   "id": 6,
+   "tipo": "evento",
+   "titulo": "Cierre de inscripción a finales",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 2
+   },
+   "desde": "23:59",
+   "hasta": "23:59",
+   "lugar": "SIU"
+  }
+ ],
+ "temasForo": [
+  {
+   "id": 1,
+   "cursoId": 1,
+   "titulo": "¿Cómo encaran el punto 3 del TP 3?",
+   "autorId": 3,
+   "fecha": {
+    "__fecha": "haceHoras",
+    "n": 30
+   },
+   "mensajes": [
+    {
+     "id": 1,
+     "autorId": 3,
+     "texto": "Llegué a armar la lista pero me trabo al borrar el nodo del medio. ¿Guardan el anterior en una variable o se fijan con un segundo puntero?",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 30
+     }
+    },
+    {
+     "id": 2,
+     "autorId": 4,
+     "texto": "Yo uso dos punteros, uno que va adelante y otro atrás. Cuando el de adelante encuentra el nodo, el de atrás ya quedó apuntando al anterior.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 27
+     },
+     "votos": [
+      1,
+      5,
+      6
+     ]
+    },
+    {
+     "id": 3,
+     "autorId": 2,
+     "texto": "Las dos formas están bien. Si hacen la lista doblemente enlazada ni siquiera necesitan el segundo puntero, porque cada nodo ya conoce al anterior.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 25
+     },
+     "votos": [
+      1,
+      3,
+      4,
+      6
+     ]
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "cursoId": 1,
+   "titulo": "Error en el ejemplo de Fibonacci del apunte",
+   "autorId": 5,
+   "fecha": {
+    "__fecha": "haceHoras",
+    "n": 70
+   },
+   "mensajes": [
+    {
+     "id": 4,
+     "autorId": 5,
+     "texto": "En la página 4 el caso base devuelve 1 para n = 0, y debería devolver 0.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 70
+     }
+    },
+    {
+     "id": 5,
+     "autorId": 2,
+     "texto": "Buen ojo, Tomás. Ya subí el apunte corregido a la carpeta de la Semana 1.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 68
+     },
+     "votos": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "cursoId": 2,
+   "titulo": "Cardinalidades en el modelo entidad-relación",
+   "autorId": 3,
+   "fecha": {
+    "__fecha": "haceHoras",
+    "n": 6
+   },
+   "mensajes": [
+    {
+     "id": 6,
+     "autorId": 3,
+     "texto": "¿Una materia que tiene varios docentes y un docente que da varias materias es muchos a muchos? Me suena que sí pero quiero confirmar.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 6
+     }
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "cursoId": 3,
+   "titulo": "Formato del documento de requisitos",
+   "autorId": 6,
+   "fecha": {
+    "__fecha": "haceHoras",
+    "n": 96
+   },
+   "mensajes": [
+    {
+     "id": 7,
+     "autorId": 6,
+     "texto": "¿Hay una plantilla para el documento o lo armamos con el índice que queramos?",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 96
+     }
+    },
+    {
+     "id": 8,
+     "autorId": 8,
+     "texto": "Pueden usar el índice de la IEEE 830, que está en el programa de la materia. Lo importante es que estén los requisitos funcionales y los no funcionales separados.",
+     "fecha": {
+      "__fecha": "haceHoras",
+      "n": 94
+     },
+     "votos": [
+      6,
+      2
+     ]
+    }
+   ]
+  }
+ ],
+ "materiales": [
+  {
+   "id": 1,
+   "titulo": "Think Python: How to Think Like a Computer Scientist",
+   "autor": "Allen B. Downey",
+   "descripcion": "Introducción a la programación con Python pensada para quien empieza de cero. Arranca por los tipos y las funciones y llega a objetos y estructuras de datos, con ejercicios al final de cada capítulo.",
+   "editorial": "Green Tea Press",
+   "isbn": "9781491939369",
+   "idioma": "en",
+   "tipo": "libro",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Programación II",
+   "categoria": "programacion",
+   "anio": "1.º año",
+   "portada": null,
+   "enlace": "https://greenteapress.com/wp/think-python-2e/",
+   "licencia": "CC BY-NC 3.0",
+   "archivo": null,
+   "subidoPor": 2,
+   "estado": "aprobado",
+   "moderadoPor": 8,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -40
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -40
+   }
+  },
+  {
+   "id": 2,
+   "titulo": "Eloquent JavaScript (3rd edition)",
+   "autor": "Marijn Haverbeke",
+   "descripcion": "Libro de JavaScript moderno con ejemplos que se pueden correr en el navegador. Útil para la parte de programación web de la carrera.",
+   "editorial": "No Starch Press",
+   "isbn": "9781593279509",
+   "idioma": "en",
+   "tipo": "libro",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Programación II",
+   "categoria": "programacion",
+   "anio": "2.º año",
+   "portada": null,
+   "enlace": "https://eloquentjavascript.net/",
+   "licencia": "CC BY-NC 3.0",
+   "archivo": null,
+   "subidoPor": 2,
+   "estado": "aprobado",
+   "moderadoPor": 2,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -33
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -33
+   }
+  },
+  {
+   "id": 3,
+   "titulo": "Apunte de normalización: de 1FN a forma normal de Boyce-Codd",
+   "autor": "Ing. Pablo Ruiz",
+   "descripcion": "Resumen de las formas normales con los ejemplos que se usaron en clase, incluidas las dependencias funcionales del caso de la biblioteca.",
+   "editorial": "Cátedra de Bases de Datos – FaCENA",
+   "isbn": null,
+   "idioma": "es",
+   "tipo": "apunte",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Bases de Datos",
+   "categoria": "bases-de-datos",
+   "anio": "2.º año",
+   "portada": null,
+   "enlace": "https://exa.unne.edu.ar/",
+   "licencia": "Material de cátedra",
+   "archivo": null,
+   "subidoPor": 7,
+   "estado": "aprobado",
+   "moderadoPor": 7,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -12
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -12
+   }
+  },
+  {
+   "id": 4,
+   "titulo": "Guía de ejercicios: álgebra relacional y SQL",
+   "autor": "Ing. Pablo Ruiz",
+   "descripcion": "Treinta ejercicios resueltos y veinte a resolver, sobre el mismo esquema de ejemplo que se usa en el práctico de la materia.",
+   "editorial": "Cátedra de Bases de Datos – FaCENA",
+   "isbn": null,
+   "idioma": "es",
+   "tipo": "guia",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Bases de Datos",
+   "categoria": "guias-y-ejercicios",
+   "anio": "2.º año",
+   "portada": null,
+   "enlace": "https://exa.unne.edu.ar/",
+   "licencia": "Material de cátedra",
+   "archivo": null,
+   "subidoPor": 7,
+   "estado": "aprobado",
+   "moderadoPor": 7,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -6
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 5,
+   "titulo": "The Mythical Man-Month: ensayos sobre ingeniería de software",
+   "autor": "Frederick P. Brooks Jr.",
+   "descripcion": "Clásico sobre por qué agregar gente a un proyecto atrasado lo atrasa más. Se trabaja en la unidad de gestión de proyectos.",
+   "editorial": "Addison-Wesley",
+   "isbn": "9780201835953",
+   "idioma": "en",
+   "tipo": "libro",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Ingeniería de Software",
+   "categoria": "ingenieria-de-software",
+   "anio": "3.º año",
+   "portada": null,
+   "enlace": "https://openlibrary.org/isbn/9780201835953",
+   "licencia": "Con derechos reservados · consultar en biblioteca",
+   "archivo": null,
+   "subidoPor": 8,
+   "estado": "aprobado",
+   "moderadoPor": 8,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -21
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -21
+   }
+  },
+  {
+   "id": 6,
+   "titulo": "Computer Networks: a systems approach",
+   "autor": "Larry Peterson, Bruce Davie",
+   "descripcion": "Libro de redes de acceso abierto, con el modelo de capas trabajado desde los protocolos reales. Cubre casi todo el programa de la materia.",
+   "editorial": "Systems Approach LLC",
+   "isbn": "9780128182000",
+   "idioma": "en",
+   "tipo": "libro",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Redes de Computadoras",
+   "categoria": "redes-y-sistemas",
+   "anio": "3.º año",
+   "portada": null,
+   "enlace": "https://book.systemsapproach.org/",
+   "licencia": "CC BY 4.0",
+   "archivo": null,
+   "subidoPor": 9,
+   "estado": "aprobado",
+   "moderadoPor": 9,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -15
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -15
+   }
+  },
+  {
+   "id": 7,
+   "titulo": "Resumen de probabilidad: variables aleatorias discretas",
+   "autor": "Lucía Acosta",
+   "descripcion": "Resumen armado para el primer parcial, con las distribuciones binomial, Poisson y geométrica y un cuadro comparativo al final.",
+   "editorial": null,
+   "isbn": null,
+   "idioma": "es",
+   "tipo": "resumen",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "materia": "Probabilidad y Estadística",
+   "categoria": "apuntes-y-resumenes",
+   "anio": "1.º año",
+   "portada": null,
+   "enlace": null,
+   "licencia": "Material propio del autor",
+   "archivo": null,
+   "subidoPor": 4,
+   "estado": "pendiente",
+   "moderadoPor": null,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  },
+  {
+   "id": 8,
+   "titulo": "English for Information Technology: vocabulario técnico",
+   "autor": "Cátedra de Inglés",
+   "descripcion": "Listado de vocabulario técnico con ejemplos de uso, agrupado por área: hardware, redes, desarrollo y bases de datos.",
+   "editorial": "Cátedra de Inglés – FaCENA",
+   "isbn": null,
+   "idioma": "en",
+   "tipo": "manual",
+   "carrera": "Común a todas",
+   "materia": "Inglés Técnico",
+   "categoria": "ingles",
+   "anio": "1.º año",
+   "portada": null,
+   "enlace": "https://exa.unne.edu.ar/",
+   "licencia": "Material de cátedra",
+   "archivo": null,
+   "subidoPor": 10,
+   "estado": "aprobado",
+   "moderadoPor": 10,
+   "motivo": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -50
+   },
+   "actualizado": {
+    "__fecha": "aDias",
+    "n": -50
+   }
+  }
+ ],
+ "categorias": [
+  {
+   "id": "programacion",
+   "nombre": "Programación"
+  },
+  {
+   "id": "bases-de-datos",
+   "nombre": "Bases de datos"
+  },
+  {
+   "id": "ingenieria-de-software",
+   "nombre": "Ingeniería de software"
+  },
+  {
+   "id": "redes-y-sistemas",
+   "nombre": "Redes y sistemas"
+  },
+  {
+   "id": "matematica",
+   "nombre": "Matemática"
+  },
+  {
+   "id": "ingles",
+   "nombre": "Inglés"
+  },
+  {
+   "id": "manuales-tecnicos",
+   "nombre": "Manuales técnicos"
+  },
+  {
+   "id": "libros-academicos",
+   "nombre": "Libros académicos"
+  },
+  {
+   "id": "apuntes-y-resumenes",
+   "nombre": "Apuntes y resúmenes"
+  },
+  {
+   "id": "guias-y-ejercicios",
+   "nombre": "Guías y ejercicios"
+  },
+  {
+   "id": "otros",
+   "nombre": "Otros materiales"
+  }
+ ],
+ "carreras": [
+  "Licenciatura en Sistemas de Información",
+  "Profesorado en Matemática",
+  "Licenciatura en Ciencias Químicas",
+  "Común a todas"
+ ],
+ "favoritosBiblioteca": [
+  {
+   "personaId": 1,
+   "materialId": 1,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "personaId": 1,
+   "materialId": 6,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -4
+   }
+  }
+ ],
+ "moderacionBiblioteca": [
+  {
+   "id": 1,
+   "materialId": 5,
+   "moderadorId": 8,
+   "accion": "aprobado",
+   "motivo": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -21
+   }
+  }
+ ],
+ "TIPOS_MATERIAL": [
+  "libro",
+  "apunte",
+  "resumen",
+  "manual",
+  "guia",
+  "ejercicio",
+  "otro"
+ ],
+ "ESTADOS_MATERIAL": [
+  "pendiente",
+  "aprobado",
+  "rechazado"
+ ]
+}

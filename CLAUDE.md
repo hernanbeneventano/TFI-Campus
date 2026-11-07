@@ -11,10 +11,10 @@ para estudiantes y docentes. Inspiración propia; Blackboard es solo una referen
 
 ## Stack
 - Frontend: React 18 + Vite + React Router (`frontend/`)
-- Backend: Node.js + Express (`backend/`)
-- Base de datos: **todavía no definida** (propuesta: PostgreSQL + Prisma). Hoy se usan datos de prueba en `backend/src/data/mock.js`.
-- Futuro: bcrypt + jsonwebtoken (login), multer (subida de archivos).
-- Todo en JavaScript. Código, nombres y textos de la interfaz en **español**.
+- Backend: Python + FastAPI (`backend/`)
+- Base de datos: **todavía no definida** (propuesta previa: PostgreSQL + Prisma). Hoy se usan datos de prueba en `backend/app/datos_iniciales.json`, cargados y resueltos por `backend/app/datos.py`.
+- Futuro: Firebase Authentication, Firestore y Storage; todavía no están integrados.
+- Frontend en JavaScript y backend en Python. Nombres y textos de la interfaz en **español**.
 
 ## Estructura
 ```
@@ -30,8 +30,9 @@ frontend/src/
                fechas.js: hace() → "hace 12 min", "hace 2 horas", "hace 2 meses"
   hooks/       usePresencia.js: si el usuario está conectado, ausente o desconectado
   styles/      global.css: paleta en variables CSS en :root
-backend/src/
-  routes/ → controllers/ → data/mock.js     middleware/errores.js
+backend/app/
+  main.py → rutas/ → datos.py
+  datos_iniciales.json
   Rutas: GET /api/salud, /api/me, /api/cursos, /api/cursos/:id, /api/actividad,
          /api/tareas/pendientes
          /api/cursos/:id/modulo → todo lo de la pantalla del módulo en una sola llamada:
@@ -62,7 +63,7 @@ Avance de una carpeta: `--progreso-bajo` (el rojo) hasta 39%, `--progreso-medio`
 hasta 79%, `--progreso-alto` `#2F8F5B` desde 80%. El verde se reserva para cuando falta poco.
 Es el único lugar con amarillo y verde: son semáforo, no marca.
 
-Cada materia tiene su color en `mock.js` para la banda de su tarjeta en Módulos y para los íconos
+Cada materia tiene su color en los datos de `backend/app/datos_iniciales.json` para la banda de su tarjeta en Módulos y para los íconos
 de sus carpetas. Son tonos de la misma familia y todos tienen contraste suficiente con el texto
 blanco encima. El encabezado de la pantalla del módulo **no** usa ese color: va en `--oscuro`,
 el mismo del menú lateral.
@@ -99,7 +100,7 @@ página: ausente tras 5 minutos sin tocar nada, desconectado si se va a otra pes
 demás lo calcula el backend con los mismos cortes a partir del último acceso. Cuando haya sesiones
 de verdad, `usePresencia` debería avisarle al servidor en vez de quedarse solo en la pantalla.
 
-En `mock.js` las personas guardan `accesoHaceMin` (hace cuántos minutos entraron), no una fecha
+En `backend/app/datos_iniciales.json` las personas guardan `accesoHaceMin` (hace cuántos minutos entraron), no una fecha
 fija: `conPresencia()` calcula la fecha y el estado en cada pedido, así los estados siguen
 teniendo sentido por más que el servidor lleve horas levantado.
 Se pliega con el botón de arriba: pasa de `--ancho-menu` a `--ancho-menu-cerrado` y quedan solo los
@@ -170,8 +171,15 @@ Mensajes entró al alcance: las instituciones no quieren que la comunicación pa
 
 ## Cómo levantar
 ```
-cd backend && npm install && cp .env.example .env && npm run dev    # http://localhost:3000
-cd frontend && npm install && npm run dev                          # http://localhost:5173
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m app.main    # http://localhost:3000
+
+cd frontend
+npm install
+npm run dev           # http://localhost:5173
 ```
 
 ## Pendiente inmediato
@@ -195,14 +203,14 @@ como un id.
 Desde los participantes de un módulo, el ícono de globo lleva a `/mensajes?con=:personaId`, que
 abre la charla con esa persona o la crea si no existía. Es solo el ícono, sin texto al lado.
 
-Las conversaciones viven en memoria en `mock.js` y se reinician con el servidor. Mientras no haya
+Las conversaciones viven en memoria en el backend y se reinician con el servidor. Mientras no haya
 login, el que escribe es siempre `usuarioActual` (la constante `YO` del controlador).
 
 Pendiente: el contador de mensajes sin leer en el menú lateral (el backend ya lo devuelve en
 `GET /api/mensajes`).
 
 ## Personas
-`mock.js` tiene una sola lista `personas`, cada una con su id. Los módulos guardan los ids de sus
+`backend/app/datos_iniciales.json` tiene una sola lista `personas`, cada una con su id. Los módulos guardan los ids de sus
 participantes (`participantes` / `participantesDeCurso`) y los cursos su `docenteId`, en vez de
 repetir nombre y rol en cada lado. Los mensajes también las referencian por id.
 
