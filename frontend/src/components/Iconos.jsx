@@ -272,3 +272,70 @@ export const IconoAdjuntar = (p) => (
     <path d="M21 11.5l-8.8 8.8a5 5 0 0 1-7-7l9-9a3.3 3.3 0 0 1 4.7 4.7l-9 9a1.7 1.7 0 0 1-2.4-2.4l8.3-8.3" />
   </svg>
 );
+
+// Campana rellena, para los avisos del menú. Va con un círculo rojo encima
+// con la cantidad (ver .menu-aviso en global.css).
+export const IconoCampanaLlena = (p) => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...p}>
+    <path d="M12 1.9c.8 0 1.45.65 1.45 1.45v.55a6.75 6.75 0 0 1 5.3 6.6v3.05c0 .92.33 1.5 1.16 2.32.6.6.89 1.02.89 1.53 0 .63-.5 1.05-1.25 1.05H4.45c-.75 0-1.25-.42-1.25-1.05 0-.51.29-.93.89-1.53.83-.82 1.16-1.4 1.16-2.32V10.5a6.75 6.75 0 0 1 5.3-6.6v-.55c0-.8.65-1.45 1.45-1.45z" />
+    <path d="M9.45 19.95h5.1a2.55 2.55 0 0 1-5.1 0z" />
+  </svg>
+);
+
+export const IconoCalendario = (p) => (
+  <svg {...base} width={20} height={20} {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2.5" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+  </svg>
+);
+
+export const IconoForo = (p) => (
+  <svg {...base} width={20} height={20} {...p}>
+    <path d="M17 12.5a2 2 0 0 1-2 2H8l-4 3.2V6.5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z" />
+    <path d="M20 9h.5a2 2 0 0 1 2 2v9l-3.2-2.5" />
+  </svg>
+);
+
+export const IconoPulgar = (p) => (
+  <svg {...base} width={16} height={16} {...p}>
+    <path d="M7 21H4.5a1.5 1.5 0 0 1-1.5-1.5v-7A1.5 1.5 0 0 1 4.5 11H7" />
+    <path d="M7 11l4.2-8a2.3 2.3 0 0 1 2.3 2.3V9h4.9a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 17 20H7z" />
+  </svg>
+);
+
+export const IconoDuda = (p) => (
+  <svg {...base} width={16} height={16} {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.5" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+
+export const IconoBiblioteca = (p) => (
+  <svg {...base} {...p}>
+    <path d="M4 4h4v16H4zM10 4h4v16h-4z" />
+    <path d="m16.5 5.2 3.4.9-3.1 13-3.4-.9z" />
+  </svg>
+);
+
+export const IconoLibro = (p) => (
+  <svg {...base} width={20} height={20} {...p}>
+    <path d="M12 6.5S10 5 6.5 5H4v12h2.5C10 17 12 18.5 12 18.5s2-1.5 5.5-1.5H20V5h-2.5C14 5 12 6.5 12 6.5z" />
+    <path d="M12 6.5v12" />
+  </svg>
+);
+
+export const IconoSubir = (p) => (
+  <svg {...base} width={20} height={20} {...p}>
+    <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+    <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+  </svg>
+);
+
+export const IconoEnlaceExterno = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M14 4h6v6" />
+    <path d="M20 4 11 13" />
+    <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+  </svg>
+);

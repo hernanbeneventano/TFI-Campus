@@ -64,7 +64,6 @@ export default function CarpetaModulo({
   onAbrirItem,
   completados,
   onCompletar,
-  color,
 }) {
   const avance = calcularAvance(carpeta.items, completados);
 
@@ -74,7 +73,7 @@ export default function CarpetaModulo({
         <span className="carpeta-flecha">
           <IconoFlecha />
         </span>
-        <span className="carpeta-icono" style={{ color }}>
+        <span className="carpeta-icono">
           <IconoCarpeta />
         </span>
         <span className="carpeta-texto">
@@ -120,7 +119,7 @@ export default function CarpetaModulo({
                     tabIndex={abierta ? 0 : -1}
                     onClick={() => onAbrirItem(carpeta, item)}
                   >
-                    <span className="item-icono" style={{ color }}>
+                    <span className="item-icono">
                       <Icono />
                     </span>
                     <span className="item-texto">

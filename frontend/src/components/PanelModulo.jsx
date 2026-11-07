@@ -1,33 +1,27 @@
+import { Link } from 'react-router-dom';
 import BarraProgreso from './BarraProgreso.jsx';
 import { hace } from '../services/fechas.js';
-import { IconoUsuario, IconoPersonas, IconoAnuncio, IconoNotas, IconoAvance } from './Iconos.jsx';
+import { IconoUsuario, IconoCalendario, IconoTarea, IconoNotas, IconoAvance } from './Iconos.jsx';
 
-// Panel derecho de un módulo: quién lo dicta, accesos a las otras pestañas
-// y cuánto del material lleva marcado el alumno.
-export default function PanelModulo({ curso, participantes, anuncios, avance, onIrA }) {
+const DIA = 24 * 60 * 60 * 1000;
+
+function cuandoEs(iso) {
+  const dias = Math.round((new Date(iso) - new Date()) / DIA);
+  if (dias === 0) return 'hoy';
+  if (dias === 1) return 'mañana';
+  return `en ${dias} días`;
+}
+
+function fechaCorta(iso) {
+  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+}
+
+// Panel derecho de un módulo. A propósito no repite lo que ya está en las
+// pestañas de arriba (participantes, anuncios, notas): muestra el horario de
+// cursada y lo que se viene, que de otro modo habría que ir a buscar.
+export default function PanelModulo({ curso, participantes, cursada = [], proximas = [], avance }) {
   const docente = participantes.find((p) => p.rol === 'Docente');
   const estudiantes = participantes.filter((p) => p.rol === 'Estudiante').length;
-
-  const acciones = [
-    {
-      clave: 'participantes',
-      Icono: IconoPersonas,
-      titulo: 'Participantes',
-      detalle: `Ver a los ${participantes.length} del módulo`,
-    },
-    {
-      clave: 'anuncios',
-      Icono: IconoAnuncio,
-      titulo: 'Anuncios',
-      detalle: anuncios.length === 1 ? 'Ver el único anuncio' : `Ver los ${anuncios.length} anuncios`,
-    },
-    {
-      clave: 'notas',
-      Icono: IconoNotas,
-      titulo: 'Notas',
-      detalle: 'Ver tus calificaciones',
-    },
-  ];
 
   return (
     <aside className="panel">
@@ -46,23 +40,68 @@ export default function PanelModulo({ curso, participantes, anuncios, avance, on
         <p className="panel-vacio">{estudiantes} estudiantes inscriptos</p>
       </section>
 
-      <section>
-        <h2 className="panel-titulo">Detalles y acciones</h2>
-        <ul className="acciones">
-          {acciones.map(({ clave, Icono, titulo, detalle }) => (
-            <li key={clave}>
-              <button type="button" className="accion" onClick={() => onIrA(clave)}>
+      {cursada.length > 0 && (
+        <section>
+          <h2 className="panel-titulo">Cursada</h2>
+          <ul className="cursada">
+            {cursada.map((c) => (
+              <li key={`${c.dia}-${c.desde}`}>
                 <span className="accion-icono">
-                  <Icono />
+                  <IconoCalendario width={18} height={18} />
                 </span>
                 <span>
-                  <strong>{titulo}</strong>
-                  <small>{detalle}</small>
+                  <strong>{c.dia}</strong>
+                  <small>
+                    {c.desde} a {c.hasta} · {c.aula}
+                  </small>
                 </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section>
+        <h2 className="panel-titulo">Lo que se viene</h2>
+        {proximas.length === 0 ? (
+          <p className="panel-vacio">No hay nada agendado por ahora.</p>
+        ) : (
+          <ul className="proximas">
+            {proximas.map((p) => {
+              const contenido = (
+                <>
+                  <span className={`accion-icono ${p.tipo}`}>
+                    {p.tipo === 'examen' ? (
+                      <IconoNotas width={18} height={18} />
+                    ) : (
+                      <IconoTarea width={18} height={18} />
+                    )}
+                  </span>
+                  <span>
+                    <strong>{p.titulo}</strong>
+                    <small>
+                      {fechaCorta(p.fecha)} · {cuandoEs(p.fecha)}
+                      {p.lugar ? ` · ${p.lugar}` : ''}
+                    </small>
+                  </span>
+                </>
+              );
+
+              // Las entregas llevan a su pantalla; los exámenes no tienen una
+              return (
+                <li key={`${p.tipo}-${p.titulo}`}>
+                  {p.tipo === 'entrega' ? (
+                    <Link to={`/modulos/${curso.id}?tarea=${p.tareaId}`} className="proxima">
+                      {contenido}
+                    </Link>
+                  ) : (
+                    <span className="proxima">{contenido}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       {avance.total > 0 && (

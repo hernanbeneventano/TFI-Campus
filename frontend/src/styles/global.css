@@ -5,10 +5,11 @@
   /* Las variables se nombran por su rol, no por el color, así probar otra
      paleta es cambiar solo este bloque.
      Paletas probadas antes: azules #031D44 · #1F2444 · #4A6FA5 · #DBE9EE · #F9F9F9
-     y rojiza #2C0703 · #890620 · #B6465F · #DA9F93 · #EBD4CB */
-  --oscuro: #2b2d42;        /* menú lateral y títulos */
-  --tinta: #3a3d57;         /* pestañas del menú (aclarado de --oscuro) */
-  --principal: #d80032;     /* color principal, acentos */
+     y rojiza #2C0703 · #890620 · #B6465F · #DA9F93 · #EBD4CB.
+     El navy pasó de #2B2D42 a #14213D, luego #070A12, #090C16 y #0C101F. */
+  --oscuro: #0c101f;        /* menú lateral y títulos */
+  --tinta: #202842;         /* pestañas del menú (aclarado de --oscuro) */
+  --principal: #42a5f5;     /* color principal: botones, enlaces, lo activo */
   --gris: #8d99ae;          /* textos secundarios, bordes y detalles */
   --panel: #edf2f4;         /* recuadros y paneles */
   --fondo: #f8fafb;         /* fondo de la página (aclarado de --panel) */
@@ -19,10 +20,10 @@
      texto secundario usa una versión oscurecida y --gris queda para bordes. */
   --texto-suave: #5f6b7e;
   --borde: #ccd4de;          /* aclarado de --gris, para líneas finas */
-  /* La paleta tiene un solo rojo, así que el mismo sirve de acento y de
-     alerta: el rojo quiere decir "prestá atención". Lo urgente se distingue
-     por la negrita y por el ícono (reloj o advertencia), no por el tono. */
-  --alerta: var(--principal);
+  /* El rojo se usa para dos cosas y nada más: lo que está mal (atrasos, lo
+     que falta empezar, errores) y las notificaciones (campanitas, contadores
+     sin leer, la etiqueta "Nuevo"). Todo lo demás va en el azul del acento. */
+  --alerta: #d80032;
 
   /* Avance de una carpeta: rojo hasta 39%, amarillo hasta 79%, verde desde 80% */
   --progreso-bajo: var(--alerta);
@@ -102,13 +103,16 @@ select {
 
 /* Contorno degradado: se dibuja un borde de 1px relleno con un degradado y
    se le recorta el centro con una máscara, así queda solo la línea y sigue
-   la curva de las esquinas. */
+   la curva de las esquinas.
+   El "padding" define en qué lados va la línea: solo a la derecha, que es el
+   lado que da al contenido. Arriba, abajo y a la izquierda el menú toca el
+   borde de la ventana y ahí la línea se veía como un filo blanco. */
 .menu::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1px;
+  padding: 0 1px 0 0;
   background: linear-gradient(
     170deg,
     rgba(255, 255, 255, 0.45),
@@ -481,14 +485,14 @@ select {
   background: var(--blanco);
   border-radius: var(--radio-chico);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(43, 45, 66, 0.08);
+  box-shadow: 0 1px 2px rgba(12, 16, 31, 0.08);
   transition: transform 0.15s, box-shadow 0.15s;
   cursor: pointer;
 }
 
 .modulo-tarjeta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(43, 45, 66, 0.12);
+  box-shadow: 0 6px 16px rgba(12, 16, 31, 0.12);
 }
 
 .modulo-banda {
@@ -549,8 +553,7 @@ select {
   color: var(--oscuro);
 }
 
-.modulo-fila-texto small,
-.modulo-fila-periodo {
+.modulo-fila-texto small {
   color: var(--texto-suave);
 }
 
@@ -645,7 +648,7 @@ select {
   font-size: 0.9rem;
 }
 
-/* ===================== Actividad ===================== */
+/* ===================== Grupos y listas sueltas ===================== */
 .grupo-titulo {
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -804,11 +807,17 @@ select {
   z-index: 1;
 }
 
+/* Sirve igual como enlace y como botón: de ahí los reseteos */
 .volver {
   align-self: flex-start;
   display: flex;
   align-items: center;
   gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
   color: var(--principal);
   text-decoration: none;
   font-weight: 600;
@@ -879,9 +888,12 @@ select {
   transform: rotate(90deg);
 }
 
+/* Los íconos del contenido van en el color del texto, no en el del módulo:
+   con el color de la materia competían con el título. */
 .carpeta-icono {
   display: grid;
   place-items: center;
+  color: var(--oscuro);
 }
 
 .carpeta-texto {
@@ -987,7 +999,7 @@ select {
 
 .item-fila:hover {
   transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+  box-shadow: 0 4px 12px rgba(12, 16, 31, 0.1);
 }
 
 /* Check redondo propio: el del navegador no se puede redondear, así que se
@@ -1071,6 +1083,7 @@ select {
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  color: var(--oscuro);
 }
 
 .item-texto {
@@ -1274,8 +1287,9 @@ select {
   color: var(--blanco);
 }
 
+/* El mismo verde que el check y que "Entregada" en la lista de la carpeta */
 .etiqueta.entregada {
-  background: var(--principal);
+  background: var(--progreso-alto);
 }
 
 .etiqueta.atrasada {
@@ -1470,7 +1484,7 @@ select {
 }
 
 /* ===================== Tareas del panel ===================== */
-/* Cada tarea pendiente es un enlace a Actividad */
+/* Cada tarea pendiente es un enlace a su entrega */
 a.panel-tarea {
   color: inherit;
   text-decoration: none;
@@ -1479,7 +1493,7 @@ a.panel-tarea {
 
 a.panel-tarea:hover {
   transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.12);
+  box-shadow: 0 4px 12px rgba(12, 16, 31, 0.12);
 }
 
 a.panel-tarea:focus-visible {
@@ -1637,7 +1651,9 @@ a.panel-tarea:focus-visible {
   flex-shrink: 0;
 }
 
-.acciones {
+.acciones,
+.cursada,
+.proximas {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1646,6 +1662,8 @@ a.panel-tarea:focus-visible {
   gap: 8px;
 }
 
+.cursada li,
+.proxima,
 .accion {
   width: 100%;
   display: flex;
@@ -1662,7 +1680,7 @@ a.panel-tarea:focus-visible {
 
 .accion:hover {
   transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+  box-shadow: 0 4px 12px rgba(12, 16, 31, 0.1);
 }
 
 .accion-icono {
@@ -1877,7 +1895,7 @@ a.panel-tarea:focus-visible {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  color: var(--principal);
+  color: var(--alerta);
 }
 
 .modulo-fila .novedad {
@@ -1902,7 +1920,7 @@ a.panel-tarea:focus-visible {
 .charlas,
 .hilo {
   border: 1px solid var(--borde);
-  box-shadow: 0 2px 10px rgba(43, 45, 66, 0.05);
+  box-shadow: 0 2px 10px rgba(12, 16, 31, 0.05);
 }
 
 .charlas {
@@ -1956,7 +1974,7 @@ a.panel-tarea:focus-visible {
 
 .charla:hover {
   transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(43, 45, 66, 0.1);
+  box-shadow: 0 4px 12px rgba(12, 16, 31, 0.1);
 }
 
 /* Activa: barrita de acento adentro, en vez de un outline que el panel con
@@ -1967,7 +1985,7 @@ a.panel-tarea:focus-visible {
 }
 
 .charla.activa {
-  box-shadow: inset 4px 0 0 var(--principal), 0 4px 14px rgba(43, 45, 66, 0.12);
+  box-shadow: inset 4px 0 0 var(--principal), 0 4px 14px rgba(12, 16, 31, 0.12);
   padding-left: 18px;
 }
 
@@ -2012,7 +2030,7 @@ a.panel-tarea:focus-visible {
 }
 
 .charla-sin-leer {
-  background: var(--principal);
+  background: var(--alerta);
   color: var(--blanco);
   border-radius: 999px;
   min-width: 20px;
@@ -2388,7 +2406,7 @@ a.panel-tarea:focus-visible {
 }
 
 .aviso-nuevo {
-  background: var(--principal);
+  background: var(--alerta);
   color: var(--blanco);
   border-radius: 999px;
   padding: 3px 11px;
@@ -2401,34 +2419,2975 @@ a.panel-tarea:focus-visible {
 }
 
 /* ===================== Campanitas del menú ===================== */
+/* Campana rellena con el número en un círculo rojo pisándole la esquina */
 .menu-aviso {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  position: relative;
+  display: grid;
+  place-items: center;
   margin-left: auto;
   flex-shrink: 0;
-  background: var(--principal);
-  color: var(--blanco);
-  border-radius: 999px;
-  padding: 2px 8px 2px 6px;
-  font-size: 0.74rem;
-  font-weight: 700;
+  color: inherit;
 }
 
-/* Plegado no entra al lado del ícono: va como globito en la esquina */
+.menu-aviso-numero {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--alerta);
+  color: var(--blanco);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* Plegado no entra la campana al lado del ícono: queda solo el número,
+   en la esquina del recuadro. */
 @media (min-width: 761px) {
   .menu.cerrado .menu-aviso {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 5px;
+    right: 7px;
     margin: 0;
-    gap: 0;
-    padding: 1px 6px;
-    font-size: 0.68rem;
-    border: 2px solid var(--oscuro);
   }
 
   .menu.cerrado .menu-aviso svg {
     display: none;
+  }
+
+  .menu.cerrado .menu-aviso-numero {
+    position: static;
+    border: 2px solid var(--oscuro);
+  }
+}
+
+/* ===================== Novedades (muro) ===================== */
+/* Mosaico: columnas de alto libre, cada tarjeta ocupa lo que necesita.
+   Con columnas (y no grid) las alturas se acomodan solas, como en el boceto. */
+.muro {
+  column-count: 3;
+  column-gap: 16px;
+}
+
+.muro .publicacion {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1500px) {
+  .muro {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 980px) {
+  .muro {
+    column-count: 1;
+  }
+}
+
+.muro-publicar {
+  text-align: left;
+  border: 1px dashed var(--borde);
+  background: var(--blanco);
+  border-radius: var(--radio);
+  padding: 18px 22px;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.muro-publicar:hover {
+  border-color: var(--principal);
+  color: var(--principal);
+}
+
+.publicacion {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 20px 24px 22px;
+  box-shadow: 0 2px 10px rgba(12, 16, 31, 0.05);
+}
+
+.publicacion-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 14px;
+}
+
+.publicacion-quien {
+  flex: 1;
+  min-width: 0;
+}
+
+.publicacion-quien strong,
+.publicacion-quien small {
+  display: block;
+}
+
+.publicacion-quien small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.publicacion-editar {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.publicacion-editar:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.publicacion-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.publicacion-categoria {
+  background: var(--panel);
+  color: var(--texto-suave);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.publicacion h3 {
+  font-size: 1.25rem;
+  color: var(--oscuro);
+  margin-bottom: 8px;
+}
+
+.publicacion p {
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+/* Botón de verdad, abajo del todo y adentro del recuadro */
+.publicacion-mas {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--principal);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.publicacion-mas:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+/* En la portada hay lugar de sobra: no hace falta que ocupe todo el ancho */
+.portada-texto .publicacion-mas {
+  width: auto;
+  margin-top: 18px;
+}
+
+/* ===================== Formulario de novedad / tema ===================== */
+.editor-novedad {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-novedad input[type='text'],
+.editor-novedad textarea,
+.editor-novedad select {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 11px 14px;
+  background: var(--blanco);
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.editor-novedad input[type='text']:focus-visible,
+.editor-novedad textarea:focus-visible,
+.editor-novedad select:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.editor-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.editor-pie .boton-principal {
+  margin-left: auto;
+}
+
+.boton-suave {
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 9px 18px;
+  cursor: pointer;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.boton-suave:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+/* ===================== Calendario ===================== */
+.calendario-barra {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.calendario-mover {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendario-mover button:not(.boton-suave) {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--oscuro);
+}
+
+.calendario-mover button:not(.boton-suave):hover {
+  border-color: var(--principal);
+  color: var(--principal);
+}
+
+.calendario-mover .boton-suave {
+  padding: 7px 16px;
+}
+
+.calendario-periodo {
+  flex: 1;
+  font-size: 1.2rem;
+  color: var(--oscuro);
+}
+
+.calendario-barra .barra-vista button {
+  width: auto;
+  padding: 0 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* La grilla: siete columnas, una por día de la semana */
+.calendario {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 14px;
+}
+
+.calendario-dia-nombre {
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-suave);
+  padding-bottom: 2px;
+}
+
+.calendario-celda {
+  background: var(--blanco);
+  border-radius: var(--radio-chico);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 108px;
+}
+
+/* Los días del mes vecino se apagan, pero siguen visibles */
+.calendario-celda.fuera {
+  opacity: 0.45;
+}
+
+.calendario-celda.hoy {
+  box-shadow: inset 0 0 0 2px var(--principal);
+}
+
+.calendario-numero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--oscuro);
+}
+
+.calendario-nombre-corto {
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.calendario-celda.hoy .calendario-numero {
+  color: var(--principal);
+}
+
+.calendario-eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* En la vista semanal hay lugar de sobra: las celdas crecen y muestran hora y lugar */
+.calendario.semana .calendario-celda {
+  min-height: 320px;
+}
+
+/* ===================== Un evento del calendario ===================== */
+/* Cada tipo tiene su color: barrita a la izquierda y fondo con ese mismo
+   tono muy bajado, para distinguirlos de un vistazo sin recargar la celda. */
+.evento {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 6px 9px;
+  background: var(--panel);
+  color: var(--texto);
+  text-decoration: none;
+  font-size: 0.76rem;
+  border-left: 3px solid var(--gris);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.evento-icono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.evento-texto {
+  min-width: 0;
+}
+
+.evento-texto strong {
+  display: block;
+  font-weight: 600;
+  line-height: 1.25;
+  /* En la vista mensual no hay lugar para títulos largos */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendario.semana .evento-texto strong {
+  white-space: normal;
+}
+
+.evento-texto small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+a.evento:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 10px rgba(12, 16, 31, 0.16);
+}
+
+/* Con prefijo: ".evento.evento" no quiere decir "de tipo evento", quiere
+   decir "tiene la clase evento", y eso lo cumplen todos. */
+.evento.tipo-entrega {
+  border-left-color: var(--principal);
+  background: rgba(66, 165, 245, 0.12);
+}
+
+.evento.tipo-examen {
+  border-left-color: var(--progreso-medio-texto);
+  background: rgba(217, 162, 27, 0.16);
+}
+
+.evento.tipo-clase {
+  border-left-color: var(--gris);
+  background: rgba(141, 153, 174, 0.18);
+}
+
+.evento.tipo-evento {
+  border-left-color: var(--progreso-alto);
+  background: rgba(47, 143, 91, 0.13);
+}
+
+/* ===================== Foro ===================== */
+.foro-barra {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.foro-asignaturas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.asignatura {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.asignatura:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.asignatura.activa {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+}
+
+.asignatura small {
+  background: var(--panel);
+  color: var(--texto-suave);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+}
+
+.asignatura-color {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.temas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tema-fila {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 14px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.tema-fila:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(12, 16, 31, 0.1);
+}
+
+.tema-asignatura {
+  flex-shrink: 0;
+  color: var(--blanco);
+  background: var(--oscuro);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.tema-fila-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.tema-fila-texto strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.tema-fila-texto small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.tema-ultima {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ===================== Un tema abierto ===================== */
+/* La consulta (título + mensaje que abre el tema) va toda en una tarjeta,
+   y abajo la caja para responder con las respuestas debajo. */
+.tema {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tema-consulta {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 20px 26px 22px;
+  box-shadow: 0 2px 10px rgba(12, 16, 31, 0.05);
+}
+
+.tema-barra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 16px;
+}
+
+.tema-atras {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--oscuro);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.tema-atras:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+.tema-autor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.tema-autor strong,
+.tema-autor small {
+  display: block;
+}
+
+.docente-avatar.grande {
+  width: 46px;
+  height: 46px;
+}
+
+.tema-consulta h2 {
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: var(--oscuro);
+  margin-bottom: 10px;
+}
+
+.tema-texto {
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* La línea de cuentas, antes de los botones */
+.tema-cuentas {
+  display: flex;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 14px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.tema-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Útil y Seguir: los mismos botones, uno al lado del otro */
+.voto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 130px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.voto:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.voto.puesto {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+/* En las respuestas el botón es chico y suelto, no ocupa el ancho */
+.tema-respuesta .voto {
+  flex: none;
+  min-width: 0;
+  margin-top: 8px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+}
+
+/* ===================== Las respuestas ===================== */
+.tema-respuestas {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 20px 22px 22px;
+}
+
+.tema-respuestas h3 {
+  font-size: 0.95rem;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+}
+
+.tema-respuestas .hilo-escribir {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.tema-respuestas ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tema-respuesta {
+  display: flex;
+  gap: 12px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 14px 18px;
+}
+
+.tema-respuesta > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.tema-mensaje-quien {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.tema-mensaje-quien strong {
+  color: var(--oscuro);
+}
+
+.tema-respuesta p {
+  line-height: 1.55;
+}
+
+/* ===================== Temas en la lista ===================== */
+.tema-fila-titulo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.tema-asignatura.chica {
+  padding: 2px 8px;
+  font-size: 0.68rem;
+}
+
+.tema-respuestas-cuenta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--texto-suave);
+  font-size: 0.84rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .tema-consulta {
+    padding: 16px 18px 18px;
+  }
+  .tema-consulta h2 {
+    font-size: 1.25rem;
+  }
+  .voto {
+    min-width: 0;
+  }
+}
+
+
+/* ===================== En celular ===================== */
+@media (max-width: 760px) {
+  /* Ahora el menú de abajo tiene cinco botones */
+  .menu-lista {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .calendario {
+    grid-template-columns: repeat(7, minmax(44px, 1fr));
+    overflow-x: auto;
+  }
+  .calendario-celda {
+    min-height: 84px;
+  }
+  .calendario.semana {
+    grid-template-columns: 1fr;
+  }
+  .calendario.semana .calendario-dia-nombre {
+    display: none;
+  }
+  .calendario.semana .calendario-celda {
+    min-height: 0;
+  }
+  .tema-ultima {
+    display: none;
+  }
+}
+
+/* ===================== Módulos colgando del menú ===================== */
+/* La flecha va dentro de la fila pero fuera del enlace: un botón adentro de
+   un <a> no es HTML válido. */
+.menu-fila {
+  position: relative;
+  display: flex;
+}
+
+.menu-fila .menu-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-fila.con-hijos .menu-item {
+  padding-right: 38px;
+}
+
+.menu-desplegar {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: var(--panel);
+  opacity: 0.65;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.menu-desplegar:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.menu-desplegar svg {
+  transition: transform 0.2s ease;
+}
+
+.menu-desplegar.abierto svg {
+  transform: rotate(90deg);
+}
+
+/* Si la opción está activa, la flecha va sobre el gris claro */
+.menu-fila .menu-item.activo ~ .menu-desplegar {
+  color: #1b1d2b;
+  opacity: 0.8;
+}
+
+.menu-sublista {
+  list-style: none;
+  margin: 6px 0 2px 18px;
+  padding: 0 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Línea que agrupa visualmente los módulos bajo su opción */
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.menu-subitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--panel);
+  text-decoration: none;
+  font-size: 0.86rem;
+  opacity: 0.8;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.menu-subitem:hover {
+  background: rgba(255, 255, 255, 0.09);
+  opacity: 1;
+}
+
+.menu-subitem.activo {
+  background: var(--gris);
+  color: #1b1d2b;
+  font-weight: 600;
+  opacity: 1;
+}
+
+.menu-subitem .menu-etiqueta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Solo los favoritos llevan marca: una estrella amarilla. Los demás llevan
+   un hueco del mismo ancho, para que los nombres queden alineados. */
+.menu-estrella {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 13px;
+  color: #f2b705;
+}
+
+.menu-hueco {
+  width: 13px;
+  flex-shrink: 0;
+}
+
+/* Campanita cuando ese módulo tiene algo nuevo: se entiende mejor que un
+   punto suelto. */
+/* En el menú las campanitas van blancas: el rojo contra un fondo casi negro
+   se pierde. Sobre el gris del módulo activo vuelven al tono oscuro. */
+.menu-campanita {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--blanco);
+}
+
+.menu-subitem.activo .menu-campanita {
+  color: #1b1d2b;
+}
+
+/* Plegado no hay lugar para los nombres: la sublista desaparece */
+@media (min-width: 761px) {
+  .menu.cerrado .menu-sublista,
+  .menu.cerrado .menu-desplegar {
+    display: none;
+  }
+
+  .menu.cerrado .menu-fila.con-hijos .menu-item {
+    padding-right: 0;
+  }
+}
+
+/* En celular el menú es la barra de arriba: tampoco cuelga nada */
+@media (max-width: 760px) {
+  .menu-sublista,
+  .menu-desplegar {
+    display: none;
+  }
+}
+
+/* ===================== Novedad destacada ===================== */
+/* Va sola, a todo el ancho y entera: es la noticia importante del momento. */
+.publicacion.destacada {
+  position: relative;
+  padding: 30px 34px 32px;
+  border-left: 5px solid var(--principal);
+}
+
+/* Comillas grandes de fondo, como en el boceto */
+.publicacion.destacada::before {
+  content: '“';
+  position: absolute;
+  top: -18px;
+  right: 28px;
+  font-size: 10rem;
+  line-height: 1;
+  color: var(--panel);
+  pointer-events: none;
+  user-select: none;
+}
+
+.destacada-marca {
+  display: inline-block;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.publicacion.destacada h2 {
+  position: relative;
+  font-size: 2rem;
+  line-height: 1.15;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+  max-width: 24ch;
+}
+
+.destacada-cuerpo {
+  position: relative;
+  max-width: 78ch;
+}
+
+.destacada-cuerpo p {
+  font-size: 1.02rem;
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+
+/* Casilla para destacar, dentro del formulario */
+.editor-anclar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.editor-anclar input {
+  accent-color: var(--principal);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .publicacion.destacada {
+    padding: 22px 20px 24px;
+  }
+  .publicacion.destacada h2 {
+    font-size: 1.45rem;
+  }
+  .publicacion.destacada::before {
+    display: none;
+  }
+}
+
+/* ===================== Filtros del calendario ===================== */
+.calendario-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.filtro:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.filtro small {
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  color: var(--texto-suave);
+}
+
+.filtro-punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--gris);
+}
+
+.filtro.tipo-entrega .filtro-punto {
+  background: var(--principal);
+}
+
+.filtro.tipo-examen .filtro-punto {
+  background: var(--progreso-medio-texto);
+}
+
+.filtro.tipo-clase .filtro-punto {
+  background: var(--gris);
+}
+
+.filtro.tipo-evento .filtro-punto {
+  background: var(--progreso-alto);
+}
+
+/* Apagado: el tipo no se muestra en la grilla */
+.filtro:not(.activo) {
+  opacity: 0.5;
+}
+
+.filtro:not(.activo) .filtro-punto {
+  background: var(--gris);
+}
+
+.filtro.activo {
+  color: var(--oscuro);
+  border-color: var(--gris);
+  background: var(--panel);
+}
+
+.filtro.todo {
+  opacity: 1;
+}
+
+.filtro.todo.activo {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+}
+
+/* ===================== Desplegables del menú ===================== */
+/* Mismo truco que las carpetas de un módulo: la altura se anima pasando la
+   fila de la grilla de 0fr a 1fr, sin tener que medir nada. */
+.menu-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transition: grid-template-rows 0.26s ease, opacity 0.26s ease, visibility 0.26s;
+}
+
+.menu-panel.abierto {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+}
+
+.menu-panel-interior {
+  overflow: hidden;
+}
+
+/* ===================== Cuatrimestres dentro de Módulos ===================== */
+.menu-periodo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--panel);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 7px 10px 6px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.menu-periodo:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.menu-periodo span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-periodo small {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.menu-periodo svg {
+  flex-shrink: 0;
+  transition: transform 0.26s ease;
+}
+
+.menu-periodo.abierto svg {
+  transform: rotate(90deg);
+}
+
+.menu-modulos {
+  list-style: none;
+  margin: 2px 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ===================== Portada de Novedades ===================== */
+/* Panel de arriba: el título de la sección y las novedades importantes,
+   de a una, con flechas y puntos. */
+.portada {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.portada-cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.portada-cabecera > div {
+  flex: 1;
+  min-width: 0;
+  /* La barrita roja a la izquierda del título, como en el boceto */
+  border-left: 5px solid var(--principal);
+  padding-left: 14px;
+}
+
+.portada-cabecera h1 {
+  font-size: 2.2rem;
+  color: var(--oscuro);
+}
+
+.portada-cabecera p {
+  margin-top: 4px;
+  color: var(--texto-suave);
+}
+
+.portada-ver-todas {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--oscuro);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.portada-ver-todas:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+/* ===================== El carrusel ===================== */
+.portada-carrusel {
+  position: relative;
+}
+
+/* La ventana recorta y la pista se desliza de a un ancho completo */
+.portada-ventana {
+  overflow: hidden;
+  border-radius: var(--radio);
+}
+
+.portada-pista {
+  display: flex;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.portada-pista > .portada-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.portada-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+  gap: 26px;
+  align-items: center;
+  background: var(--blanco);
+  border-radius: var(--radio);
+  padding: 10px;
+  min-height: 260px;
+}
+
+.portada-slide.editando {
+  display: block;
+  padding: 22px;
+}
+
+/* El lugar de la ilustración: por ahora, el ícono en grande sobre un tinte */
+.portada-ilustracion {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 240px;
+  border-radius: var(--radio-chico);
+  background: linear-gradient(145deg, rgba(66, 165, 245, 0.2), rgba(12, 16, 31, 0.1));
+  color: var(--principal);
+}
+
+.portada-texto {
+  padding: 10px 20px 10px 0;
+}
+
+.portada-texto h2 {
+  font-size: 1.9rem;
+  line-height: 1.15;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+}
+
+.portada-texto p {
+  line-height: 1.6;
+  color: var(--texto-suave);
+}
+
+/* Fecha y ámbito, con sus íconos */
+.portada-datos {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.portada-datos span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.portada-separador {
+  width: 1px;
+  height: 18px;
+  background: var(--borde);
+}
+
+.destacada-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--principal);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+
+/* Flechas: encimadas sobre el slide, en los bordes */
+.portada-flecha {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--oscuro);
+  box-shadow: 0 4px 14px rgba(12, 16, 31, 0.14);
+  transition: background 0.15s, color 0.15s;
+}
+
+.portada-flecha:hover {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: var(--blanco);
+}
+
+.portada-flecha.atras {
+  left: -14px;
+}
+
+.portada-flecha.atras svg {
+  transform: rotate(180deg);
+}
+
+.portada-flecha.adelante {
+  right: -14px;
+}
+
+.portada-puntos {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.portada-punto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  background: var(--borde);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, width 0.15s;
+}
+
+.portada-punto.activo {
+  width: 24px;
+  border-radius: 999px;
+  background: var(--principal);
+}
+
+/* ===================== La grilla de abajo ===================== */
+/* Tres columnas fijas, como en el boceto, y la tarjeta crece con su texto */
+.muro {
+  column-count: 3;
+  column-gap: 16px;
+}
+
+@media (max-width: 1250px) {
+  .muro {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 860px) {
+  .muro {
+    column-count: 1;
+  }
+  .portada-slide {
+    grid-template-columns: 1fr;
+  }
+  .portada-ilustracion {
+    min-height: 150px;
+  }
+  .portada-texto {
+    padding: 0 14px 14px;
+  }
+  .portada-texto h2 {
+    font-size: 1.4rem;
+  }
+  .portada-cabecera h1 {
+    font-size: 1.7rem;
+  }
+  .portada-flecha.atras {
+    left: 2px;
+  }
+  .portada-flecha.adelante {
+    right: 2px;
+  }
+}
+
+/* ===================== Imágenes en las novedades ===================== */
+.portada-ilustracion.con-imagen {
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.portada-ilustracion img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* En la tarjeta la imagen se puede tocar: abre la novedad entera */
+.publicacion-imagen {
+  display: block;
+  width: 100%;
+  border: none;
+  padding: 0;
+  margin-bottom: 12px;
+  border-radius: var(--radio-chico);
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.publicacion-imagen img {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.publicacion-imagen:hover img {
+  transform: scale(1.04);
+}
+
+/* ===================== La novedad entera, superpuesta ===================== */
+.lector-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(27, 29, 43, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+  transition: background 0.3s ease;
+  animation: aparecer 0.25s ease;
+}
+
+/* Mientras se cierra, el fondo se aclara junto con el visor */
+.lector-fondo.saliendo {
+  background: rgba(27, 29, 43, 0);
+}
+
+/* La transformación que lo lleva desde la tarjeta la pone el JS (FLIP);
+   acá solo va el punto desde el que escala. */
+.lector {
+  position: relative;
+  width: min(760px, 100%);
+  background: var(--blanco);
+  border-radius: var(--radio);
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(27, 29, 43, 0.35);
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.lector-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--oscuro);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(27, 29, 43, 0.25);
+  transition: background 0.15s, color 0.15s;
+}
+
+.lector-cerrar:hover {
+  background: var(--principal);
+  color: var(--blanco);
+}
+
+.lector-imagen img {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.lector-cuerpo {
+  padding: 24px 30px 30px;
+}
+
+.lector-cuerpo h2 {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  color: var(--oscuro);
+  margin-bottom: 14px;
+}
+
+.lector-cuerpo p {
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 760px) {
+  .lector-fondo {
+    padding: 16px 12px;
+  }
+  .lector-imagen img {
+    height: 180px;
+  }
+  .lector-cuerpo {
+    padding: 20px;
+  }
+  .lector-cuerpo h2 {
+    font-size: 1.35rem;
+  }
+}
+
+/* ===================== Reacciones ===================== */
+/* Son anónimas: se ve cuántos fueron, nunca quiénes. */
+.reacciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borde);
+}
+
+.reaccion {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.reaccion:hover {
+  color: var(--oscuro);
+  border-color: var(--gris);
+}
+
+.reaccion small {
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La puesta por uno mismo se marca con el color de su tipo */
+.reaccion.puesta {
+  color: var(--blanco);
+}
+
+.reaccion.puesta small {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--blanco);
+}
+
+.reaccion.leido.puesta {
+  background: var(--progreso-alto);
+  border-color: var(--progreso-alto);
+}
+
+.reaccion.util.puesta {
+  background: var(--principal);
+  border-color: var(--principal);
+}
+
+.reaccion.dudas.puesta {
+  background: var(--progreso-medio-texto);
+  border-color: var(--progreso-medio-texto);
+}
+
+/* En la portada y en el visor hay más lugar */
+.portada-texto .reacciones,
+.lector-cuerpo .reacciones {
+  margin-top: 18px;
+}
+
+/* En las tarjetas angostas el nombre sobra: alcanza el ícono y el número */
+@media (max-width: 1250px) {
+  .muro .reaccion-nombre {
+    display: none;
+  }
+}
+
+/* ===================== Cambio de vista en Módulos ===================== */
+/* Al pasar de tarjetas a lista el contenedor se vuelve a montar, así que
+   cada módulo entra de nuevo, escalonado. */
+.modulos-grilla > *,
+.modulos-lista > * {
+  animation: aparecer-subiendo 0.34s ease backwards;
+  animation-delay: var(--retraso, 0ms);
+}
+
+/* ===================== Reflejo en lo que tiene novedades ===================== */
+/* Un brillo que cruza la tarjeta cada tanto, para que se note sin molestar. */
+.modulo-tarjeta.con-novedades,
+.modulo-fila.con-novedades {
+  overflow: hidden;
+}
+
+.modulo-tarjeta.con-novedades::before,
+.modulo-fila.con-novedades::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 62%
+  );
+  transform: translateX(-130%);
+  animation: reflejo 4.5s ease-in-out infinite;
+}
+
+@keyframes reflejo {
+  0% {
+    transform: translateX(-130%);
+  }
+  /* Cruza rápido y después espera: si no, el movimiento constante cansa */
+  45%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+/* En la vista lista el recuadro es blanco: un reflejo blanco no se vería,
+   así que ahí el brillo lleva un tinte del color de acento. */
+.modulo-fila.con-novedades::before {
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(216, 0, 50, 0.1) 50%,
+    transparent 62%
+  );
+}
+
+/* ===================== Desplegables propios ===================== */
+/* La lista que abre un <select> la dibuja el navegador y no se puede estilar,
+   así que los reemplazamos por este componente. */
+.desplegable {
+  position: relative;
+}
+
+.desplegable-boton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  border-radius: 999px;
+  padding: 0 14px 0 18px;
+  cursor: pointer;
+  color: var(--texto);
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.desplegable-boton span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desplegable-boton svg {
+  flex-shrink: 0;
+  color: var(--texto-suave);
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.desplegable-boton:hover {
+  border-color: var(--gris);
+}
+
+.desplegable-boton.abierto {
+  border-color: var(--principal);
+  box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.18);
+}
+
+.desplegable-boton.abierto svg {
+  transform: rotate(-90deg);
+}
+
+.desplegable-boton:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+.desplegable-lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 15;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  box-shadow: 0 14px 34px rgba(12, 16, 31, 0.16);
+  max-height: 280px;
+  overflow-y: auto;
+  animation: aparecer-subiendo 0.16s ease;
+}
+
+.desplegable-opcion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  color: var(--texto);
+}
+
+.desplegable-opcion.resaltada {
+  background: var(--panel);
+}
+
+.desplegable-opcion.elegida {
+  color: var(--principal);
+  font-weight: 600;
+}
+
+/* En el formulario de novedades y de temas no son píldoras sueltas:
+   acompañan a los campos, que son rectangulares. */
+.editor-novedad .desplegable-boton {
+  border-radius: var(--radio-chico);
+  padding: 0 12px 0 14px;
+  height: 44px;
+}
+
+/* ===================== Botones: respuesta al clic ===================== */
+/* Todos los botones se hunden un poco al apretarlos. Es la señal de que el
+   clic entró, y cuesta dos líneas. */
+button {
+  transition: transform 0.1s ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Los que ya se mueven solos al pasar el mouse combinan las dos cosas */
+.item-fila:active,
+.charla:active,
+.tema-fila:active,
+.accion:active,
+a.panel-tarea:active {
+  transform: scale(0.99);
+}
+
+/* Lo que aparece al tocar un botón (formularios de novedad o de tema nuevo)
+   entra con el mismo fundido que el resto */
+.editor-novedad {
+  animation: aparecer-subiendo 0.26s ease;
+}
+
+/* ===================== Interruptor de vista ===================== */
+/* El relleno del botón activo se desvanece en vez de saltar */
+.barra-vista button {
+  transition: background 0.22s ease, color 0.22s ease;
+}
+
+/* Y lo que hay debajo entra con un fundido al cambiar de vista */
+.calendario {
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+/* El buscador del foro no se estira como el de Módulos: comparte la fila
+   con los filtros de asignatura y el botón de tema nuevo. */
+.foro-buscador {
+  flex: 0 1 260px;
+  min-width: 180px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+}
+
+/* ===================== Cursada y lo que se viene ===================== */
+.cursada li,
+.proxima {
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.cursada li strong,
+.cursada li small,
+.proxima strong,
+.proxima small {
+  display: block;
+}
+
+.cursada li strong,
+.proxima strong {
+  font-size: 0.92rem;
+  color: var(--oscuro);
+}
+
+.cursada li small,
+.proxima small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+/* Solo las entregas son enlaces, así que solo ellas reaccionan */
+a.proxima:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(12, 16, 31, 0.1);
+}
+
+/* El examen se distingue del resto por el color del ícono */
+.accion-icono.examen {
+  color: var(--progreso-medio-texto);
+}
+
+/* ===================== Ajustes ===================== */
+
+
+.ajustes-bloque {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 24px 28px 26px;
+}
+
+.ajustes-bloque > header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 18px;
+}
+
+.ajustes-bloque h2 {
+  font-size: 1.15rem;
+  color: var(--oscuro);
+}
+
+.ajustes-bloque > header p {
+  margin-top: 4px;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+/* ---------- La foto ---------- */
+.ajustes-foto {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.docente-avatar.enorme {
+  width: 74px;
+  height: 74px;
+}
+
+.ajustes-foto small {
+  display: block;
+  margin-top: 8px;
+  max-width: 44ch;
+}
+
+/* ---------- Los campos ---------- */
+.ajustes-campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ajustes-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ajustes-pie {
+  grid-column: 1 / -1;
+}
+
+/* El correo ocupa la fila entera: es más largo que un nombre */
+.ajustes-campos label:nth-of-type(3) {
+  grid-column: 1 / -1;
+}
+
+.ajustes-campos span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.ajustes-campos input {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 11px 14px;
+  background: var(--blanco);
+  outline: none;
+}
+
+.ajustes-campos input:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.ajustes-pie {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid var(--borde);
+  margin-top: 6px;
+}
+
+/* La nota ocupa el espacio y empuja el botón a la derecha */
+.ajustes-pie small {
+  flex: 1;
+  min-width: 240px;
+  line-height: 1.45;
+}
+
+/* Rol y último acceso: se muestran, no se editan */
+.ajustes-fijos {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+}
+
+.ajustes-fijos span {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.ajustes-fijos strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--oscuro);
+}
+
+.ajustes-listo {
+  color: var(--progreso-alto-texto);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ---------- Los interruptores ---------- */
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--borde);
+  cursor: pointer;
+}
+
+.opcion:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.opcion-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.opcion-texto strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.opcion-texto small {
+  display: block;
+  margin-top: 3px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* El de la casilla no se puede estilar, así que se dibuja a mano */
+.interruptor {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--gris);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.interruptor::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--blanco);
+  transition: transform 0.2s ease;
+}
+
+.interruptor:checked {
+  background: var(--principal);
+}
+
+.interruptor:checked::after {
+  transform: translateX(20px);
+}
+
+.interruptor:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ---------- Los datos de la cuenta ---------- */
+.ajustes-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0 0 16px;
+}
+
+.ajustes-datos dt {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.ajustes-datos dd {
+  margin: 3px 0 0;
+  color: var(--oscuro);
+  font-weight: 600;
+}
+
+.boton-suave {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.boton-suave:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* El acceso a Ajustes del menú es un enlace, no un botón */
+.menu-acciones a {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--panel);
+  transition: background 0.15s, color 0.15s;
+}
+
+.menu-acciones a:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--blanco);
+}
+
+@media (max-width: 760px) {
+  .ajustes-campos {
+    grid-template-columns: 1fr;
+  }
+  .ajustes-bloque {
+    padding: 18px 20px 20px;
+  }
+}
+
+
+/* El rol va como etiqueta, no como texto suelto: lo define la facultad y
+   conviene que se lea como un dato cerrado.
+   Va con el contenedor en el selector porque ".ajustes-fijos strong" es más
+   específica y, si no, le gana con el color oscuro sobre fondo oscuro. */
+.ajustes-fijos .etiqueta-rol {
+  display: inline-block;
+  margin-top: 5px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ===================== Biblioteca ===================== */
+.biblioteca-barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* El buscador manda: ocupa todo el ancho que sobra */
+.biblioteca-barra .barra-busqueda {
+  flex: 1;
+  min-width: 240px;
+}
+
+.biblioteca-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------- Categorías ---------- */
+.biblioteca-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--blanco);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.08s;
+}
+
+.chip:hover {
+  border-color: var(--principal);
+  color: var(--oscuro);
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
+.chip.activo {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+}
+
+.chip small {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+.chip.activo small {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--blanco);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ---------- Resultados ---------- */
+.biblioteca-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: aparecer 0.25s ease;
+}
+
+.biblioteca-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+  margin-top: 6px;
+}
+
+.biblioteca-titulo small {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.biblioteca-nota {
+  margin-top: -6px;
+  max-width: 70ch;
+}
+
+.biblioteca-aviso {
+  padding: 10px 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--progreso-alto-texto);
+  font-weight: 600;
+  animation: aparecer 0.25s ease;
+}
+
+/* Una fuente externa caída se avisa, no se esconde */
+.biblioteca-fuente-caida {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.libros-grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.biblioteca-paginas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.biblioteca-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 54px 20px;
+  border-radius: var(--radio);
+  background: var(--panel);
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.biblioteca-vacio h3 {
+  color: var(--oscuro);
+}
+
+.biblioteca-vacio button {
+  margin-top: 8px;
+}
+
+/* ---------- Tarjeta de un libro ---------- */
+.libro-tarjeta {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.3s ease backwards;
+  animation-delay: var(--retraso, 0ms);
+  transition: border-color 0.15s, transform 0.12s;
+}
+
+.libro-tarjeta:hover {
+  border-color: var(--principal);
+  transform: translateY(-2px);
+}
+
+/* Mientras llegan los datos, un recuadro del mismo alto para que la grilla
+   no pegue un salto cuando aparecen las tarjetas de verdad. */
+.libro-tarjeta.esqueleto {
+  min-height: 148px;
+  border-style: dashed;
+  background: var(--panel);
+  animation: latir 1.4s ease-in-out infinite;
+}
+
+@keyframes latir {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.libro-portada {
+  flex-shrink: 0;
+  width: 78px;
+  height: 112px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.libro-portada img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.libro-portada-vacia {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--gris);
+}
+
+.libro-portada-vacia.grande {
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.libro-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.libro-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+/* De dónde salió: lo propio y lo externo se distinguen de un vistazo */
+.libro-fuente,
+.libro-tipo,
+.libro-libre,
+.libro-estado {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.libro-fuente {
+  background: var(--oscuro);
+  color: var(--blanco);
+}
+
+.libro-fuente.externa {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.libro-tipo {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.libro-libre {
+  background: rgba(47, 143, 91, 0.14);
+  color: var(--progreso-alto-texto);
+}
+
+/* El estado solo se ve en lo propio sin publicar: en revisión o rechazado */
+.libro-estado.pendiente {
+  background: rgba(217, 162, 27, 0.18);
+  color: var(--progreso-medio-texto);
+}
+
+.libro-estado.rechazado {
+  background: rgba(216, 0, 50, 0.12);
+  color: var(--alerta);
+}
+
+.libro-estado.aprobado {
+  background: rgba(47, 143, 91, 0.14);
+  color: var(--progreso-alto-texto);
+}
+
+.libro-titulo {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--oscuro);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.libro-titulo:hover {
+  color: var(--principal);
+}
+
+.libro-autor {
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.libro-datos {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.libro-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.libro-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--principal);
+  color: var(--blanco);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.libro-accion:hover {
+  background: var(--tinta);
+}
+
+.libro-accion-nota {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.libro-favorito {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 5px;
+  border-radius: 10px;
+  color: var(--gris);
+  cursor: pointer;
+  transition: color 0.15s, transform 0.08s;
+}
+
+.libro-favorito:hover {
+  color: var(--progreso-medio);
+}
+
+.libro-favorito:active {
+  transform: scale(0.9);
+}
+
+.libro-favorito.activo {
+  color: var(--progreso-medio);
+}
+
+.libro-favorito:focus-visible,
+.libro-portada:focus-visible,
+.libro-titulo:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ---------- La ficha ---------- */
+.lector.ficha,
+.lector.aporte {
+  max-width: 760px;
+  padding: 30px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ficha-cabecera {
+  display: flex;
+  gap: 20px;
+  padding-right: 40px;
+}
+
+.ficha-portada {
+  flex-shrink: 0;
+  width: 128px;
+  height: 184px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.ficha-portada img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ficha-titulo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ficha-titulo h2 {
+  font-size: 1.5rem;
+  color: var(--oscuro);
+  line-height: 1.25;
+}
+
+.ficha-subtitulo {
+  color: var(--texto-suave);
+}
+
+.ficha-descripcion {
+  color: var(--texto);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.ficha-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px 20px;
+  padding: 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+}
+
+.ficha-dato span {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.ficha-dato strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--oscuro);
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+.ficha-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.ficha-acciones a {
+  text-decoration: none;
+}
+
+/* Cuando la fuente no ofrece nada, se dice en vez de dejar botones muertos */
+.ficha-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.ficha-aviso.rechazo {
+  background: rgba(216, 0, 50, 0.08);
+  color: var(--alerta);
+}
+
+.ficha-relacionados h3 {
+  font-size: 1rem;
+  color: var(--oscuro);
+  margin-bottom: 8px;
+}
+
+.ficha-relacionados ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ficha-relacionados button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  text-align: left;
+  cursor: pointer;
+  color: var(--texto-suave);
+}
+
+.ficha-relacionados button:hover {
+  border-color: var(--principal);
+}
+
+.ficha-relacionados strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.92rem;
+}
+
+.ficha-relacionados small {
+  display: block;
+  margin-top: 2px;
+}
+
+.boton-suave.peligro {
+  color: var(--alerta);
+}
+
+.boton-suave.activo {
+  color: var(--progreso-medio-texto);
+}
+
+/* ---------- Aportar material ---------- */
+.aporte-cabecera {
+  padding-right: 40px;
+}
+
+.aporte-cabecera h2 {
+  font-size: 1.4rem;
+  color: var(--oscuro);
+}
+
+.aporte-campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.aporte-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.aporte-campos .ancho-completo {
+  grid-column: 1 / -1;
+}
+
+.aporte-campos label > span,
+.aporte-etiqueta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.aporte-campos input,
+.aporte-campos textarea {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  padding: 11px 14px;
+  background: var(--blanco);
+  outline: none;
+  font: inherit;
+  resize: vertical;
+}
+
+.aporte-campos input:focus-visible,
+.aporte-campos textarea:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.aporte-campos input:disabled {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.aporte-archivo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.aporte-ficha-archivo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  max-width: 100%;
+}
+
+.aporte-ficha-archivo strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.aporte-ficha-archivo button {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.aporte-ficha-archivo button:hover {
+  color: var(--alerta);
+}
+
+/* Compartir material ajeno sin permiso es el riesgo de todo esto: la
+   confirmación va destacada, no como una casilla más. */
+.aporte-autorizacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.aporte-autorizacion strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.94rem;
+}
+
+.aporte-autorizacion small {
+  display: block;
+  margin-top: 3px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.aporte-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.aporte-avance {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aporte-avance small {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.aporte-pie {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--borde);
+}
+
+/* ---------- Mis aportes y la cola de revisión ---------- */
+.aportes-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aporte-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+.aporte-fila-titulo {
+  flex: 1;
+  min-width: 200px;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.aporte-fila-titulo strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.aporte-fila-titulo small {
+  display: block;
+  margin-top: 3px;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.aporte-fila-titulo:hover strong {
+  color: var(--principal);
+}
+
+.aporte-fila-acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.aporte-motivo {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--alerta);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 760px) {
+  .aporte-campos {
+    grid-template-columns: 1fr;
+  }
+  .ficha-cabecera {
+    flex-direction: column;
+  }
+  .ficha-portada {
+    width: 104px;
+    height: 150px;
+  }
+  .lector.ficha,
+  .lector.aporte {
+    padding: 22px 20px 20px;
+  }
+  .libros-grilla {
+    grid-template-columns: 1fr;
   }
 }
