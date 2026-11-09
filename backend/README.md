@@ -18,6 +18,13 @@ python -m pip install -r requirements.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
+Guardá la clave de cuenta de servicio de Firebase como
+`backend/firebase-key.json` (está excluida de Git) o configurá
+`GOOGLE_APPLICATION_CREDENTIALS` en `.env` con su ruta absoluta. La clave debe
+pertenecer al mismo proyecto Firebase donde creaste Firestore. El backend
+inicializa el cliente al arrancar; `GET /api/salud/firestore` comprueba el
+acceso con una consulta de solo lectura.
+
 ## Levantarlo
 
 ```powershell
@@ -87,9 +94,10 @@ app/
     └── biblioteca.py            Catálogo, aportes, moderación y archivos
 ```
 
-Las rutas concentran las operaciones sobre la capa de datos de `datos.py`.
-Firestore todavía no está integrado; al migrar habrá que adaptar allí el acceso
-y comprobar las operaciones que hoy modifican los datos en memoria.
+La conexión a Firestore está inicializada, pero las rutas de la aplicación aún
+leen y modifican datos en memoria desde `datos.py`. La migración de cada
+colección y sus operaciones es un paso posterior; consultar Firestore no cambia
+todavía los datos que ve la aplicación.
 
 ## Pruebas
 
