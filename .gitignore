@@ -1,19 +1,50 @@
-node_modules/
-dist/
+# --- Credenciales: nada de esto puede subirse ---
+# La clave de la cuenta de servicio de Firebase da acceso de lectura y
+# escritura a todo Firestore. Si alguna vez llega a subirse no alcanza con
+# borrarla del repositorio: queda en el historial y hay que revocarla desde
+# la consola de Firebase.
+firebase-key.json
+*-key.json
+serviceAccount*.json
+*.pem
+
 .env
 .env.*
 !.env.example
+
+# --- Dependencias y compilados ---
+node_modules/
+dist/
+build/
+
+# --- Python ---
 .venv/
 venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage*
 htmlcov/
-*.egg-info/
-build/
-backend/ca-sistema.pem
+
+# --- Editores y sistemas operativos ---
+.vscode/
+.idea/
+*.swp
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Registros y temporales ---
 *.log
+npm-debug.log*
+.cache/
+tmp/
+
+# --- Herramientas de asistencia ---
+# Contexto para Claude Code. Es útil para desarrollar, pero no forma parte
+# del trabajo que se entrega.
+CLAUDE.md
+.claude/
