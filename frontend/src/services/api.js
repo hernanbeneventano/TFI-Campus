@@ -1,6 +1,20 @@
 // Funciones para comunicarse con el backend.
 // Vite redirige /api a http://localhost:3000 (ver vite.config.js).
 
+import { obtenerToken } from './sesion.js';
+
+// Cada consulta lleva el token de identidad de Firebase. El servidor lo
+// verifica y de ahí saca quién pregunta: nunca se le manda el rol desde acá,
+// porque cualquiera podría cambiarlo en el navegador.
+//
+// Si no hay sesión el token es null y la cabecera no se agrega. Hoy el
+// servidor responde igual, como el usuario de prueba; cuando el login sea
+// obligatorio devolverá 401.
+async function cabeceras(extra = {}) {
+  const token = await obtenerToken().catch(() => null);
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+}
+
 // Cuando algo sale mal, el backend manda { error: "..." } con el motivo en
 // castellano. Vale más mostrar eso que un "Error 403" pelado.
 async function responderOFallar(respuesta, queHacia) {
@@ -16,7 +30,10 @@ async function responderOFallar(respuesta, queHacia) {
 }
 
 async function pedir(ruta) {
-  return responderOFallar(await fetch(`/api${ruta}`), `pedir ${ruta}`);
+  return responderOFallar(
+    await fetch(`/api${ruta}`, { headers: await cabeceras() }),
+    `pedir ${ruta}`
+  );
 }
 
 // Las tres que mandan cuerpo JSON se diferencian solo en el método
@@ -24,7 +41,7 @@ function conCuerpo(metodo, queHacia) {
   return async (ruta, cuerpo) => {
     const respuesta = await fetch(`/api${ruta}`, {
       method: metodo,
-      headers: { 'Content-Type': 'application/json' },
+      headers: await cabeceras({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(cuerpo),
     });
     return responderOFallar(respuesta, `${queHacia} ${ruta}`);
@@ -36,7 +53,10 @@ const actualizar = conCuerpo('PUT', 'actualizar');
 const parchear = conCuerpo('PATCH', 'modificar');
 
 async function borrar(ruta) {
-  return responderOFallar(await fetch(`/api${ruta}`, { method: 'DELETE' }), `borrar ${ruta}`);
+  return responderOFallar(
+    await fetch(`/api${ruta}`, { method: 'DELETE', headers: await cabeceras() }),
+    `borrar ${ruta}`
+  );
 }
 
 export const obtenerUsuarioActual = () => pedir('/me');
@@ -128,10 +148,12 @@ export function subirArchivoMaterial(id, archivo, alAvanzar) {
   return new Promise((resolve, rechazar) => {
     const lector = new FileReader();
     lector.onerror = () => rechazar(new Error('No se pudo leer el archivo'));
-    lector.onload = () => {
+    lector.onload = async () => {
       const peticion = new XMLHttpRequest();
       peticion.open('POST', `/api/biblioteca/${idEnRuta(id)}/archivo`);
       peticion.setRequestHeader('Content-Type', 'application/json');
+      const token = await obtenerToken().catch(() => null);
+      if (token) peticion.setRequestHeader('Authorization', `Bearer ${token}`);
 
       // XMLHttpRequest en vez de fetch porque es lo único que avisa cómo va
       // la subida, y un PDF de 10 MB sin barra de progreso se siente colgado.

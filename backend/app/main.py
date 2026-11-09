@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import Body, FastAPI, Request
+from fastapi import Body, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -21,9 +21,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import datos as d
 from .rutas import biblioteca, calendario, cursos, foro, mensajes, novedades, tareas
 from .rutas import salud as rutas_salud
+from .servicios import certificados
+from .servicios.autenticacion import identificar
 from .servicios.firestore import inicializar_firestore
 
 load_dotenv()
+
+# Antes de crear cualquier cliente de Google: las bibliotecas leen la
+# configuración de certificados una sola vez, al construir su contexto.
+certificados.configurar()
 
 
 @asynccontextmanager
@@ -82,9 +88,21 @@ def salud():
 
 
 @app.get("/api/me", tags=["General"], summary="El usuario que inició sesión")
-def obtener_usuario():
-    """Por ahora fijo, hasta que esté el login."""
-    return d.con_presencia(d.usuario_actual)
+def obtener_usuario(persona: dict = Depends(identificar)):
+    """Sale del token de Firebase que manda el navegador.
+
+    Si no llega token y está permitido el usuario de prueba, devuelve ese.
+    """
+    nombre = persona.get("nombre", "")
+    primero, _, resto = nombre.partition(" ")
+    return d.con_presencia(
+        {
+            **persona,
+            # El menú lateral muestra el nombre partido
+            "nombre": primero,
+            "apellido": resto,
+        }
+    )
 
 
 @app.put("/api/me", tags=["General"], summary="Editar el perfil propio")

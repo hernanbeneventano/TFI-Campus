@@ -10,6 +10,8 @@ serviceAccount*.json
 
 .env
 .env.*
+.env.local
+frontend/.env.local
 !.env.example
 
 # --- Dependencias y compilados ---
