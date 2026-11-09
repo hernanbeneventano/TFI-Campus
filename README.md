@@ -1,6 +1,6 @@
 # CampusTFI
 
-Campus virtual para estudiantes y docentes de FaCENA – UNNE, con una interfaz
+Campus virtual para estudiantes y docentes, con una interfaz
 React y una API en Python.
 
 ## Estructura

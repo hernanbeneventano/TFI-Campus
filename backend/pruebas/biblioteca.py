@@ -130,7 +130,7 @@ def correr() -> None:
             "materia": "Programación II",
             "idioma": "es",
             "autorizado": True,
-            "enlace": "https://exa.unne.edu.ar/",
+            "enlace": "https://campustfi.edu.ar/",
         },
     )
     comprobar("se crea y responde 201", r.estado == 201, r.cuerpo)

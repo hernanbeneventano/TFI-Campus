@@ -30,7 +30,7 @@ OPENLIBRARY = "https://openlibrary.org/search.json"
 ESPERA = 9.0
 POR_FUENTE = 20
 
-AGENTE = "CampusTFI/0.1 (proyecto academico FaCENA-UNNE)"
+AGENTE = "CampusTFI/0.1 (campus virtual academico)"
 
 # httpx verifica los certificados contra el paquete de Mozilla que trae
 # `certifi`. Eso falla en cualquier equipo donde algo inspeccione el tráfico
