@@ -92,7 +92,7 @@ export default function Ajustes() {
                 type="email"
                 value={perfil.correo}
                 onChange={(e) => setPerfil({ ...perfil, correo: e.target.value })}
-                placeholder="tu.correo@comunidad.unne.edu.ar"
+                placeholder="tu.correo@campustfi.edu.ar"
               />
             </label>
 

@@ -10,6 +10,7 @@ import Calendario from './pages/Calendario.jsx';
 import Foro from './pages/Foro.jsx';
 import Biblioteca from './pages/Biblioteca.jsx';
 import Ajustes from './pages/Ajustes.jsx';
+import Login from './pages/Login.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
 import { obtenerUsuarioActual, obtenerContadores } from './services/api.js';
 
@@ -32,6 +33,15 @@ export default function App() {
   useEffect(() => {
     obtenerContadores().then(setContadores).catch(() => setContadores(null));
   }, [pathname]);
+
+  // El inicio de sesión ocupa la pantalla entera: no lleva menú lateral.
+  if (pathname === '/login') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="layout">

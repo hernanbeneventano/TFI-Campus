@@ -5391,3 +5391,446 @@ a.proxima:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===================== Inicio de sesión ===================== */
+/* Pantalla partida en diagonal: a la izquierda la tarjeta de acceso, a la
+   derecha la invitación para quien todavía no tiene cuenta. La diagonal se
+   recorta con clip-path, así no hace falta una imagen de fondo. */
+.acceso {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--fondo);
+  animation: aparecer 0.3s ease;
+}
+
+.acceso-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 28px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  position: relative;
+  z-index: 2;
+}
+
+.acceso-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.acceso-facultad {
+  font-size: 0.85rem;
+  color: var(--gris);
+}
+
+/* La foto va de fondo de todo el cuerpo y el panel oscuro se recorta encima.
+   Si la foto viviera solo en la mitad derecha, al recortar el panel asomaría
+   el fondo de la página y quedaría un triángulo claro en el medio. */
+.acceso-cuerpo {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  min-height: 0;
+  background-color: var(--oscuro);
+  background-image: linear-gradient(
+      100deg,
+      rgba(12, 16, 31, 0.88) 0%,
+      rgba(12, 16, 31, 0.7) 45%,
+      rgba(12, 16, 31, 0.58) 100%
+    ),
+    url('/acceso/facultad.jpg');
+  background-size: cover;
+  background-position: center right;
+}
+
+.acceso-lado {
+  display: grid;
+  place-items: center;
+  padding: 48px 32px;
+  min-width: 0;
+}
+
+/* La mitad oscura se extiende por debajo de la otra y se recorta en
+   diagonal: así el borde queda inclinado sin necesidad de una imagen. */
+/* El panel no se pinta a sí mismo: el color lo pone el pseudoelemento, que
+   se extiende por encima de la mitad clara y se recorta en diagonal. Si el
+   panel tuviera fondo propio, taparía el corte y el borde quedaría recto. */
+.acceso-lado.oscuro {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  isolation: isolate;
+}
+
+.acceso-lado.oscuro::before {
+  content: '';
+  position: absolute;
+  inset: 0 -170px 0 0;
+  /* Opaco a la izquierda y traslúcido al llegar al corte: la foto se
+     insinúa detrás del borde en vez de cortarse de golpe. */
+  background: linear-gradient(
+    100deg,
+    var(--oscuro) 0%,
+    var(--oscuro) 55%,
+    rgba(32, 40, 66, 0.92) 100%
+  );
+  clip-path: polygon(0 0, 100% 0, calc(100% - 340px) 100%, 0 100%);
+  z-index: 0;
+}
+
+/* La foto de la facultad, oscurecida para que el texto encima se lea. El
+   velo va en el mismo background, antes de la imagen: así no hace falta otra
+   capa ni un pseudoelemento. */
+.acceso-lado.foto {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--blanco);
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- La tarjeta ---------- */
+.acceso-tarjeta {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 34px 32px 28px;
+  border-radius: var(--radio);
+  background: var(--blanco);
+  /* El degradado celeste de arriba, que se desvanece hacia el blanco */
+  background-image: linear-gradient(
+    180deg,
+    rgba(66, 165, 245, 0.16),
+    rgba(66, 165, 245, 0) 180px
+  );
+  box-shadow: 0 24px 60px rgba(12, 16, 31, 0.28);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.acceso-logo {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 2px;
+  border-radius: 15px;
+  background: var(--oscuro);
+  color: var(--blanco);
+}
+
+.acceso-tarjeta h1 {
+  font-size: 1.75rem;
+  color: var(--oscuro);
+  letter-spacing: -0.01em;
+}
+
+.acceso-bajada {
+  color: var(--texto-suave);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.acceso-tarjeta .acceso-bajada {
+  margin-bottom: 6px;
+}
+
+/* ---------- Los campos ---------- */
+.acceso-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.acceso-etiqueta {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.acceso-caja {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 50px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  border: 1px solid transparent;
+  color: var(--texto-suave);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.acceso-caja:focus-within {
+  background: var(--blanco);
+  border-color: var(--principal);
+}
+
+.acceso-caja input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  color: var(--texto);
+}
+
+.acceso-caja input::placeholder {
+  color: var(--gris);
+}
+
+.acceso-ver {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+
+.acceso-ver:hover {
+  color: var(--oscuro);
+}
+
+/* ---------- Recordarme y olvidé la contraseña ---------- */
+.acceso-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.acceso-recordarme {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.acceso-recordarme input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--principal);
+  cursor: pointer;
+}
+
+.acceso-enlace {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--oscuro);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.acceso-enlace:hover {
+  color: var(--principal);
+}
+
+/* ---------- El botón ---------- */
+.acceso-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  border-radius: var(--radio-chico);
+  padding: 15px 20px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.08s;
+}
+
+.acceso-boton:hover:not(:disabled) {
+  background: var(--tinta);
+}
+
+.acceso-boton:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.acceso-boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.acceso-boton.secundario {
+  width: auto;
+  background: var(--blanco);
+  color: var(--oscuro);
+  border: 1px solid var(--borde);
+}
+
+.acceso-boton.secundario:hover {
+  background: var(--panel);
+  border-color: var(--principal);
+}
+
+.acceso-pie {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--texto-suave);
+}
+
+/* ---------- Avisos ---------- */
+.acceso-error,
+.acceso-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: var(--radio-chico);
+  font-size: 0.86rem;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.acceso-error {
+  background: rgba(216, 0, 50, 0.09);
+  color: var(--alerta);
+}
+
+.acceso-error code {
+  background: rgba(216, 0, 50, 0.12);
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 0.95em;
+}
+
+.acceso-aviso {
+  background: rgba(47, 143, 91, 0.12);
+  color: var(--progreso-alto-texto);
+}
+
+.acceso-error svg,
+.acceso-aviso svg {
+  flex-shrink: 0;
+}
+
+/* ---------- La invitación de la derecha ---------- */
+.acceso-invitacion {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  /* Despegada del borde diagonal */
+  padding-left: 28px;
+}
+
+.acceso-sobretitulo {
+  margin: 0;
+  /* Sobre la foto el gris del tema no llega al contraste mínimo */
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.95rem;
+}
+
+.acceso-invitacion h2 {
+  font-size: 2rem;
+  color: var(--blanco);
+  letter-spacing: -0.01em;
+}
+
+.acceso-invitacion .acceso-bajada {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.acceso-ventajas {
+  list-style: none;
+  margin: 4px 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.acceso-ventajas li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.93rem;
+  line-height: 1.45;
+}
+
+/* El verde del tema es demasiado oscuro sobre la foto: se aclara para que
+   la marca se distinga sin perder el significado. */
+.acceso-ventajas svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #6ddba0;
+}
+
+/* ---------- Pantallas chicas ---------- */
+/* La diagonal se va: con una sola columna no tiene a quién separar. */
+@media (max-width: 900px) {
+  .acceso-cuerpo {
+    grid-template-columns: 1fr;
+  }
+  .acceso-lado.oscuro,
+  .acceso-lado.foto {
+    grid-column: 1;
+  }
+  .acceso-lado.oscuro {
+    grid-row: 1;
+  }
+  .acceso-lado.foto {
+    grid-row: 2;
+    min-height: 420px;
+    /* Apilada, la foto necesita su propio velo: el del cuerpo queda muy
+       claro detrás del texto. */
+    background: linear-gradient(180deg, rgba(12, 16, 31, 0.35), rgba(12, 16, 31, 0.75));
+  }
+  .acceso-lado.oscuro::before {
+    display: none;
+  }
+  .acceso-lado.oscuro {
+    background: radial-gradient(120% 120% at 20% 0%, var(--tinta), var(--oscuro) 70%);
+  }
+  .acceso-lado {
+    padding: 36px 22px;
+  }
+  .acceso-invitacion {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .acceso-tarjeta {
+    padding: 26px 20px 22px;
+  }
+  .acceso-barra {
+    padding: 12px 18px;
+  }
+  .acceso-invitacion h2 {
+    font-size: 1.6rem;
+  }
+}

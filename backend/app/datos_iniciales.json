@@ -3,7 +3,7 @@
   "id": 1,
   "nombre": "Santiago",
   "apellido": "Sosa",
-  "correo": "santiago.sosa@comunidad.unne.edu.ar",
+  "correo": "santiago.sosa@campustfi.edu.ar",
   "rol": "Estudiante",
   "accesoHaceMin": 135
  },
@@ -348,67 +348,78 @@
    "id": 1,
    "nombre": "Santiago Sosa",
    "rol": "Estudiante",
-   "accesoHaceMin": 1
+   "accesoHaceMin": 1,
+   "correo": "santiago.sosa@campustfi.edu.ar"
   },
   {
    "id": 2,
    "nombre": "María Gómez",
    "rol": "Docente",
-   "accesoHaceMin": 3
+   "accesoHaceMin": 3,
+   "correo": "maria.gomez@campustfi.edu.ar"
   },
   {
    "id": 3,
    "nombre": "Hernán Beneventano",
    "rol": "Estudiante",
-   "accesoHaceMin": 12
+   "accesoHaceMin": 12,
+   "correo": "hernan.beneventano@campustfi.edu.ar"
   },
   {
    "id": 4,
    "nombre": "Lucía Acosta",
    "rol": "Estudiante",
-   "accesoHaceMin": 95
+   "accesoHaceMin": 95,
+   "correo": "lucia.acosta@campustfi.edu.ar"
   },
   {
    "id": 5,
    "nombre": "Tomás Herrera",
    "rol": "Estudiante",
-   "accesoHaceMin": 1560
+   "accesoHaceMin": 1560,
+   "correo": "tomas.herrera@campustfi.edu.ar"
   },
   {
    "id": 6,
    "nombre": "Camila Duarte",
    "rol": "Estudiante",
-   "accesoHaceMin": 69120
+   "accesoHaceMin": 69120,
+   "correo": "camila.duarte@campustfi.edu.ar"
   },
   {
    "id": 7,
    "nombre": "Pablo Ruiz",
    "rol": "Docente",
-   "accesoHaceMin": 35
+   "accesoHaceMin": 35,
+   "correo": "pablo.ruiz@campustfi.edu.ar"
   },
   {
    "id": 8,
    "nombre": "Laura Benítez",
    "rol": "Docente",
-   "accesoHaceMin": 8
+   "accesoHaceMin": 8,
+   "correo": "laura.benitez@campustfi.edu.ar"
   },
   {
    "id": 9,
    "nombre": "Diego Fernández",
    "rol": "Docente",
-   "accesoHaceMin": 300
+   "accesoHaceMin": 300,
+   "correo": "diego.fernandez@campustfi.edu.ar"
   },
   {
    "id": 10,
    "nombre": "Ana Martínez",
    "rol": "Docente",
-   "accesoHaceMin": 1800
+   "accesoHaceMin": 1800,
+   "correo": "ana.martinez@campustfi.edu.ar"
   },
   {
    "id": 11,
    "nombre": "Jorge Romero",
    "rol": "Docente",
-   "accesoHaceMin": 720
+   "accesoHaceMin": 720,
+   "correo": "jorge.romero@campustfi.edu.ar"
   }
  ],
  "participantes": {
@@ -968,7 +979,7 @@
    "titulo": "Apunte de normalización: de 1FN a forma normal de Boyce-Codd",
    "autor": "Ing. Pablo Ruiz",
    "descripcion": "Resumen de las formas normales con los ejemplos que se usaron en clase, incluidas las dependencias funcionales del caso de la biblioteca.",
-   "editorial": "Cátedra de Bases de Datos – FaCENA",
+   "editorial": "Cátedra de Bases de Datos – CampusTFI",
    "isbn": null,
    "idioma": "es",
    "tipo": "apunte",
@@ -977,7 +988,7 @@
    "categoria": "bases-de-datos",
    "anio": "2.º año",
    "portada": null,
-   "enlace": "https://exa.unne.edu.ar/",
+   "enlace": "https://campustfi.edu.ar/",
    "licencia": "Material de cátedra",
    "archivo": null,
    "subidoPor": 7,
@@ -998,7 +1009,7 @@
    "titulo": "Guía de ejercicios: álgebra relacional y SQL",
    "autor": "Ing. Pablo Ruiz",
    "descripcion": "Treinta ejercicios resueltos y veinte a resolver, sobre el mismo esquema de ejemplo que se usa en el práctico de la materia.",
-   "editorial": "Cátedra de Bases de Datos – FaCENA",
+   "editorial": "Cátedra de Bases de Datos – CampusTFI",
    "isbn": null,
    "idioma": "es",
    "tipo": "guia",
@@ -1007,7 +1018,7 @@
    "categoria": "guias-y-ejercicios",
    "anio": "2.º año",
    "portada": null,
-   "enlace": "https://exa.unne.edu.ar/",
+   "enlace": "https://campustfi.edu.ar/",
    "licencia": "Material de cátedra",
    "archivo": null,
    "subidoPor": 7,
@@ -1118,7 +1129,7 @@
    "titulo": "English for Information Technology: vocabulario técnico",
    "autor": "Cátedra de Inglés",
    "descripcion": "Listado de vocabulario técnico con ejemplos de uso, agrupado por área: hardware, redes, desarrollo y bases de datos.",
-   "editorial": "Cátedra de Inglés – FaCENA",
+   "editorial": "Cátedra de Inglés – CampusTFI",
    "isbn": null,
    "idioma": "en",
    "tipo": "manual",
@@ -1127,7 +1138,7 @@
    "categoria": "ingles",
    "anio": "1.º año",
    "portada": null,
-   "enlace": "https://exa.unne.edu.ar/",
+   "enlace": "https://campustfi.edu.ar/",
    "licencia": "Material de cátedra",
    "archivo": null,
    "subidoPor": 10,

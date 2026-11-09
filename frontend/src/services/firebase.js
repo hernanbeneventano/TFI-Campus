@@ -1,5 +1,5 @@
-import { getAnalytics } from 'firebase/analytics';
 import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,5 +11,12 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-export const app = initializeApp(firebaseConfig);
-export const analytics = getAnalytics(app);
+// Las claves viven en `frontend/.env.local`, que está ignorado y no viaja por
+// el repositorio. Si falta, Vite deja los valores en `undefined` y Firebase
+// falla con un error que no dice nada útil. Conviene detectarlo acá y que la
+// pantalla de login pueda explicarlo.
+export const hayConfiguracion = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+export const app = hayConfiguracion ? initializeApp(firebaseConfig) : null;
+
+export const auth = app ? getAuth(app) : null;
