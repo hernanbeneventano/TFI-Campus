@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+from contextlib import asynccontextmanager
 from typing import Any
 
 from dotenv import load_dotenv
@@ -19,8 +20,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import datos as d
 from .rutas import biblioteca, calendario, cursos, foro, mensajes, novedades, tareas
+from .rutas import salud as rutas_salud
+from .servicios.firestore import inicializar_firestore
 
 load_dotenv()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    inicializar_firestore()
+    yield
+
 
 app = FastAPI(
     title="CampusTFI",
@@ -29,8 +39,10 @@ app = FastAPI(
         "Interfaz de programación del campus virtual CampusTFI.\n\n"
         "**Estado actual.** Todavía no hay inicio de sesión: todas las operaciones se "
         "resuelven como si las realizara un usuario de prueba fijo. Los datos residen "
-        "en memoria y se reinician al reiniciar el servidor."
+        "en memoria y se reinician al reiniciar el servidor. Firestore está disponible "
+        "para la siguiente etapa de migración."
     ),
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -176,6 +188,7 @@ app.include_router(novedades.router)
 app.include_router(calendario.router)
 app.include_router(foro.router)
 app.include_router(biblioteca.router)
+app.include_router(rutas_salud.router)
 
 
 def arrancar() -> None:
