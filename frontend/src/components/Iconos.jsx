@@ -339,3 +339,39 @@ export const IconoEnlaceExterno = (p) => (
     <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
   </svg>
 );
+
+export const IconoCorreo = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </svg>
+);
+
+export const IconoCandado = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <rect x="4" y="10" width="16" height="11" rx="2" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+
+export const IconoOjo = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const IconoOjoTachado = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M10.6 6.2A9.9 9.9 0 0 1 12 6c6.5 0 10 6 10 6a16 16 0 0 1-3 3.6M6.5 7.9A16 16 0 0 0 2 12s3.5 6 10 6c1.4 0 2.6-.2 3.7-.7" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="m3 3 18 18" />
+  </svg>
+);
+
+export const IconoCheckCirculo = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8.5 12 2.5 2.5 4.5-5" />
+  </svg>
+);
