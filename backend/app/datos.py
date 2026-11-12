@@ -106,6 +106,59 @@ moderacion_biblioteca: list[dict] = _iniciales["moderacionBiblioteca"]
 TIPOS_MATERIAL: list[str] = _iniciales["TIPOS_MATERIAL"]
 ESTADOS_MATERIAL: list[str] = _iniciales["ESTADOS_MATERIAL"]
 
+# ----- Gestión académica: plan de estudios, inscripciones y finales -----
+# El plan vive en los datos, no en el código: las correlatividades de cada
+# materia son una lista de ids y se cambian sin tocar el servidor. Es lo que
+# va a administrar el panel de la institución cuando exista.
+materias_plan: list[dict] = _iniciales["materiasPlan"]
+inscripcion_carrera: list[dict] = _iniciales["inscripcionCarrera"]
+historial_academico: list[dict] = _iniciales["historialAcademico"]
+periodo_inscripcion_materias: dict = _iniciales["periodoInscripcionMaterias"]
+inscripciones_materias: list[dict] = _iniciales["inscripcionesMaterias"]
+mesas_examen: list[dict] = _iniciales["mesasExamen"]
+inscripciones_finales: list[dict] = _iniciales["inscripcionesFinales"]
+resultados_finales: list[dict] = _iniciales["resultadosFinales"]
+CONDICIONES_CURSADA: list[str] = _iniciales["CONDICIONES_CURSADA"]
+CONDICIONES_FINAL: list[str] = _iniciales["CONDICIONES_FINAL"]
+
+
+def buscar_materia(id_materia: Any) -> dict | None:
+    try:
+        buscado = int(id_materia)
+    except (TypeError, ValueError):
+        return None
+    return next((m for m in materias_plan if m["id"] == buscado), None)
+
+
+def buscar_mesa(id_mesa: Any) -> dict | None:
+    try:
+        buscado = int(id_mesa)
+    except (TypeError, ValueError):
+        return None
+    return next((m for m in mesas_examen if m["id"] == buscado), None)
+
+
+def carrera_de(persona_id: int) -> dict | None:
+    """La carrera y el plan en los que está inscripta la persona.
+
+    Es lo que la institución registra al ingresar; sin esto el alumno no
+    tiene plan de estudios y no puede inscribirse a nada.
+    """
+    return next((i for i in inscripcion_carrera if i["personaId"] == persona_id), None)
+
+
+def condicion_en(persona_id: int, materia_id: int) -> str | None:
+    """Cómo está la persona en una materia: Aprobada, Regular, En curso…"""
+    registro = next(
+        (
+            h
+            for h in historial_academico
+            if h["personaId"] == persona_id and h["materiaId"] == materia_id
+        ),
+        None,
+    )
+    return registro["condicion"] if registro else None
+
 
 # ===================== Presencia =====================
 def estado_por_acceso(fecha_iso: str) -> str:
@@ -334,6 +387,8 @@ _proximos = {
     "mensajeForo": 200,
     "material": 100,
     "moderacion": 100,
+    "inscripcionMateria": 100,
+    "inscripcionFinal": 100,
 }
 
 
@@ -369,6 +424,14 @@ def nuevo_id_material() -> int:
 
 def nuevo_id_moderacion() -> int:
     return _nuevo_id("moderacion")
+
+
+def nuevo_id_inscripcion_materia() -> int:
+    return _nuevo_id("inscripcionMateria")
+
+
+def nuevo_id_inscripcion_final() -> int:
+    return _nuevo_id("inscripcionFinal")
 
 
 # ===================== Archivos de la biblioteca =====================

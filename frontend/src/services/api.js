@@ -107,6 +107,31 @@ export const votarMensaje = (temaId, mensajeId) =>
   enviar(`/foro/${temaId}/mensajes/${mensajeId}/voto`, {});
 export const seguirTema = (id) => enviar(`/foro/${id}/seguir`, {});
 
+// --- Finales ---
+export const obtenerMesas = () => pedir('/finales/mesas');
+export const obtenerProximasMesas = () => pedir('/finales/proximas');
+export const obtenerResultadosFinales = () => pedir('/finales/resultados');
+export const inscribirseAMesa = (id) => enviar(`/finales/mesas/${id}/inscripcion`, {});
+export const cancelarInscripcionMesa = (id) => borrar(`/finales/mesas/${id}/inscripcion`);
+
+// --- Inscripción a materias ---
+// Al inscribirse, la materia entra sola a Módulos: el menú lateral tiene su
+// propia copia de los módulos, así que hay que avisarle. Es el mismo truco
+// que usa `marcarFavorito`.
+export const obtenerPlanDeEstudios = () => pedir('/inscripciones/materias');
+
+export const inscribirseAMateria = (id) =>
+  enviar(`/inscripciones/materias/${id}`, {}).then((resultado) => {
+    window.dispatchEvent(new CustomEvent('campustfi:cursos'));
+    return resultado;
+  });
+
+export const darDeBajaMateria = (id) =>
+  borrar(`/inscripciones/materias/${id}`).then((materia) => {
+    window.dispatchEvent(new CustomEvent('campustfi:cursos'));
+    return materia;
+  });
+
 // --- Biblioteca ---
 // Los ids externos traen dos puntos y barras ("openlibrary:/works/OL1W"), así
 // que van codificados o romperían la ruta.

@@ -1,4 +1,5 @@
-import { IconoBuscar, IconoGrilla, IconoLista } from './Iconos.jsx';
+import { Link } from 'react-router-dom';
+import { IconoBuscar, IconoGrilla, IconoLista, IconoInscribirse } from './Iconos.jsx';
 import Desplegable from './Desplegable.jsx';
 
 // Barra sobre los módulos: tipo de vista, búsqueda, filtro por fecha y apartados especiales
@@ -67,6 +68,13 @@ export default function BarraHerramientas({
           { valor: 'favoritos', nombre: 'Favoritos' },
         ]}
       />
+
+      {/* La única acción de la barra, al final: lo de la izquierda filtra lo
+          que ya tenés, esto te lleva a sumar una materia nueva. */}
+      <Link className="barra-accion" to="/modulos/inscripciones">
+        <IconoInscribirse width={16} height={16} />
+        Inscribirse a materias
+      </Link>
     </div>
   );
 }

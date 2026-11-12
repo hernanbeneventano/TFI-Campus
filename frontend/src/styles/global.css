@@ -170,6 +170,27 @@ select {
   letter-spacing: 0.02em;
 }
 
+/* Con Finales y las dos sublistas abiertas el menú ya no entra en 100vh.
+   Se desplaza solo la lista de apartados: el logo arriba y el usuario abajo
+   quedan siempre a la vista. El scrollbar ya estaba estilado para el menú
+   (ver la sección de barras de desplazamiento), solo faltaba que hubiera. */
+.menu > nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Sin barra a la vista: la del sistema se dibuja clara y sobre el menú
+     oscuro queda como una raya pegada al borde. Se desplaza igual con la
+     rueda, el teclado y el gesto del trackpad. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.menu > nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .menu-lista {
   list-style: none;
   margin: 0;
@@ -1518,6 +1539,13 @@ a.panel-tarea:focus-visible {
   gap: 4px;
   border-bottom: 2px solid var(--borde);
   overflow-x: auto;
+  /* Hace falta decirlo: declarar `overflow-x` obliga al otro eje a dejar de
+     ser `visible` y el navegador lo pasa a `auto`. Como cada pestaña se
+     monta 2px sobre el borde con `margin-bottom: -2px`, el contenido queda
+     2px más alto que la caja y aparecía una barra de desplazamiento vertical
+     al costado, inútil y a la vista. Pasaba en las tres pantallas con
+     pestañas, no solo en Finales. */
+  overflow-y: hidden;
 }
 
 .pestana {
@@ -1531,7 +1559,11 @@ a.panel-tarea:focus-visible {
   color: var(--texto-suave);
   white-space: nowrap;
   border-radius: var(--radio-chico) var(--radio-chico) 0 0;
-  /* El subrayado se dibuja sobre el borde del contenedor */
+  /* Las pestañas de Finales son enlaces y no botones, así que traen el
+     subrayado del navegador. La marca de la pestaña activa es la línea de
+     abajo, no el subrayado del texto. */
+  text-decoration: none;
+  /* Esa línea se dibuja sobre el borde del contenedor */
   box-shadow: inset 0 -2px 0 transparent;
   margin-bottom: -2px;
   transition: color 0.15s, background 0.15s, box-shadow 0.15s;
@@ -1803,6 +1835,53 @@ a.panel-tarea:focus-visible {
 
   .menu.cerrado .menu-item {
     padding: 12px 0;
+  }
+
+  /* Plegado solo quedan los íconos, así que el nombre sale al costado al
+     pasar el mouse o al llegar con el teclado. Es el mismo globo que usan
+     Ajustes y Cerrar sesión abajo: mismo fondo, mismo borde, misma sombra.
+     Reemplaza al `title` del navegador, que tarda un segundo en aparecer y
+     no se puede peinar. */
+  .menu.cerrado .menu-item {
+    position: relative;
+  }
+
+  .menu.cerrado .menu-item::after {
+    content: attr(data-nombre);
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 18px);
+    padding: 8px 14px;
+    background: var(--tinta);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radio-chico);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.38);
+    color: var(--blanco);
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    /* Nace un poco corrido hacia el ícono y se acomoda al aparecer */
+    transform: translate(-6px, -50%);
+    opacity: 0;
+    visibility: hidden;
+    /* No se puede señalar: es una etiqueta, no un menú */
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+    z-index: 30;
+  }
+
+  .menu.cerrado .menu-item:hover::after,
+  .menu.cerrado .menu-item:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(0, -50%);
+  }
+
+  /* El globo se sale de la barra, así que el nav no puede recortarlo. Plegado
+     no hace falta que se desplace: sin las sublistas, los siete íconos entran
+     de sobra en lo alto de la pantalla. */
+  .menu.cerrado > nav {
+    overflow: visible;
   }
 }
 
@@ -3270,12 +3349,18 @@ a.evento:hover {
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* Cerrada apunta abajo y abierta arriba, no de derecha a abajo. Las dos
+   posiciones son simétricas respecto del eje vertical, así que el glifo cae
+   centrado en el recuadro en los dos estados; un chevron hacia la derecha
+   tiene el pico de un lado y se ve corrido dentro del cuadrado, que es lo que
+   parecía un desajuste al abrir. */
 .menu-desplegar svg {
-  transition: transform 0.2s ease;
+  transform: rotate(90deg);
+  transition: transform 0.26s ease;
 }
 
 .menu-desplegar.abierto svg {
-  transform: rotate(90deg);
+  transform: rotate(-90deg);
 }
 
 /* Si la opción está activa, la flecha va sobre el gris claro */
@@ -3357,8 +3442,14 @@ a.evento:hover {
   color: #1b1d2b;
 }
 
-/* Plegado no hay lugar para los nombres: la sublista desaparece */
+/* Plegado no hay lugar para los nombres: lo que cuelga desaparece.
+   Se oculta el panel entero y no solo la sublista: de Módulos y de Finales
+   cuelgan además listas propias (el acceso a inscripciones, las tres
+   pantallas de Finales) y, sueltas, quedan como íconos huérfanos debajo de
+   su apartado. Gana por especificidad sobre `.menu-panel.abierto` (tres
+   clases contra dos), así que no importa el orden en el archivo. */
 @media (min-width: 761px) {
+  .menu.cerrado .menu-panel,
   .menu.cerrado .menu-sublista,
   .menu.cerrado .menu-desplegar {
     display: none;
@@ -3366,14 +3457,6 @@ a.evento:hover {
 
   .menu.cerrado .menu-fila.con-hijos .menu-item {
     padding-right: 0;
-  }
-}
-
-/* En celular el menú es la barra de arriba: tampoco cuelga nada */
-@media (max-width: 760px) {
-  .menu-sublista,
-  .menu-desplegar {
-    display: none;
   }
 }
 
@@ -3561,6 +3644,20 @@ a.evento:hover {
 
 .menu-panel-interior {
   overflow: hidden;
+}
+
+/* En celular el menú es la barra de arriba: tampoco cuelga nada.
+   Se oculta el panel entero y no solo la sublista: de Módulos y de Finales
+   cuelgan varias listas (las materias por cuatrimestre, los accesos fijos) y
+   cualquiera que quede suelta parte la barra en dos.
+   Va después de `.menu-panel` a propósito: tienen la misma especificidad, así
+   que gana la que está más abajo. */
+@media (max-width: 760px) {
+  .menu-panel,
+  .menu-sublista,
+  .menu-desplegar {
+    display: none;
+  }
 }
 
 /* ===================== Cuatrimestres dentro de Módulos ===================== */
@@ -5832,5 +5929,1034 @@ a.proxima:hover {
   }
   .acceso-invitacion h2 {
     font-size: 1.6rem;
+  }
+}
+
+/* =====================================================================
+   Gestión académica: Finales e Inscripciones a materias
+   =====================================================================
+   Los colores salen siempre de las variables de :root. Los estados usan la
+   misma escala que las barras de avance: verde lo terminado, ámbar lo que
+   está a mitad de camino, azul lo accionable y gris lo que todavía no se
+   puede. El rojo queda para lo que está mal —un final desaprobado, un error
+   del servidor—, nunca para "no tenés lugar": quedarse sin cupo no es un
+   error de nadie. */
+
+/* ----- Piezas compartidas por las dos pantallas ----- */
+.vacio {
+  margin: 0;
+  padding: 28px 24px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.aviso-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radio-chico);
+  border-left: 4px solid var(--alerta);
+  background: color-mix(in srgb, var(--alerta) 8%, var(--blanco));
+  color: var(--alerta);
+  font-size: 0.92rem;
+}
+
+/* Visible para los lectores de pantalla, no para el ojo */
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.titulo-bloque {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+}
+
+/* Intl devuelve el mes en minúscula ("noviembre de 2026"). Solo la primera
+   letra va en mayúscula: `capitalize` dejaría "Noviembre De 2026". */
+.titulo-bloque.mes::first-letter {
+  text-transform: uppercase;
+}
+
+.titulo-bloque small {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.nota-bloque {
+  margin: 0 0 6px;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.bloque-mesas,
+.bloque-anio {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cuerpo-finales {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+/* ----- Estado de una mesa ----- */
+.estado-final,
+.estado-materia {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.estado-final.puede,
+.estado-materia.habilitada {
+  background: color-mix(in srgb, var(--principal) 12%, var(--blanco));
+  border-color: color-mix(in srgb, var(--principal) 35%, transparent);
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+}
+
+.estado-final.hecho,
+.estado-materia.aprobada,
+.estado-materia.inscripto {
+  background: color-mix(in srgb, var(--progreso-alto) 12%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-alto) 35%, transparent);
+  color: var(--progreso-alto-texto);
+}
+
+.estado-final.espera,
+.estado-materia.regular {
+  background: color-mix(in srgb, var(--progreso-medio) 14%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-medio) 40%, transparent);
+  color: var(--progreso-medio-texto);
+}
+
+.estado-materia.cursando {
+  background: color-mix(in srgb, var(--principal) 10%, var(--blanco));
+  border-color: color-mix(in srgb, var(--principal) 30%, transparent);
+  color: color-mix(in srgb, var(--principal) 78%, var(--oscuro));
+}
+
+.estado-final.apagado,
+.estado-materia.bloqueada,
+.estado-materia.sin-cupo {
+  background: var(--panel);
+  border-color: var(--borde);
+  color: var(--texto-suave);
+}
+
+/* ----- Una mesa de examen ----- */
+.lista-mesas {
+  display: grid;
+  gap: 14px;
+}
+
+.mesa {
+  display: flex;
+  gap: 0;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  overflow: hidden;
+  animation: aparecer 0.25s ease;
+}
+
+.mesa.tomada {
+  border-color: color-mix(in srgb, var(--progreso-alto) 45%, var(--borde));
+}
+
+/* La fecha como un taco de calendario: se reconoce de un vistazo */
+.mesa-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 78px;
+  padding: 16px 10px;
+  background: var(--oscuro);
+  color: var(--blanco);
+}
+
+.mesa-dia strong {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.mesa-dia small {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.mesa.tomada .mesa-dia {
+  background: var(--progreso-alto-texto);
+}
+
+.mesa-cuerpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.mesa-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mesa-cabecera h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+}
+
+.mesa-codigo {
+  margin: 2px 0 0;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.mesa-datos,
+.materia-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+}
+
+.mesa-datos dt,
+.materia-datos dt {
+  margin-bottom: 2px;
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mesa-datos dd,
+.materia-datos dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.mesa-datos dd small,
+.materia-datos dd small {
+  color: var(--texto-suave);
+}
+
+.mesa-motivo {
+  margin: 0;
+  padding: 9px 13px;
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.mesa-pie,
+.materia-pie {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.mesa-pie:empty,
+.materia-pie:empty {
+  display: none;
+}
+
+.mesa-aviso {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--progreso-alto-texto);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+/* ----- Fechas próximas: la agenda ----- */
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 16px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.agenda-item.tomada {
+  border-left-color: var(--progreso-alto);
+  background: color-mix(in srgb, var(--progreso-alto) 4%, var(--blanco));
+}
+
+.agenda-fecha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 46px;
+}
+
+.agenda-fecha strong {
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.agenda-fecha small {
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.agenda-cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.agenda-cuerpo h3 {
+  margin: 0 0 3px;
+  font-size: 0.98rem;
+  color: var(--oscuro);
+}
+
+.agenda-cuerpo p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.agenda-tribunal {
+  margin-top: 2px !important;
+  font-size: 0.8rem !important;
+}
+
+.agenda-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.agenda-estado small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+/* ----- Resultados ----- */
+.resumen-notas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.resumen-notas > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 16px 12px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+}
+
+.resumen-notas strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.resumen-notas small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.resumen-notas .bien strong {
+  color: var(--progreso-alto-texto);
+}
+
+.resumen-notas .destacado {
+  background: var(--oscuro);
+}
+
+.resumen-notas .destacado strong,
+.resumen-notas .destacado small {
+  color: var(--blanco);
+}
+
+.tabla-notas {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  overflow: hidden;
+}
+
+.tabla-notas thead th {
+  padding: 11px 14px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.tabla-notas tbody th,
+.tabla-notas td {
+  padding: 12px 14px;
+  border-top: 1px solid var(--borde);
+  font-size: 0.9rem;
+  font-weight: 400;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tabla-notas tbody th {
+  display: table-cell;
+}
+
+.tabla-notas tbody th strong {
+  display: block;
+  color: var(--oscuro);
+}
+
+.tabla-notas tbody th small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+.tabla-notas .nota {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.condicion {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.condicion.aprobado {
+  background: color-mix(in srgb, var(--progreso-alto) 14%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.condicion.desaprobado {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+}
+
+.condicion.ausente {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+/* ----- Inscripción a materias ----- */
+.ficha-carrera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  background: var(--oscuro);
+  border-radius: var(--radio);
+  color: var(--blanco);
+}
+
+.ficha-carrera h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+}
+
+.ficha-carrera p {
+  margin: 0;
+  font-size: 0.86rem;
+  opacity: 0.8;
+}
+
+.avance-carrera {
+  min-width: 220px;
+}
+
+.avance-carrera small {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+.barra-avance {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  overflow: hidden;
+}
+
+.barra-avance span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--progreso-alto);
+  transition: width 0.4s ease;
+}
+
+.periodo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: var(--radio-chico);
+  font-size: 0.9rem;
+}
+
+.periodo.abierto {
+  background: color-mix(in srgb, var(--progreso-alto) 10%, var(--blanco));
+  border: 1px solid color-mix(in srgb, var(--progreso-alto) 30%, transparent);
+  color: var(--progreso-alto-texto);
+}
+
+.periodo.cerrado {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  color: var(--texto-suave);
+}
+
+.filtros-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cuentas-plan {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip-estado {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.chip-estado.aprobada {
+  border-color: color-mix(in srgb, var(--progreso-alto) 40%, transparent);
+  color: var(--progreso-alto-texto);
+}
+
+.chip-estado.regular {
+  border-color: color-mix(in srgb, var(--progreso-medio) 45%, transparent);
+  color: var(--progreso-medio-texto);
+}
+
+.chip-estado.cursando,
+.chip-estado.inscripto,
+.chip-estado.habilitada {
+  border-color: color-mix(in srgb, var(--principal) 40%, transparent);
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+}
+
+.filtro-habilitadas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.grilla-materias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.materia {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 16px 18px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde);
+  border-radius: var(--radio-chico);
+  animation: aparecer 0.25s ease;
+}
+
+.materia.aprobada {
+  border-left-color: var(--progreso-alto);
+}
+
+.materia.regular {
+  border-left-color: var(--progreso-medio);
+}
+
+.materia.cursando,
+.materia.inscripto,
+.materia.habilitada {
+  border-left-color: var(--principal);
+}
+
+/* Lo que no se puede cursar todavía se corre a un segundo plano, pero se
+   sigue viendo: el motivo es justamente lo que hay que leer. */
+.materia.bloqueada,
+.materia.sin-cupo {
+  background: color-mix(in srgb, var(--panel) 45%, var(--blanco));
+}
+
+.materia-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.materia-titulo {
+  min-width: 0;
+}
+
+.materia-titulo h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  color: var(--oscuro);
+}
+
+.materia-titulo p {
+  margin: 2px 0 0;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.materia-correlativas {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.84rem;
+}
+
+.materia-correlativas strong {
+  color: var(--oscuro);
+}
+
+.materia-motivo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+.materia-motivo.bloqueada {
+  color: var(--oscuro);
+  font-weight: 500;
+}
+
+/* ----- El ícono del acceso a inscripciones, en la lista de Módulos ----- */
+.menu-subitem .menu-hueco {
+  display: grid;
+  place-items: center;
+}
+
+/* ----- La acción de la barra de Módulos ----- */
+/* Va al final y pegada al borde derecho: a su izquierda está todo lo que
+   filtra los módulos que ya tenés, y esto lleva a sumar uno nuevo. */
+.barra-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--principal);
+  color: var(--blanco);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.18s ease;
+}
+
+.barra-accion:hover {
+  filter: brightness(1.08);
+}
+
+.barra-accion:focus-visible {
+  outline: 2px solid var(--oscuro);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  /* Apilada no hay "derecha": ocupa la fila entera */
+  .barra-accion {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 900px) {
+  .ficha-carrera {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .avance-carrera {
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .mesa {
+    flex-direction: column;
+  }
+  .mesa-dia {
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 16px;
+    justify-content: flex-start;
+  }
+  .mesa-dia strong {
+    font-size: 1.1rem;
+  }
+  .mesa-cabecera {
+    flex-direction: column;
+  }
+  .agenda-item {
+    flex-wrap: wrap;
+  }
+  .agenda-estado {
+    align-items: flex-start;
+    flex-direction: row;
+    width: 100%;
+  }
+  .grilla-materias {
+    grid-template-columns: 1fr;
+  }
+  /* En una pantalla angosta la tabla se desborda: se deja desplazar */
+  .tabla-notas {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* =====================================================================
+   Cartel de reconfirmación y avisos pasajeros
+   ===================================================================== */
+
+/* ----- El cartel ----- */
+.confirmacion-fondo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(12 16 31 / 0.55);
+  backdrop-filter: blur(2px);
+  /* Por encima del visor de un elemento (20) y del menú (10) */
+  z-index: 60;
+  animation: aparecer 0.18s ease;
+}
+
+.confirmacion {
+  position: relative;
+  width: min(460px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 30px 24px;
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: 0 24px 60px rgb(12 16 31 / 0.35);
+  animation: aparecer-subiendo 0.22s ease;
+}
+
+.confirmacion-icono {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--principal) 12%, var(--blanco));
+  color: color-mix(in srgb, var(--principal) 85%, var(--oscuro));
+}
+
+/* Dar de baja no es lo mismo que inscribirse: el rojo marca que se deshace
+   algo, igual que en el resto del campus. */
+.confirmacion.peligro .confirmacion-icono {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+}
+
+.confirmacion h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--oscuro);
+}
+
+.confirmacion > p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+
+.confirmacion-detalles {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+}
+
+.confirmacion-detalles > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.confirmacion-detalles dt {
+  flex-shrink: 0;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.confirmacion-detalles dd {
+  margin: 0;
+  text-align: right;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--oscuro);
+}
+
+.confirmacion-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.boton-principal.peligroso {
+  background: var(--alerta);
+}
+
+.confirmacion-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.confirmacion-cerrar:hover:not(:disabled) {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+/* ----- Los avisos de arriba a la derecha ----- */
+.avisos {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(380px, calc(100vw - 36px));
+  /* Por encima del cartel: si una acción falla, el motivo tiene que verse */
+  z-index: 70;
+  pointer-events: none;
+}
+
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 14px 13px 16px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--progreso-alto);
+  border-radius: var(--radio-chico);
+  box-shadow: 0 12px 30px rgb(12 16 31 / 0.18);
+  /* El contenedor no recibe clics para no tapar la pantalla; cada aviso sí,
+     que para eso tiene su botón de cerrar. */
+  pointer-events: auto;
+  animation: aviso-entrar 0.26s ease;
+}
+
+.aviso.error {
+  border-left-color: var(--alerta);
+}
+
+.aviso-icono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--progreso-alto-texto);
+}
+
+.aviso.error .aviso-icono {
+  color: var(--alerta);
+}
+
+.aviso p {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--oscuro);
+}
+
+.aviso-cerrar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.aviso-cerrar:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+/* Entra desde la derecha, que es de donde viene */
+@keyframes aviso-entrar {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 760px) {
+  /* En celular el menú es la barra de arriba: los avisos van abajo, donde
+     no la tapan y quedan al alcance del pulgar. */
+  .avisos {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+
+  .confirmacion {
+    padding: 24px 20px 20px;
+  }
+
+  .confirmacion-botones {
+    flex-direction: column-reverse;
+  }
+
+  .confirmacion-botones button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .confirmacion-detalles > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .confirmacion-detalles dd {
+    text-align: left;
   }
 }
