@@ -55,6 +55,27 @@ export function guardarModulosDesplegados(abierta) {
   }
 }
 
+const CLAVE_SUBMENU_FINALES = 'campustfi:finales-desplegado';
+
+// Si la lista de Finales del menú lateral queda desplegada. Arranca cerrada:
+// a diferencia de Módulos, no es donde se trabaja todos los días.
+export function leerFinalesDesplegados() {
+  try {
+    return localStorage.getItem(CLAVE_SUBMENU_FINALES) === 'si';
+  } catch {
+    return false;
+  }
+}
+
+export function guardarFinalesDesplegados(abierta) {
+  try {
+    localStorage.setItem(CLAVE_SUBMENU_FINALES, abierta ? 'si' : 'no');
+    avisar();
+  } catch {
+    // Sin localStorage arranca cerrada en cada visita.
+  }
+}
+
 const CLAVE_TIPOS = 'campustfi:tipos-calendario';
 const TIPOS_CALENDARIO = ['entrega', 'examen', 'clase', 'evento'];
 

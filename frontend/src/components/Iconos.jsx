@@ -375,3 +375,20 @@ export const IconoCheckCirculo = (p) => (
     <path d="m8.5 12 2.5 2.5 4.5-5" />
   </svg>
 );
+
+// Un diploma con su cinta: los finales
+export const IconoFinales = (p) => (
+  <svg {...base} {...p}>
+    <path d="M5 4.5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" />
+    <path d="M8 8h8M8 11h5" />
+    <path d="m9 14.5-1 6 4-2.2 4 2.2-1-6" />
+  </svg>
+);
+
+// Una lista con un signo de más: anotarse a algo
+export const IconoInscribirse = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M4 6h10M4 11h7M4 16h7" />
+    <path d="M16 13v6M13 16h6" />
+  </svg>
+);

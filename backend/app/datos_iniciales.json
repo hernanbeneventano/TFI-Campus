@@ -1251,5 +1251,779 @@
   "pendiente",
   "aprobado",
   "rechazado"
+ ],
+
+ "materiasPlan": [
+  {
+   "id": 101,
+   "codigo": "SIS-101",
+   "nombre": "Álgebra y Geometría Analítica",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 1,
+   "cuatrimestre": 1,
+   "correlativas": [],
+   "cupo": 60,
+   "cursoId": null,
+   "docenteId": null,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 102,
+   "codigo": "SIS-102",
+   "nombre": "Análisis Matemático I",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 1,
+   "cuatrimestre": 1,
+   "correlativas": [],
+   "cupo": 60,
+   "cursoId": null,
+   "docenteId": null,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 103,
+   "codigo": "SIS-103",
+   "nombre": "Programación I",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 1,
+   "cuatrimestre": 1,
+   "correlativas": [],
+   "cupo": 50,
+   "cursoId": null,
+   "docenteId": null,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 104,
+   "codigo": "SIS-104",
+   "nombre": "Análisis Matemático II",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 1,
+   "cuatrimestre": 2,
+   "correlativas": [
+    102
+   ],
+   "cupo": 60,
+   "cursoId": null,
+   "docenteId": null,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 105,
+   "codigo": "SIS-105",
+   "nombre": "Arquitectura de Computadoras",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 1,
+   "cuatrimestre": 2,
+   "correlativas": [],
+   "cupo": 50,
+   "cursoId": null,
+   "docenteId": null,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 106,
+   "codigo": "SIS-106",
+   "nombre": "Inglés Técnico",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 1,
+   "cuatrimestre": 2,
+   "correlativas": [],
+   "cupo": 80,
+   "cursoId": null,
+   "docenteId": null,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 107,
+   "codigo": "ALG-2",
+   "nombre": "Algoritmos y Estructuras de Datos",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 2,
+   "cuatrimestre": 1,
+   "correlativas": [
+    103
+   ],
+   "cupo": 45,
+   "cursoId": 6,
+   "docenteId": 11,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 108,
+   "codigo": "MAT-3",
+   "nombre": "Probabilidad y Estadística",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 2,
+   "cuatrimestre": 1,
+   "correlativas": [
+    104
+   ],
+   "cupo": 55,
+   "cursoId": 5,
+   "docenteId": 10,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 109,
+   "codigo": "PROG-2",
+   "nombre": "Programación II",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 2,
+   "cuatrimestre": 2,
+   "correlativas": [
+    103
+   ],
+   "cupo": 45,
+   "cursoId": 1,
+   "docenteId": 2,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 110,
+   "codigo": "BD-1",
+   "nombre": "Bases de Datos",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 2,
+   "cuatrimestre": 2,
+   "correlativas": [
+    103
+   ],
+   "cupo": 45,
+   "cursoId": 2,
+   "docenteId": 7,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 111,
+   "codigo": "IS-1",
+   "nombre": "Ingeniería de Software",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 2,
+   "cuatrimestre": 2,
+   "correlativas": [
+    103
+   ],
+   "cupo": 40,
+   "cursoId": 3,
+   "docenteId": 8,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 112,
+   "codigo": "RED-1",
+   "nombre": "Redes de Computadoras",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 2,
+   "cuatrimestre": 2,
+   "correlativas": [
+    105
+   ],
+   "cupo": 40,
+   "cursoId": 4,
+   "docenteId": 9,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 113,
+   "codigo": "SO-1",
+   "nombre": "Sistemas Operativos",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 1,
+   "correlativas": [
+    105
+   ],
+   "cupo": 40,
+   "cursoId": null,
+   "docenteId": 9,
+   "comision": "A",
+   "horario": "Martes y jueves de 18:00 a 21:00"
+  },
+  {
+   "id": 114,
+   "codigo": "BD-2",
+   "nombre": "Bases de Datos II",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 1,
+   "correlativas": [
+    110
+   ],
+   "cupo": 40,
+   "cursoId": null,
+   "docenteId": 7,
+   "comision": "A",
+   "horario": "Lunes y miércoles de 18:00 a 21:00"
+  },
+  {
+   "id": 115,
+   "codigo": "PROG-3",
+   "nombre": "Programación Orientada a Objetos",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 1,
+   "correlativas": [
+    109
+   ],
+   "cupo": 45,
+   "cursoId": null,
+   "docenteId": 2,
+   "comision": "B",
+   "horario": "Martes y viernes de 14:00 a 17:00"
+  },
+  {
+   "id": 116,
+   "codigo": "MAT-4",
+   "nombre": "Matemática Discreta",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 1,
+   "correlativas": [
+    101
+   ],
+   "cupo": 2,
+   "cursoId": null,
+   "docenteId": 10,
+   "comision": "A",
+   "horario": "Miércoles de 08:00 a 12:00"
+  },
+  {
+   "id": 117,
+   "codigo": "IS-2",
+   "nombre": "Ingeniería de Software II",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 2,
+   "correlativas": [
+    111
+   ],
+   "cupo": 35,
+   "cursoId": null,
+   "docenteId": 8,
+   "comision": "A",
+   "horario": "Jueves de 18:00 a 22:00"
+  },
+  {
+   "id": 118,
+   "codigo": "RED-2",
+   "nombre": "Redes de Computadoras II",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 2,
+   "correlativas": [
+    112
+   ],
+   "cupo": 35,
+   "cursoId": null,
+   "docenteId": 9,
+   "comision": null,
+   "horario": null
+  },
+  {
+   "id": 119,
+   "codigo": "SIS-107",
+   "nombre": "Metodología de la Investigación",
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "anio": 3,
+   "cuatrimestre": 1,
+   "correlativas": [],
+   "cupo": 40,
+   "cursoId": null,
+   "docenteId": 8,
+   "comision": "Única",
+   "horario": "Viernes de 18:00 a 21:00"
+  }
+ ],
+ "inscripcionCarrera": [
+  {
+   "personaId": 1,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "SIS-2024-0187",
+   "ingreso": 2024
+  }
+ ],
+ "historialAcademico": [
+  {
+   "personaId": 1,
+   "materiaId": 101,
+   "condicion": "Aprobada",
+   "nota": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -480
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 102,
+   "condicion": "Aprobada",
+   "nota": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -470
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 8,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -455
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 105,
+   "condicion": "Aprobada",
+   "nota": 9,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -395
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 104,
+   "condicion": "Aprobada",
+   "nota": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 106,
+   "condicion": "Aprobada",
+   "nota": 8,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -375
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 107,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 108,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -118
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 109,
+   "condicion": "En curso",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -75
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 110,
+   "condicion": "En curso",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -75
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 111,
+   "condicion": "En curso",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -75
+   }
+  },
+  {
+   "personaId": 1,
+   "materiaId": 112,
+   "condicion": "En curso",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -75
+   }
+  }
+ ],
+ "periodoInscripcionMaterias": {
+  "desde": {
+   "__fecha": "aDias",
+   "n": -10
+  },
+  "hasta": {
+   "__fecha": "aDias",
+   "n": 20
+  }
+ },
+ "inscripcionesMaterias": [
+  {
+   "id": 1,
+   "personaId": 1,
+   "materiaId": 119,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -3
+   }
+  },
+  {
+   "id": 2,
+   "personaId": 3,
+   "materiaId": 116,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -8
+   }
+  },
+  {
+   "id": 3,
+   "personaId": 4,
+   "materiaId": 116,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -7
+   }
+  },
+  {
+   "id": 4,
+   "personaId": 3,
+   "materiaId": 113,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  }
+ ],
+ "mesasExamen": [
+  {
+   "id": 1,
+   "materiaId": 107,
+   "tribunal": [
+    11,
+    2
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 12
+   },
+   "desde": "09:00",
+   "hasta": "12:00",
+   "modalidad": "Presencial",
+   "lugar": "Aula 12 – Pabellón A",
+   "cupo": 40,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -5
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 9
+   },
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 2,
+   "materiaId": 108,
+   "tribunal": [
+    10,
+    7
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 18
+   },
+   "desde": "14:00",
+   "hasta": "17:00",
+   "modalidad": "Presencial",
+   "lugar": "Aula 5 – Pabellón B",
+   "cupo": 35,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -5
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 15
+   },
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 3,
+   "materiaId": 107,
+   "tribunal": [
+    11,
+    2
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 40
+   },
+   "desde": "09:00",
+   "hasta": "12:00",
+   "modalidad": "Virtual",
+   "lugar": "Aula virtual del campus",
+   "cupo": 40,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": 25
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 37
+   },
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 4,
+   "materiaId": 110,
+   "tribunal": [
+    7,
+    8
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 20
+   },
+   "desde": "18:00",
+   "hasta": "21:00",
+   "modalidad": "Presencial",
+   "lugar": "Laboratorio 2",
+   "cupo": 30,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -3
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 17
+   },
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 5,
+   "materiaId": 109,
+   "tribunal": [
+    2,
+    11
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 25
+   },
+   "desde": "09:00",
+   "hasta": "12:00",
+   "modalidad": "Presencial",
+   "lugar": "Aula 12 – Pabellón A",
+   "cupo": 40,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": 5
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 22
+   },
+   "llamado": "1.er llamado"
+  }
+ ],
+ "inscripcionesFinales": [
+  {
+   "id": 1,
+   "personaId": 1,
+   "mesaId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "estado": "Inscripto"
+  },
+  {
+   "id": 2,
+   "personaId": 3,
+   "mesaId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "estado": "Inscripto"
+  },
+  {
+   "id": 3,
+   "personaId": 4,
+   "mesaId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "estado": "Inscripto"
+  }
+ ],
+ "resultadosFinales": [
+  {
+   "id": 1,
+   "personaId": 1,
+   "materiaId": 101,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -520
+   },
+   "nota": 3,
+   "condicion": "Desaprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 2,
+   "personaId": 1,
+   "materiaId": 101,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -480
+   },
+   "nota": 7,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 3,
+   "personaId": 1,
+   "materiaId": 102,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -470
+   },
+   "nota": 6,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 4,
+   "personaId": 1,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -455
+   },
+   "nota": 8,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 5,
+   "personaId": 1,
+   "materiaId": 105,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -430
+   },
+   "nota": null,
+   "condicion": "Ausente",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 6,
+   "personaId": 1,
+   "materiaId": 105,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -395
+   },
+   "nota": 9,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 7,
+   "personaId": 1,
+   "materiaId": 104,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -390
+   },
+   "nota": 7,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 8,
+   "personaId": 1,
+   "materiaId": 106,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -375
+   },
+   "nota": 8,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  }
+ ],
+ "CONDICIONES_CURSADA": [
+  "Aprobada",
+  "Regular",
+  "En curso",
+  "Libre"
+ ],
+ "CONDICIONES_FINAL": [
+  "Aprobado",
+  "Desaprobado",
+  "Ausente"
  ]
 }

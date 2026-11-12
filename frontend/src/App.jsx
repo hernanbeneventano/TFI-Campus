@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import MenuLateral from './components/MenuLateral.jsx';
+import Avisos from './components/Avisos.jsx';
 import Modulos from './pages/Modulos.jsx';
 import Modulo from './pages/Modulo.jsx';
 import Mensajes from './pages/Mensajes.jsx';
@@ -9,6 +10,8 @@ import Novedades from './pages/Novedades.jsx';
 import Calendario from './pages/Calendario.jsx';
 import Foro from './pages/Foro.jsx';
 import Biblioteca from './pages/Biblioteca.jsx';
+import Finales from './pages/Finales.jsx';
+import InscripcionMaterias from './pages/InscripcionMaterias.jsx';
 import Ajustes from './pages/Ajustes.jsx';
 import Login from './pages/Login.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
@@ -37,9 +40,12 @@ export default function App() {
   // El inicio de sesión ocupa la pantalla entera: no lleva menú lateral.
   if (pathname === '/login') {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+        </Routes>
+        <Avisos />
+      </>
     );
   }
 
@@ -51,7 +57,13 @@ export default function App() {
           <Route path="/" element={<Navigate to="/novedades" replace />} />
           <Route path="/novedades" element={<Novedades />} />
           <Route path="/modulos" element={<Modulos />} />
+          {/* Va antes que /modulos/:id para que "inscripciones" no se tome
+              como el identificador de un módulo */}
+          <Route path="/modulos/inscripciones" element={<InscripcionMaterias />} />
           <Route path="/modulos/:id" element={<Modulo />} />
+          {/* Las tres pantallas de Finales. Sin vista, va a Inscripciones */}
+          <Route path="/finales" element={<Navigate to="/finales/inscripciones" replace />} />
+          <Route path="/finales/:vista" element={<Finales />} />
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/foro" element={<Foro />} />
           <Route path="/mensajes" element={<Mensajes />} />
@@ -60,6 +72,8 @@ export default function App() {
           <Route path="*" element={<EnConstruccion titulo="Página no encontrada" />} />
         </Routes>
       </main>
+      {/* Fuera de <main>: se superpone a todo y no pertenece a la pantalla */}
+      <Avisos />
     </div>
   );
 }

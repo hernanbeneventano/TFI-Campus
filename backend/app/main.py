@@ -19,7 +19,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import datos as d
-from .rutas import biblioteca, calendario, cursos, foro, mensajes, novedades, tareas
+from .rutas import biblioteca, calendario, cursos, finales, foro, inscripciones
+from .rutas import mensajes, novedades, tareas
 from .rutas import salud as rutas_salud
 from .servicios import certificados
 from .servicios.autenticacion import identificar
@@ -206,6 +207,8 @@ app.include_router(novedades.router)
 app.include_router(calendario.router)
 app.include_router(foro.router)
 app.include_router(biblioteca.router)
+app.include_router(finales.router)
+app.include_router(inscripciones.router)
 app.include_router(rutas_salud.router)
 
 
