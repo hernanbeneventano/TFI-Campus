@@ -392,3 +392,22 @@ export const IconoInscribirse = (p) => (
     <path d="M16 13v6M13 16h6" />
   </svg>
 );
+
+export const IconoLapiz = (p) => (
+  <svg {...base} width={16} height={16} {...p}>
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+export const IconoMas = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+export const IconoUbicacion = (p) => (
+  <svg {...base} width={16} height={16} {...p}>
+    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" />
+    <circle cx="12" cy="9.5" r="2.5" />
+  </svg>
+);

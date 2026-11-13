@@ -1,12 +1,19 @@
-// Finales: las tres pantallas del estudiante.
+// Finales: tres pantallas para el estudiante y tres para el docente.
 //
-// Inscripciones (las mesas y el botón para anotarse), Fechas próximas (lo que
-// se viene, en orden) y Resultados (el historial de finales rendidos).
+// El estudiante ve Inscripciones (las mesas y el botón para anotarse), Fechas
+// próximas (lo que se viene, en orden) y Resultados (el historial de finales
+// rendidos). El docente ve las mismas mesas del otro lado del mostrador:
+// Inscriptos (quiénes se anotaron, con sus datos académicos), Fechas (crear,
+// reprogramar y cancelar) y Resultados (cargar las notas y cerrar el acta).
 //
-// Las tres viven en esta ruta porque comparten la cabecera y las pestañas, y
-// porque los datos de una son los de la otra vistos de otro modo. Cuál se
-// muestra sale de la URL (`/finales/:vista`), no del estado: así el enlace a
-// una pestaña se puede compartir y sobrevive a recargar la página.
+// **Cuál de las dos mitades se muestra lo decide el rol**, no la ruta: las
+// dos viven en `/finales/:vista` y comparten la cabecera y las pestañas. Son
+// dos componentes separados porque cada uno pide lo suyo, y los hooks no
+// pueden ir dentro de un `if`. La gestión docente, además, está repartida en
+// `components/finales/`: son tres pantallas grandes y no entran cómodas acá.
+//
+// Cuál vista se muestra sale de la URL y no del estado: así el enlace a una
+// pestaña se puede compartir y sobrevive a recargar la página.
 
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, useParams, Navigate } from 'react-router-dom';
@@ -17,7 +24,12 @@ import {
   obtenerResultadosFinales,
   inscribirseAMesa,
   cancelarInscripcionMesa,
+  obtenerMesasGestion,
+  obtenerOpcionesFinales,
 } from '../services/api.js';
+import Inscriptos from '../components/finales/Inscriptos.jsx';
+import FechasDeMesas from '../components/finales/Fechas.jsx';
+import ResultadosDeMesas from '../components/finales/Resultados.jsx';
 import { fechaConDia, fechaLarga, enDias, diasHasta } from '../services/fechas.js';
 import Encabezado from '../components/Encabezado.jsx';
 import Confirmacion from '../components/Confirmacion.jsx';
@@ -33,9 +45,17 @@ import {
   IconoVolver,
 } from '../components/Iconos.jsx';
 
-const VISTAS = [
+const VISTAS_ALUMNO = [
   { id: 'inscripciones', nombre: 'Inscripciones', Icono: IconoFinales },
   { id: 'fechas', nombre: 'Fechas próximas', Icono: IconoCalendario },
+  { id: 'resultados', nombre: 'Resultados', Icono: IconoNotas },
+];
+
+// Las del docente. Van en la misma ruta, con las mismas pestañas: para la
+// cátedra son las mismas mesas, vistas desde el otro lado.
+const VISTAS_DOCENTE = [
+  { id: 'inscriptos', nombre: 'Inscriptos', Icono: IconoPersonas },
+  { id: 'fechas', nombre: 'Fechas', Icono: IconoCalendario },
   { id: 'resultados', nombre: 'Resultados', Icono: IconoNotas },
 ];
 
@@ -49,6 +69,8 @@ const ESTADOS = {
   Cancelado: { clase: 'espera', Icono: IconoAdvertencia },
   'Sin cupos disponibles': { clase: 'apagado', Icono: IconoAdvertencia, corto: 'Sin cupos' },
   'No habilitado': { clase: 'apagado', Icono: IconoAdvertencia },
+  // La cátedra la canceló desde la gestión docente: no se va a tomar
+  'Mesa cancelada': { clase: 'cancelada', Icono: IconoAdvertencia, corto: 'Cancelada' },
 };
 
 // El estado entero queda en el `title`: en la etiqueta no entra y el motivo
@@ -120,7 +142,9 @@ function Mesa({ mesa, onInscribirse, onCancelar, trabajando }) {
           <div>
             <dt>Lugares</dt>
             <dd>
-              <IconoPersonas width={14} height={14} /> {mesa.inscriptos} de {mesa.cupo}
+              <IconoPersonas width={14} height={14} />{' '}
+              {/* Sin cupo = sin límite: así la carga la gestión docente */}
+              {mesa.cupo ? `${mesa.inscriptos} de ${mesa.cupo}` : `${mesa.inscriptos}, sin límite`}
             </dd>
           </div>
         </dl>
@@ -448,23 +472,19 @@ function Resultados({ datos }) {
   );
 }
 
-// ===================== La pantalla =====================
-const DESCRIPCIONES = {
+// ===================== La mitad del alumno =====================
+const DESCRIPCIONES_ALUMNO = {
   inscripciones: 'Las mesas de examen de las materias que tenés en condiciones de rendir.',
   fechas: 'Todo lo que se viene, en orden. Lo que ya tomaste va destacado.',
   resultados: 'Los finales que rendiste, con su nota y su condición.',
 };
 
-export default function Finales() {
-  const { vista } = useParams();
+function FinalesAlumno({ vista }) {
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
-  const valida = VISTAS.some((v) => v.id === vista);
-
   const traer = useCallback(async () => {
-    if (!valida) return;
     const pedido = {
       inscripciones: obtenerMesas,
       fechas: obtenerProximasMesas,
@@ -481,21 +501,121 @@ export default function Finales() {
     } finally {
       setCargando(false);
     }
-  }, [vista, valida]);
+  }, [vista]);
 
   useEffect(() => {
     traer();
   }, [traer]);
 
-  // Una vista inventada en la URL vuelve a la primera
-  if (!valida) return <Navigate to="/finales/inscripciones" replace />;
+  if (cargando) return <p className="vacio">Cargando…</p>;
+  if (error) return <Problema error={error} alReintentar={traer} />;
+  if (!datos) return null;
+
+  return (
+    <div className="cuerpo-finales">
+      {vista === 'inscripciones' && <Inscripciones datos={datos} recargar={traer} />}
+      {vista === 'fechas' && <Fechas datos={datos} />}
+      {vista === 'resultados' && <Resultados datos={datos} />}
+    </div>
+  );
+}
+
+// ===================== La mitad del docente =====================
+const DESCRIPCIONES_DOCENTE = {
+  inscriptos: 'Quiénes se anotaron en cada mesa, con sus datos académicos.',
+  fechas: 'Creá, modificá o cancelá las mesas de examen de tus materias.',
+  resultados: 'Cargá las notas de cada mesa y cerrá el acta cuando estén todas.',
+};
+
+function FinalesDocente({ vista }) {
+  const [opciones, setOpciones] = useState(null);
+  const [mesas, setMesas] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Las mesas se piden acá una sola vez y las comparten las tres vistas:
+  // crear una en Fechas tiene que verse enseguida en Inscriptos y Resultados.
+  const traerMesas = useCallback(
+    () =>
+      obtenerMesasGestion()
+        .then(setMesas)
+        .catch((e) => setError(e.message)),
+    []
+  );
+
+  const traer = useCallback(() => {
+    setError(null);
+    obtenerOpcionesFinales()
+      .then(setOpciones)
+      .catch((e) => setError(e.message));
+    return traerMesas();
+  }, [traerMesas]);
+
+  useEffect(() => {
+    traer();
+  }, [traer]);
+
+  if (error) return <Problema error={error} alReintentar={traer} />;
+  if (!opciones || !mesas) return <p className="vacio">Cargando…</p>;
+
+  return (
+    // `key` para que al cambiar de pestaña la vista vuelva a entrar con su
+    // fundido: las mesas ya están pedidas, así que sin esto no se remonta.
+    <div className="cuerpo-finales" key={vista}>
+      {vista === 'inscriptos' && <Inscriptos mesas={mesas} />}
+      {vista === 'fechas' && (
+        <FechasDeMesas opciones={opciones} mesas={mesas} onCambio={traerMesas} />
+      )}
+      {vista === 'resultados' && (
+        <ResultadosDeMesas opciones={opciones} mesas={mesas} onCambio={traerMesas} />
+      )}
+    </div>
+  );
+}
+
+// ===================== La pantalla =====================
+function Problema({ error, alReintentar }) {
+  return (
+    <p className="aviso-error">
+      {error}{' '}
+      <button type="button" className="boton-suave" onClick={alReintentar}>
+        <IconoVolver width={15} height={15} /> Reintentar
+      </button>
+    </p>
+  );
+}
+
+export default function Finales({ usuario }) {
+  const { vista } = useParams();
+
+  // Hasta saber quién mira no se puede elegir la mitad: mostrar la del rol
+  // equivocado y cambiarla un instante después es peor que esperar.
+  if (!usuario) {
+    return (
+      <div className="pagina">
+        <Encabezado titulo="Finales" />
+        <p className="vacio">Cargando…</p>
+      </div>
+    );
+  }
+
+  const esDocente = usuario.rol === 'Docente';
+  const vistas = esDocente ? VISTAS_DOCENTE : VISTAS_ALUMNO;
+  const descripciones = esDocente ? DESCRIPCIONES_DOCENTE : DESCRIPCIONES_ALUMNO;
+
+  // Una vista inventada en la URL vuelve a la primera. También cae acá la
+  // vista del otro rol: un docente que abre un enlace a /finales/inscripciones
+  // va a sus Inscriptos, que es lo que esa palabra significa para él.
+  if (!vistas.some((v) => v.id === vista)) {
+    return <Navigate to={`/finales/${vistas[0].id}`} replace />;
+  }
 
   return (
     <div className="pagina">
-      <Encabezado titulo="Finales" descripcion={DESCRIPCIONES[vista]} />
+      <Encabezado titulo="Finales" descripcion={descripciones[vista]} />
 
+      {/* En celular el menú no muestra sublistas: acá están siempre a mano */}
       <nav className="pestanas" aria-label="Secciones de Finales">
-        {VISTAS.map(({ id, nombre, Icono }) => (
+        {vistas.map(({ id, nombre, Icono }) => (
           <NavLink
             key={id}
             to={`/finales/${id}`}
@@ -507,24 +627,7 @@ export default function Finales() {
         ))}
       </nav>
 
-      {cargando && <p className="vacio">Cargando…</p>}
-
-      {error && (
-        <p className="aviso-error">
-          {error}{' '}
-          <button type="button" className="boton-suave" onClick={traer}>
-            <IconoVolver width={15} height={15} /> Reintentar
-          </button>
-        </p>
-      )}
-
-      {!cargando && !error && datos && (
-        <div className="cuerpo-finales">
-          {vista === 'inscripciones' && <Inscripciones datos={datos} recargar={traer} />}
-          {vista === 'fechas' && <Fechas datos={datos} />}
-          {vista === 'resultados' && <Resultados datos={datos} />}
-        </div>
-      )}
+      {esDocente ? <FinalesDocente vista={vista} /> : <FinalesAlumno vista={vista} />}
     </div>
   );
 }

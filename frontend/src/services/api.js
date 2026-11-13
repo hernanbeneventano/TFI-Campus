@@ -114,6 +114,34 @@ export const obtenerResultadosFinales = () => pedir('/finales/resultados');
 export const inscribirseAMesa = (id) => enviar(`/finales/mesas/${id}/inscripcion`, {});
 export const cancelarInscripcionMesa = (id) => borrar(`/finales/mesas/${id}/inscripcion`);
 
+// --- Finales: la gestión docente ---
+// Cuelga de /finales/gestion porque son los mismos datos vistos con otros
+// permisos: el alumno pregunta si puede rendir, la cátedra qué hace con la
+// mesa. El servidor decide qué mesas ve cada docente y qué puede hacer con
+// ellas: cada mesa trae puedeEditar y puedeCalificar, pero la verificación
+// que vale es la de allá.
+export const obtenerOpcionesFinales = () => pedir('/finales/gestion/opciones');
+
+export const obtenerMesasGestion = () => pedir('/finales/gestion/mesas');
+export const obtenerMesaGestion = (id) => pedir(`/finales/gestion/mesas/${id}`);
+
+export const obtenerInscriptosFinales = (filtros = {}) => {
+  const parametros = new URLSearchParams(
+    Object.entries(filtros).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  );
+  const consulta = parametros.toString();
+  return pedir(`/finales/gestion/inscriptos${consulta ? `?${consulta}` : ''}`);
+};
+
+export const crearMesa = (datos) => enviar('/finales/gestion/mesas', datos);
+export const editarMesa = (id, datos) => actualizar(`/finales/gestion/mesas/${id}`, datos);
+export const cancelarMesa = (id, motivo) =>
+  enviar(`/finales/gestion/mesas/${id}/cancelar`, { motivo });
+
+export const guardarResultados = (id, resultados) =>
+  actualizar(`/finales/gestion/mesas/${id}/resultados`, { resultados });
+export const cerrarActa = (id) => enviar(`/finales/gestion/mesas/${id}/cerrar-acta`, {});
+
 // --- Inscripción a materias ---
 // Al inscribirse, la materia entra sola a Módulos: el menú lateral tiene su
 // propia copia de los módulos, así que hay que avisarle. Es el mismo truco

@@ -48,9 +48,17 @@ const textoEstado = {
 const GRUPO_MATERIAS = '__materias';
 
 // Finales cuelga tres pantallas fijas, igual que Módulos cuelga las materias.
+// Son tres para el estudiante y tres para el docente: las mismas mesas de
+// examen vistas de los dos lados del mostrador (ver `pages/Finales.jsx`).
 const SUBMENU_FINALES = [
   { ruta: '/finales/inscripciones', nombre: 'Inscripciones' },
   { ruta: '/finales/fechas', nombre: 'Fechas próximas' },
+  { ruta: '/finales/resultados', nombre: 'Resultados' },
+];
+
+const SUBMENU_FINALES_DOCENTE = [
+  { ruta: '/finales/inscriptos', nombre: 'Inscriptos' },
+  { ruta: '/finales/fechas', nombre: 'Fechas' },
   { ruta: '/finales/resultados', nombre: 'Resultados' },
 ];
 
@@ -91,6 +99,11 @@ export default function MenuLateral({ usuario, contadores }) {
   const ruta = useLocation().pathname;
   const enModulo = esPantallaDeModulo(ruta);
   const enFinales = ruta.startsWith('/finales');
+
+  // El menú es el mismo para todos salvo en dos lugares: qué cuelga de
+  // Finales y que inscribirse a materias es cosa del estudiante.
+  const esDocente = usuario?.rol === 'Docente';
+  const submenuFinales = esDocente ? SUBMENU_FINALES_DOCENTE : SUBMENU_FINALES;
   const estado = usePresencia();
 
   // Los módulos se listan colgando de su opción, para saltar de uno a otro
@@ -227,7 +240,7 @@ export default function MenuLateral({ usuario, contadores }) {
               <li key={destino}>
                 <div className={hijos ? 'menu-fila con-hijos' : 'menu-fila'}>
                   <NavLink
-                    to={conFinales ? '/finales/inscripciones' : destino}
+                    to={conFinales ? submenuFinales[0].ruta : destino}
                     // Plegado, el nombre sale al costado en un globo propio
                     // (ver `.menu.cerrado .menu-item::after`). El `title` del
                     // navegador se saca ahí para que no salgan los dos.
@@ -271,7 +284,7 @@ export default function MenuLateral({ usuario, contadores }) {
                   <div className={abierto ? 'menu-panel abierto' : 'menu-panel'}>
                     <div className="menu-panel-interior">
                       <ul className="menu-modulos">
-                        {SUBMENU_FINALES.map((pantalla) => (
+                        {submenuFinales.map((pantalla) => (
                           <li key={pantalla.ruta}>
                             <NavLink
                               to={pantalla.ruta}
@@ -298,46 +311,52 @@ export default function MenuLateral({ usuario, contadores }) {
                         {/* "Materias" es un grupo más, como un cuatrimestre:
                             se pliega igual y recuerda su estado igual. Adentro
                             va la inscripción, que es lo que se hace con las
-                            materias que todavía no cursás. */}
-                        <li>
-                          <button
-                            type="button"
-                            className={
-                              materiasCerrado ? 'menu-periodo' : 'menu-periodo abierto'
-                            }
-                            onClick={() => alternarPeriodo(GRUPO_MATERIAS)}
-                            aria-expanded={!materiasCerrado}
-                            tabIndex={desplegados ? 0 : -1}
-                            title="Materias de tu carrera"
-                          >
-                            <IconoFlecha width={13} height={13} />
-                            <span>Materias</span>
-                          </button>
+                            materias que todavía no cursás.
 
-                          <div
-                            className={materiasCerrado ? 'menu-panel' : 'menu-panel abierto'}
-                          >
-                            <div className="menu-panel-interior">
-                              <ul className="menu-modulos">
-                                <li>
-                                  <NavLink
-                                    to="/modulos/inscripciones"
-                                    tabIndex={desplegados && !materiasCerrado ? 0 : -1}
-                                    title="Inscribirte a materias de tu carrera"
-                                    className={({ isActive }) =>
-                                      isActive ? 'menu-subitem activo' : 'menu-subitem'
-                                    }
-                                  >
-                                    <span className="menu-hueco" aria-hidden="true">
-                                      <IconoInscribirse width={13} height={13} />
-                                    </span>
-                                    <span className="menu-etiqueta">Inscribirme</span>
-                                  </NavLink>
-                                </li>
-                              </ul>
+                            Al docente no se le muestra: no se inscribe a
+                            materias, y el servidor le contesta que no está
+                            inscripto a ninguna carrera. */}
+                        {!esDocente && (
+                          <li>
+                            <button
+                              type="button"
+                              className={
+                                materiasCerrado ? 'menu-periodo' : 'menu-periodo abierto'
+                              }
+                              onClick={() => alternarPeriodo(GRUPO_MATERIAS)}
+                              aria-expanded={!materiasCerrado}
+                              tabIndex={desplegados ? 0 : -1}
+                              title="Materias de tu carrera"
+                            >
+                              <IconoFlecha width={13} height={13} />
+                              <span>Materias</span>
+                            </button>
+
+                            <div
+                              className={materiasCerrado ? 'menu-panel' : 'menu-panel abierto'}
+                            >
+                              <div className="menu-panel-interior">
+                                <ul className="menu-modulos">
+                                  <li>
+                                    <NavLink
+                                      to="/modulos/inscripciones"
+                                      tabIndex={desplegados && !materiasCerrado ? 0 : -1}
+                                      title="Inscribirte a materias de tu carrera"
+                                      className={({ isActive }) =>
+                                        isActive ? 'menu-subitem activo' : 'menu-subitem'
+                                      }
+                                    >
+                                      <span className="menu-hueco" aria-hidden="true">
+                                        <IconoInscribirse width={13} height={13} />
+                                      </span>
+                                      <span className="menu-etiqueta">Inscribirme</span>
+                                    </NavLink>
+                                  </li>
+                                </ul>
+                              </div>
                             </div>
-                          </div>
-                        </li>
+                          </li>
+                        )}
 
                         {porPeriodo.map(({ periodo, modulos: delPeriodo }) => {
                           const periodoCerrado = periodosCerrados.includes(periodo);

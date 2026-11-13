@@ -420,6 +420,48 @@
    "rol": "Docente",
    "accesoHaceMin": 720,
    "correo": "jorge.romero@campustfi.edu.ar"
+  },
+  {
+   "id": 12,
+   "nombre": "Valentina Ríos",
+   "rol": "Estudiante",
+   "accesoHaceMin": 40,
+   "correo": "valentina.rios@campustfi.edu.ar"
+  },
+  {
+   "id": 13,
+   "nombre": "Matías Ojeda",
+   "rol": "Estudiante",
+   "accesoHaceMin": 260,
+   "correo": "matias.ojeda@campustfi.edu.ar"
+  },
+  {
+   "id": 14,
+   "nombre": "Florencia Vera",
+   "rol": "Estudiante",
+   "accesoHaceMin": 2900,
+   "correo": "florencia.vera@campustfi.edu.ar"
+  },
+  {
+   "id": 15,
+   "nombre": "Nicolás Aguirre",
+   "rol": "Estudiante",
+   "accesoHaceMin": 15,
+   "correo": "nicolas.aguirre@campustfi.edu.ar"
+  },
+  {
+   "id": 16,
+   "nombre": "Julieta Medina",
+   "rol": "Estudiante",
+   "accesoHaceMin": 600,
+   "correo": "julieta.medina@campustfi.edu.ar"
+  },
+  {
+   "id": 17,
+   "nombre": "Ramiro Cabrera",
+   "rol": "Estudiante",
+   "accesoHaceMin": 9000,
+   "correo": "ramiro.cabrera@campustfi.edu.ar"
   }
  ],
  "participantes": {
@@ -1252,7 +1294,6 @@
   "aprobado",
   "rechazado"
  ],
-
  "materiasPlan": [
   {
    "id": 101,
@@ -1573,6 +1614,76 @@
    "plan": "2023",
    "legajo": "SIS-2024-0187",
    "ingreso": 2024
+  },
+  {
+   "personaId": 3,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "58.230",
+   "ingreso": 2024
+  },
+  {
+   "personaId": 4,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "57.902",
+   "ingreso": 2023
+  },
+  {
+   "personaId": 5,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "56.118",
+   "ingreso": 2022
+  },
+  {
+   "personaId": 6,
+   "carrera": "Profesorado en Matemática",
+   "plan": "2023",
+   "legajo": "58.477",
+   "ingreso": 2024
+  },
+  {
+   "personaId": 12,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "58.501",
+   "ingreso": 2024
+  },
+  {
+   "personaId": 13,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "57.640",
+   "ingreso": 2023
+  },
+  {
+   "personaId": 14,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "56.873",
+   "ingreso": 2022
+  },
+  {
+   "personaId": 15,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "57.315",
+   "ingreso": 2023
+  },
+  {
+   "personaId": 16,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "58.066",
+   "ingreso": 2024
+  },
+  {
+   "personaId": 17,
+   "carrera": "Licenciatura en Sistemas de Información",
+   "plan": "2023",
+   "legajo": "55.920",
+   "ingreso": 2021
   }
  ],
  "historialAcademico": [
@@ -1695,6 +1806,266 @@
     "__fecha": "aDias",
     "n": -75
    }
+  },
+  {
+   "personaId": 3,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 9,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -330
+   }
+  },
+  {
+   "personaId": 4,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -680
+   }
+  },
+  {
+   "personaId": 5,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -900
+   }
+  },
+  {
+   "personaId": 12,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 10,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -330
+   }
+  },
+  {
+   "personaId": 13,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 8,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -600
+   }
+  },
+  {
+   "personaId": 14,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 9,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -900
+   }
+  },
+  {
+   "personaId": 15,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -680
+   }
+  },
+  {
+   "personaId": 16,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -330
+   }
+  },
+  {
+   "personaId": 17,
+   "materiaId": 103,
+   "condicion": "Aprobada",
+   "nota": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1200
+   }
+  },
+  {
+   "personaId": 3,
+   "materiaId": 102,
+   "condicion": "Aprobada",
+   "nota": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -300
+   }
+  },
+  {
+   "personaId": 4,
+   "materiaId": 102,
+   "condicion": "Aprobada",
+   "nota": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -560
+   }
+  },
+  {
+   "personaId": 5,
+   "materiaId": 102,
+   "condicion": "Aprobada",
+   "nota": 8,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -880
+   }
+  },
+  {
+   "personaId": 17,
+   "materiaId": 102,
+   "condicion": "Aprobada",
+   "nota": 9,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1150
+   }
+  },
+  {
+   "personaId": 3,
+   "materiaId": 107,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   }
+  },
+  {
+   "personaId": 4,
+   "materiaId": 107,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   }
+  },
+  {
+   "personaId": 12,
+   "materiaId": 107,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   }
+  },
+  {
+   "personaId": 16,
+   "materiaId": 107,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   }
+  },
+  {
+   "personaId": 4,
+   "materiaId": 110,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -100
+   }
+  },
+  {
+   "personaId": 3,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 4,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 5,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 12,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 13,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 15,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 16,
+   "materiaId": 109,
+   "condicion": "Regular",
+   "nota": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -110
+   }
+  },
+  {
+   "personaId": 14,
+   "materiaId": 109,
+   "condicion": "Aprobada",
+   "nota": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   }
   }
  ],
  "periodoInscripcionMaterias": {
@@ -1770,7 +2141,12 @@
     "__fecha": "aDias",
     "n": 9
    },
-   "llamado": "1.er llamado"
+   "llamado": "1.er llamado",
+   "instancia": "Escrito y oral",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
   },
   {
    "id": 2,
@@ -1796,7 +2172,12 @@
     "__fecha": "aDias",
     "n": 15
    },
-   "llamado": "1.er llamado"
+   "llamado": "1.er llamado",
+   "instancia": "Escrito",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
   },
   {
    "id": 3,
@@ -1822,7 +2203,12 @@
     "__fecha": "aDias",
     "n": 37
    },
-   "llamado": "2.º llamado"
+   "llamado": "2.º llamado",
+   "instancia": "Oral",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
   },
   {
    "id": 4,
@@ -1848,7 +2234,12 @@
     "__fecha": "aDias",
     "n": 17
    },
-   "llamado": "1.er llamado"
+   "llamado": "1.er llamado",
+   "instancia": "Escrito",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
   },
   {
    "id": 5,
@@ -1874,7 +2265,195 @@
     "__fecha": "aDias",
     "n": 22
    },
-   "llamado": "1.er llamado"
+   "llamado": "1.er llamado",
+   "instancia": "Escrito y oral",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
+  },
+  {
+   "id": 6,
+   "materiaId": 109,
+   "tribunal": [
+    2,
+    11
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -3
+   },
+   "desde": "16:00",
+   "hasta": "19:00",
+   "modalidad": "Presencial",
+   "instancia": "Escrito",
+   "lugar": "Lab. 3",
+   "cupo": 30,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -20
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": -6
+   },
+   "llamado": "Turno noviembre · 1.er llamado",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
+  },
+  {
+   "id": 7,
+   "materiaId": 109,
+   "tribunal": [
+    2,
+    11
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   },
+   "desde": "16:00",
+   "hasta": "19:00",
+   "modalidad": "Presencial",
+   "instancia": "Escrito",
+   "lugar": "Aula 7",
+   "cupo": 30,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -140
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": -124
+   },
+   "llamado": "Turno julio · 2.º llamado",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": true,
+   "historial": [
+    {
+     "fecha": {
+      "__fecha": "aDias",
+      "n": -119
+     },
+     "accion": "Cargó notas",
+     "detalle": "3 en la planilla",
+     "por": "María Gómez"
+    },
+    {
+     "fecha": {
+      "__fecha": "aDias",
+      "n": -119
+     },
+     "accion": "Cerró el acta",
+     "detalle": "3 resultados confirmados",
+     "por": "María Gómez"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "materiaId": 109,
+   "tribunal": [
+    2,
+    11
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 5
+   },
+   "desde": "16:00",
+   "hasta": "19:00",
+   "modalidad": "Presencial",
+   "instancia": "Escrito",
+   "lugar": "Lab. 3",
+   "cupo": 30,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -12
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 2
+   },
+   "llamado": "Turno noviembre · 2.º llamado",
+   "estado": "cancelada",
+   "motivoCancelacion": "Se superpone con la jornada institucional. Los inscriptos pueden anotarse en el turno de diciembre.",
+   "actaCerrada": false,
+   "historial": [
+    {
+     "fecha": {
+      "__fecha": "aDias",
+      "n": -2
+     },
+     "accion": "Canceló la mesa",
+     "detalle": "Se superpone con la jornada institucional.",
+     "por": "María Gómez"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "materiaId": 109,
+   "tribunal": [
+    2
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 90
+   },
+   "desde": "16:00",
+   "hasta": "20:00",
+   "modalidad": "Mixta",
+   "instancia": "Escrito",
+   "lugar": "Lab. 3 y sala virtual",
+   "cupo": null,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": 70
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 85
+   },
+   "llamado": "Turno febrero 2027 · 1.er llamado",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
+  },
+  {
+   "id": 10,
+   "materiaId": 109,
+   "tribunal": [
+    2,
+    11
+   ],
+   "fecha": {
+    "__fecha": "aDias",
+    "n": 12
+   },
+   "desde": "16:00",
+   "hasta": "19:00",
+   "modalidad": "Presencial",
+   "instancia": "Escrito y oral",
+   "lugar": "Aula Magna",
+   "cupo": 25,
+   "inscripcionDesde": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "inscripcionHasta": {
+    "__fecha": "aDias",
+    "n": 8
+   },
+   "llamado": "Turno diciembre · 1.er llamado",
+   "estado": "programada",
+   "motivoCancelacion": null,
+   "actaCerrada": false,
+   "historial": []
   }
  ],
  "inscripcionesFinales": [
@@ -1886,7 +2465,10 @@
     "__fecha": "aDias",
     "n": -2
    },
-   "estado": "Inscripto"
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
   },
   {
    "id": 2,
@@ -1896,7 +2478,10 @@
     "__fecha": "aDias",
     "n": -4
    },
-   "estado": "Inscripto"
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
   },
   {
    "id": 3,
@@ -1906,7 +2491,231 @@
     "__fecha": "aDias",
     "n": -4
    },
-   "estado": "Inscripto"
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 4,
+   "personaId": 3,
+   "mesaId": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -15
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": 8,
+   "resultado": "Aprobado"
+  },
+  {
+   "id": 5,
+   "personaId": 4,
+   "mesaId": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -12
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": "Ausente"
+  },
+  {
+   "id": 6,
+   "personaId": 12,
+   "mesaId": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 7,
+   "personaId": 13,
+   "mesaId": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -8
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 8,
+   "personaId": 5,
+   "mesaId": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -10
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 9,
+   "personaId": 6,
+   "mesaId": 6,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -11
+   },
+   "estado": "Cancelado",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 10,
+   "personaId": 5,
+   "mesaId": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -130
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": 4,
+   "resultado": "Desaprobado"
+  },
+  {
+   "id": 11,
+   "personaId": 14,
+   "mesaId": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -131
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": 7,
+   "resultado": "Aprobado"
+  },
+  {
+   "id": 12,
+   "personaId": 15,
+   "mesaId": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -128
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": "Ausente"
+  },
+  {
+   "id": 13,
+   "personaId": 15,
+   "mesaId": 10,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -3
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 14,
+   "personaId": 16,
+   "mesaId": 10,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 15,
+   "personaId": 17,
+   "mesaId": 10,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 16,
+   "personaId": 14,
+   "mesaId": 10,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1
+   },
+   "estado": "Cancelado",
+   "comision": "B",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 17,
+   "personaId": 12,
+   "mesaId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 18,
+   "personaId": 16,
+   "mesaId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -3
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 19,
+   "personaId": 4,
+   "mesaId": 4,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "estado": "Inscripto",
+   "comision": "A",
+   "nota": null,
+   "resultado": null
+  },
+  {
+   "id": 20,
+   "personaId": 13,
+   "mesaId": 8,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   },
+   "estado": "Inscripto",
+   "comision": "B",
+   "nota": null,
+   "resultado": null
   }
  ],
  "resultadosFinales": [
@@ -2013,6 +2822,240 @@
    "nota": 8,
    "condicion": "Aprobado",
    "llamado": "1.er llamado"
+  },
+  {
+   "id": 9,
+   "personaId": 3,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -330
+   },
+   "nota": 9,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 10,
+   "personaId": 3,
+   "materiaId": 102,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -300
+   },
+   "nota": 6,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 11,
+   "personaId": 4,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -680
+   },
+   "nota": 6,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 12,
+   "personaId": 4,
+   "materiaId": 102,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -640
+   },
+   "nota": 4,
+   "condicion": "Desaprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 13,
+   "personaId": 4,
+   "materiaId": 102,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -560
+   },
+   "nota": 7,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 14,
+   "personaId": 5,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -900
+   },
+   "nota": 7,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 15,
+   "personaId": 5,
+   "materiaId": 102,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -880
+   },
+   "nota": 8,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 16,
+   "personaId": 12,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -330
+   },
+   "nota": 10,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 17,
+   "personaId": 13,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -680
+   },
+   "nota": 5,
+   "condicion": "Desaprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 18,
+   "personaId": 13,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -600
+   },
+   "nota": 8,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 19,
+   "personaId": 14,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -900
+   },
+   "nota": 9,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 20,
+   "personaId": 15,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -680
+   },
+   "nota": 7,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 21,
+   "personaId": 16,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -330
+   },
+   "nota": 6,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 22,
+   "personaId": 17,
+   "materiaId": 103,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1200
+   },
+   "nota": 6,
+   "condicion": "Aprobado",
+   "llamado": "1.er llamado"
+  },
+  {
+   "id": 23,
+   "personaId": 17,
+   "materiaId": 102,
+   "mesaId": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1150
+   },
+   "nota": 9,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 24,
+   "personaId": 5,
+   "materiaId": 109,
+   "mesaId": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   },
+   "nota": 4,
+   "condicion": "Desaprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 25,
+   "personaId": 14,
+   "materiaId": 109,
+   "mesaId": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   },
+   "nota": 7,
+   "condicion": "Aprobado",
+   "llamado": "2.º llamado"
+  },
+  {
+   "id": 26,
+   "personaId": 15,
+   "materiaId": 109,
+   "mesaId": 7,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -120
+   },
+   "nota": null,
+   "condicion": "Ausente",
+   "llamado": "2.º llamado"
   }
  ],
  "CONDICIONES_CURSADA": [
@@ -2025,5 +3068,15 @@
   "Aprobado",
   "Desaprobado",
   "Ausente"
+ ],
+ "MODALIDADES_FINAL": [
+  "Presencial",
+  "Virtual",
+  "Mixta"
+ ],
+ "INSTANCIAS_FINAL": [
+  "Escrito",
+  "Oral",
+  "Escrito y oral"
  ]
 }

@@ -61,9 +61,11 @@ export default function App() {
               como el identificador de un módulo */}
           <Route path="/modulos/inscripciones" element={<InscripcionMaterias />} />
           <Route path="/modulos/:id" element={<Modulo />} />
-          {/* Las tres pantallas de Finales. Sin vista, va a Inscripciones */}
-          <Route path="/finales" element={<Navigate to="/finales/inscripciones" replace />} />
-          <Route path="/finales/:vista" element={<Finales />} />
+          {/* Finales: las tres pantallas del estudiante o las tres del docente,
+              según el rol. Sin vista, la propia pantalla manda a la primera
+              del rol que corresponda, que no es la misma para los dos. */}
+          <Route path="/finales" element={<Finales usuario={usuario} />} />
+          <Route path="/finales/:vista" element={<Finales usuario={usuario} />} />
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/foro" element={<Foro />} />
           <Route path="/mensajes" element={<Mensajes />} />
