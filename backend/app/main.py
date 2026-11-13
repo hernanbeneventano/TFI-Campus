@@ -19,7 +19,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import datos as d
-from .rutas import biblioteca, calendario, cursos, finales, foro, inscripciones
+from .rutas import biblioteca, calendario, cursos, finales, foro, gestion_finales
+from .rutas import inscripciones
 from .rutas import mensajes, novedades, tareas
 from .rutas import salud as rutas_salud
 from .servicios import certificados
@@ -208,6 +209,9 @@ app.include_router(calendario.router)
 app.include_router(foro.router)
 app.include_router(biblioteca.router)
 app.include_router(finales.router)
+# La gestión docente va después de la mitad del alumno: tiene su propio
+# prefijo (/api/finales/gestion), así que el orden no las pisa.
+app.include_router(gestion_finales.router)
 app.include_router(inscripciones.router)
 app.include_router(rutas_salud.router)
 

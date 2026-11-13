@@ -25,13 +25,19 @@ para estudiantes y docentes. Inspiración propia; Blackboard es solo una referen
 frontend/src/
   components/  MenuLateral, Encabezado, BarraHerramientas, TarjetaModulo, PanelTareas,
                CarpetaModulo, VisorItem, PestanasModulo, PanelModulo, BarraProgreso,
+               Confirmacion (cartel de reconfirmación), Avisos (los carteles pasajeros),
                Iconos (SVG propios)
+               finales/  la gestión docente: Inscriptos, Fechas, Resultados,
+                         FormularioMesa y comun.jsx (ver Finales)
   pages/       Novedades (inicio), Modulos, Modulo (interior), Calendario, Foro, Mensajes,
-               Biblioteca, Ajustes, EnConstruccion (página no encontrada)
+               Biblioteca, Finales (las dos mitades), InscripcionMaterias, Ajustes, Login,
+               EnConstruccion (página no encontrada)
   services/    api.js: todas las llamadas al backend (Vite redirige /api a localhost:3000)
                progreso.js: recursos completados y cuentas de avance (hoy en localStorage)
                preferencias.js: ajustes de la interfaz, como el menú plegado
-               fechas.js: hace() → "hace 12 min", "hace 2 horas", "hace 2 meses"
+               fechas.js: hace() → "hace 12 min"; y las absolutas, para lo que tiene día
+                          fijo: fechaConDia(), fechaCorta(), fechaLarga(), enDias()
+               avisos.js: avisar() → el cartelito de arriba a la derecha, por evento
   hooks/       usePresencia.js: si el usuario está conectado, ausente o desconectado
   styles/      global.css: paleta en variables CSS en :root
 backend/app/
@@ -51,6 +57,12 @@ backend/app/
          GET /api/foro, POST /api/foro, GET /api/foro/:id, POST /api/foro/:id (responder)
          GET /api/contadores → { novedades, informacion, modulos, mensajes }: las campanitas del menú
          /api/biblioteca/... → catálogo, aportes, moderación y archivos (ver Biblioteca)
+         /api/finales/... → las mesas del alumno: verlas, anotarse, sus resultados
+         /api/finales/gestion/... → las mismas mesas del lado de la cátedra (ver Finales)
+         /api/inscripciones/materias → el plan de estudios y la inscripción a materias
+  servicios/   academico.py: las reglas académicas que comparten los dos apartados
+               (correlatividades, cupos, períodos y el estado de cada mesa)
+               autenticacion.py: quién consulta, a partir del token de Firebase
 equipo/        información del equipo y planificación de hitos
 ```
 
@@ -514,3 +526,161 @@ Las rutas con nombre fijo van **antes** que `/:id`, si no `favoritos` se tomarí
   más que su autor y los docentes.
 - Rol de administrador de verdad, en vez de que modere cualquier docente.
 - Reportar contenido (la tabla de moderación ya está, falta quién lo denuncia).
+
+## Finales e inscripciones
+
+Dos mitades del mismo apartado, hechas por separado y unidas después: la del
+**estudiante** (ver las mesas, anotarse, mirar sus resultados, inscribirse a
+materias) y la de la **cátedra** (crear mesas, ver inscriptos, cargar notas y
+cerrar actas). Trabajan sobre los mismos datos y las mismas reglas.
+
+**Cuál se muestra lo decide el rol, no la ruta.** Las dos viven en
+`/finales/:vista` y comparten la cabecera y las pestañas:
+
+- Estudiante: `inscripciones` · `fechas` (próximas) · `resultados` (sus notas).
+- Docente: `inscriptos` · `fechas` (crear y reprogramar) · `resultados` (las actas).
+
+`/finales` sin vista manda a la primera del rol, y la vista del otro rol
+también: un docente que abre un enlace a `/finales/inscripciones` cae en sus
+Inscriptos, que es lo que esa palabra significa para él. Son dos componentes
+separados dentro de `pages/Finales.jsx` porque cada uno pide lo suyo y los
+hooks no pueden ir dentro de un `if`; las tres pantallas del docente, que son
+grandes, están en `components/finales/`. El menú lateral cuelga de Finales la
+sublista del rol que corresponda, y le esconde al docente la opción
+"Inscribirme" de Módulos: no se inscribe a materias, y el servidor le
+contestaría que no está inscripto a ninguna carrera.
+
+### El modelo académico
+Las mesas son de una **materia del plan** (`materiasPlan`), no de un módulo:
+la cursada de este cuatrimestre es un módulo, pero el final lo rinde quien
+quedó regular en cualquier cursada anterior. La materia apunta a su módulo con
+`cursoId` cuando lo tiene, y de ahí sale el color: una mesa de Programación II
+se ve del mismo color que su módulo en toda la aplicación. Una materia sin
+cursada abierta no tiene color propio y va en `--oscuro`.
+
+- `materiasPlan`: el plan con sus `correlativas` (una lista de ids). **El plan
+  no está escrito en el código**: cambiar un requisito es cambiar un dato.
+- `historialAcademico`: la condición de cada persona en cada materia.
+  `Aprobada` habilita las correlativas, `Regular` habilita a **rendir el
+  final**, y están `En curso` y `Libre`. Aprobar la cursada y aprobar la
+  materia son dos cosas distintas.
+- `resultadosFinales`: cada final rendido, con nota y condición.
+- `mesasExamen` e `inscripcionesFinales`: las mesas y quiénes se anotaron.
+- `inscripcionCarrera`: legajo, carrera, plan y año de ingreso. Va aparte de
+  `personas` porque los docentes no lo tienen.
+
+La condición del inscripto **no se guarda en la inscripción**: se lee del
+historial, que es de donde la lee también la pantalla del alumno. Guardarla en
+los dos lados sería una copia que puede quedar vieja.
+
+### Las dos rutas
+La mitad del alumno está en `rutas/finales.py` (`/api/finales/...`) y la de la
+cátedra en `rutas/gestion_finales.py` (`/api/finales/gestion/...`). Son dos
+módulos y dos prefijos a propósito: son dos permisos distintos sobre el mismo
+recurso —uno responde "¿puedo rendir?" y el otro "¿qué hago con la mesa?"— y
+mezclarlos obligaría a preguntar el rol en cada función. Las reglas que
+comparten están en `servicios/academico.py`.
+
+```
+GET    /api/finales/mesas                      las mesas y en qué situación está el alumno
+GET    /api/finales/proximas                   lo que se viene, en orden
+GET    /api/finales/resultados                 sus finales rendidos, con el resumen
+POST   /api/finales/mesas/:id/inscripcion      anotarse
+DELETE /api/finales/mesas/:id/inscripcion      darse de baja (queda registrada)
+GET    /api/inscripciones/materias             el plan, con el estado de cada materia
+POST   /api/inscripciones/materias/:id         inscribirse · DELETE para darse de baja
+
+GET    /api/finales/gestion/opciones           materias a cargo, docentes, modalidades, notas
+GET    /api/finales/gestion/mesas              las que puede ver, próximas primero
+GET    /api/finales/gestion/mesas/:id          una mesa con su planilla
+GET    /api/finales/gestion/inscriptos         ?materiaId &mesaId &comision
+POST   /api/finales/gestion/mesas              crear · PUT /:id modificar o reprogramar
+POST   /api/finales/gestion/mesas/:id/cancelar { motivo } obligatorio
+PUT    /api/finales/gestion/mesas/:id/resultados   guardar notas (el acta sigue abierta)
+POST   /api/finales/gestion/mesas/:id/cerrar-acta  confirmar: después no se cambia
+```
+
+### Permisos
+Todo se verifica en el servidor; el frontend solo esconde lo que no va.
+
+- Un estudiante recibe 403 en todo `/api/finales/gestion`.
+- Un docente ve las mesas de las materias que tiene a cargo (`docenteId` de la
+  materia) y las de los tribunales que integra. Una mesa que no puede ver da
+  404, no 403: un 403 confirmaría que existe.
+- Crear, modificar y cancelar: solo el titular de la materia. El titular va
+  siempre primero en el tribunal.
+- Cargar notas y cerrar el acta: el titular o alguien del tribunal, y solo
+  después del examen.
+- No hay rol de administrador: `_es_supervisor` mira si el rol es Administrador
+  o Supervisor, que hoy no existen. Quien supervisa vería todo pero no
+  califica.
+
+Validaciones del servidor al crear o modificar una mesa: fecha futura, horario
+coherente, la inscripción abre antes de cerrar y cierra **antes del día del
+examen**, cupo entre 1 y 500 (vacío = sin límite) y nunca menor que los
+inscriptos, una sola mesa por materia y día, nota entera de 1 a 10 y coherente
+con la condición. Se aprueba con `NOTA_APROBACION` (6), en un solo lugar por si
+la facultad usa otra. La planilla se valida entera antes de escribir: o se
+guarda todo o nada.
+
+### Al cerrar el acta
+Los resultados pasan a `resultadosFinales` y, al que aprobó, la materia le
+queda `Aprobada` en `historialAcademico`. Eso es lo que conecta las dos
+mitades: aprobar el final de Programación I es lo que habilita a inscribirse a
+Programación II. Desaprobar o faltar deja al alumno regular, con el final
+todavía pendiente. A cada uno le llega un mensaje con su nota.
+
+**Avisos**: no hay mails, así que los avisos son mensajes de Mensajes
+(`avisar_por_mensaje` en `datos.py`), del docente al alumno. Encienden la
+campanita de Mensajes. Lo mismo al reprogramar (si cambia fecha, horario,
+lugar o modalidad y hay inscriptos) y al cancelar una mesa.
+
+### Dos cosas que aparecieron al unir las mitades
+- Una mesa **cancelada** por la cátedra no se puede rendir: `estado_de_mesa`
+  la devuelve como `Mesa cancelada` con su motivo y el servidor rechaza la
+  inscripción. Pesa más que cualquier otro estado, incluso que la condición.
+- Una mesa **sin cupo** es una mesa sin límite. El código del alumno asumía que
+  el cupo era siempre un número y se caía con `None`; ahora `lugares` queda en
+  `null` y nunca se queda sin lugar.
+
+### Diseño
+Las pantallas del docente usan el mismo vocabulario que las del alumno:
+`.estado-final` para el estado de una mesa, `.estado-materia` para la condición
+del alumno, `.condicion` para el resultado de un final, `.vacio` para cuando no
+hay nada, `.aviso-error` para los errores, `Confirmacion` para lo que no se
+deshace y `avisar()` para confirmar que algo salió bien. La gestión solo agrega
+lo propio, con prefijo `finales-`: la banda con el color de la materia, el taco
+de almanaque, la planilla del acta y el formulario de la mesa. Nada va
+subrayado.
+
+Dos extensiones a ese vocabulario: `.estado-final.cancelada` (el rojo de
+atención con el borde cortado: no es "no podés", es "no se va a tomar") y
+`.estado-materia.libre`, para que el tribunal vea de un vistazo quién rinde
+libre.
+
+`?mesa=ID` en Inscriptos y Resultados abre esa mesa, igual que `?tarea=` en un
+módulo: lo usan los botones de cada tarjeta de Fechas. "Exportar listado" baja
+un CSV con `;` y BOM, para que Excel en castellano lo abra bien; exporta lo que
+se ve, con los filtros puestos.
+
+### Datos de prueba y pruebas
+En `datos_iniciales.json` hay diez mesas: próximas con la inscripción abierta,
+una por abrir, una sin cupo, una ya tomada con el acta a medio cargar, una con
+el acta cerrada y una cancelada. Alcanza para ver todos los estados. Los
+estudiantes 12 a 17 están para que las mesas tengan gente.
+
+Para ver la mitad del docente, cambiar el `id` de `usuarioActual` en
+`datos.py` a 2 (María Gómez: titular de Programación II y tribunal de
+Algoritmos). Con el 1 (Santiago) se ve la del estudiante.
+
+Pruebas: `python -m pruebas.finales` desde `backend/`. Corren en proceso (no
+hace falta el servidor levantado) porque necesitan actuar como distintas
+personas. Son 46 comprobaciones: permisos, validaciones, el acta y que las dos
+mitades se lleven bien.
+
+### Pendiente de Finales
+- La inscripción a materias con correlatividades ya está; falta el panel de la
+  institución para administrar el plan.
+- Rol de administrador de verdad, en vez de que todo lo decida el titular.
+- Cuando los datos pasen a Firestore, las reglas tienen que repetir estos
+  permisos: que una planilla no la lea nadie más que su tribunal.

@@ -120,6 +120,10 @@ inscripciones_finales: list[dict] = _iniciales["inscripcionesFinales"]
 resultados_finales: list[dict] = _iniciales["resultadosFinales"]
 CONDICIONES_CURSADA: list[str] = _iniciales["CONDICIONES_CURSADA"]
 CONDICIONES_FINAL: list[str] = _iniciales["CONDICIONES_FINAL"]
+# Cómo se toma una mesa. Solo las usa la gestión docente, que es la que las
+# ofrece en el formulario; el alumno las lee ya resueltas en la mesa.
+MODALIDADES_FINAL: list[str] = _iniciales["MODALIDADES_FINAL"]
+INSTANCIAS_FINAL: list[str] = _iniciales["INSTANCIAS_FINAL"]
 
 
 def buscar_materia(id_materia: Any) -> dict | None:
@@ -389,6 +393,8 @@ _proximos = {
     "moderacion": 100,
     "inscripcionMateria": 100,
     "inscripcionFinal": 100,
+    "mesa": 100,
+    "resultadoFinal": 100,
 }
 
 
@@ -432,6 +438,42 @@ def nuevo_id_inscripcion_materia() -> int:
 
 def nuevo_id_inscripcion_final() -> int:
     return _nuevo_id("inscripcionFinal")
+
+
+def nuevo_id_mesa() -> int:
+    return _nuevo_id("mesa")
+
+
+def nuevo_id_resultado_final() -> int:
+    return _nuevo_id("resultadoFinal")
+
+
+# ===================== Avisos por mensaje =====================
+def avisar_por_mensaje(de_id: int, para_id: int, texto: str) -> None:
+    """Deja un mensaje en la conversación entre dos personas, y la crea si no
+    existía.
+
+    Es como se avisa hoy que una mesa se reprogramó, se canceló o ya tiene
+    nota: no hay mails (quedaron para después) y Mensajes ya enciende su
+    campanita con lo que no se leyó.
+    """
+    conversacion = next(
+        (c for c in conversaciones if de_id in c["entre"] and para_id in c["entre"]), None
+    )
+    if conversacion is None:
+        conversacion = {"id": nuevo_id_conversacion(), "entre": [de_id, para_id], "mensajes": []}
+        conversaciones.append(conversacion)
+
+    conversacion["mensajes"].append(
+        {
+            "id": nuevo_id_mensaje(),
+            "deId": de_id,
+            "texto": texto,
+            "adjuntos": [],
+            "fecha": iso(ahora()),
+            "leido": False,
+        }
+    )
 
 
 # ===================== Archivos de la biblioteca =====================

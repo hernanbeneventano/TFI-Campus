@@ -45,6 +45,10 @@ MESA_CERRADA = "Cerrada"
 MESA_CANCELADO = "Cancelado"
 MESA_SIN_CUPO = "Sin cupos disponibles"
 MESA_DISPONIBLE = "Disponible"
+# La cátedra puede cancelar una mesa desde la gestión docente
+# (`rutas/gestion_finales.py`). Pesa más que cualquier otro estado: una
+# mesa que no se va a tomar no se rinde ni se discute el cupo.
+MESA_SUSPENDIDA = "Mesa cancelada"
 
 
 # ===================== Materias =====================
@@ -232,16 +236,26 @@ def estado_de_mesa(persona_id: int, mesa: dict) -> dict:
     abre = d.desde_iso(mesa["inscripcionDesde"])
     cierra = d.desde_iso(mesa["inscripcionHasta"])
     inscriptos = inscriptos_en_mesa(mesa["id"])
-    cupo = mesa["cupo"]
+    # El cupo puede venir vacío: en la gestión docente, una mesa sin cupo es
+    # una mesa sin límite de inscriptos. Entonces no hay lugares que contar y
+    # nunca se queda sin lugar.
+    cupo = mesa.get("cupo")
 
     base = {
         "inscriptos": inscriptos,
         "cupo": cupo,
-        "lugares": max(cupo - inscriptos, 0),
+        "lugares": None if cupo is None else max(cupo - inscriptos, 0),
         "puedeInscribirse": False,
         "puedeCancelar": False,
         "motivo": None,
     }
+
+    if mesa.get("estado") == "cancelada":
+        return {
+            **base,
+            "estado": MESA_SUSPENDIDA,
+            "motivo": mesa.get("motivoCancelacion") or "La cátedra canceló esta mesa.",
+        }
 
     condicion = d.condicion_en(persona_id, mesa["materiaId"])
     if condicion != REGULAR:
@@ -274,7 +288,7 @@ def estado_de_mesa(persona_id: int, mesa: dict) -> dict:
         }
     if ahora > cierra:
         return {**base, "estado": MESA_CERRADA, "motivo": "La inscripción cerró."}
-    if inscriptos >= cupo:
+    if cupo is not None and inscriptos >= cupo:
         return {**base, "estado": MESA_SIN_CUPO, "motivo": "No quedan lugares."}
 
     if cancelacion_en_mesa(persona_id, mesa["id"]):
@@ -307,4 +321,7 @@ def mesa_publica(mesa: dict) -> dict:
         "inscripcionDesde": mesa["inscripcionDesde"],
         "inscripcionHasta": mesa["inscripcionHasta"],
         "tribunal": [p["nombre"] for p in tribunal if p],
+        "cupo": mesa.get("cupo"),
+        "cancelada": mesa.get("estado") == "cancelada",
+        "motivoCancelacion": mesa.get("motivoCancelacion"),
     }

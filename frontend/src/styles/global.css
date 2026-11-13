@@ -6960,3 +6960,1031 @@ a.proxima:hover {
     text-align: left;
   }
 }
+
+/* =====================================================================
+   Finales: la gestión docente
+   =====================================================================
+   Las tres pantallas de la cátedra (Inscriptos, Fechas, Resultados). Siguen
+   el mismo vocabulario que las del alumno —`.estado-final` para el estado de
+   una mesa, `.estado-materia` para la condición del alumno, `.condicion`
+   para el resultado de un final, `.vacio` para cuando no hay nada— y solo
+   agregan lo que es propio de la gestión: la banda con el color de la
+   materia, el taco de almanaque, la planilla del acta y el formulario de la
+   mesa. Las clases propias van con prefijo `finales-` para que no se cruce
+   nada con las del alumno. */
+
+/* ----- Lo que la gestión le suma a ese vocabulario ----- */
+/* Una mesa que la cátedra canceló: no es "no podés", es "no se va a tomar".
+   Lleva el rojo de atención y el borde cortado, que es lo que lo distingue
+   de un estado apagado cualquiera. */
+.estado-final.cancelada {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  border-color: color-mix(in srgb, var(--alerta) 40%, transparent);
+  border-style: dashed;
+  color: var(--alerta);
+}
+
+/* Rendir libre: el tribunal tiene que verlo de un vistazo */
+.estado-materia.libre {
+  background: color-mix(in srgb, var(--progreso-medio) 14%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-medio) 40%, transparent);
+  color: var(--progreso-medio-texto);
+}
+
+/* Un final todavía sin nota en la planilla */
+.condicion.falta {
+  background: transparent;
+  border: 1px dashed var(--borde);
+  color: var(--texto-suave);
+}
+
+/* El recuadro de "no hay nada" del alumno es un párrafo; en la gestión
+   además lleva un ícono, un título y a veces el botón para crear lo que
+   falta. Las reglas son de descendencia, así que donde es solo texto no
+   cambian nada. */
+.vacio svg {
+  color: var(--gris);
+}
+
+.vacio h3 {
+  margin: 10px 0 4px;
+  color: var(--oscuro);
+  font-size: 1.05rem;
+}
+
+.vacio .boton-principal {
+  margin-top: 14px;
+}
+
+/* El menú mide exactamente el alto de la pantalla y no crece de ahí. Con
+   Módulos y Finales desplegados a la vez la lista no entra, así que la que se
+   desplaza es la lista, no la página.
+   Sin esto el contenido se derramaba fuera del menú: la página quedaba con
+   espacio vacío abajo y el usuario, que va pegado al pie, terminaba fuera de
+   la vista.
+   Va en el mismo @media que el plegado, porque en celular el menú es la barra
+   de arriba, crece hacia abajo y ahí no hay nada que desplazar. */
+@media (min-width: 761px) {
+  .menu nav {
+    flex: 1;
+    /* Un hijo flex no se achica por debajo de su contenido salvo que se le
+       diga: sin esto el desplazamiento no llega a activarse nunca. */
+    min-height: 0;
+    overflow-y: auto;
+    /* La barrita del apartado activo sale 14px a la izquierda, hasta el borde
+       del menú. Lo que se desplaza recorta en su caja de relleno, así que el
+       nav se estira hasta los bordes del menú y recupera esos 14px como
+       relleno: la barrita queda adentro y no se corta. */
+    margin: 0 -14px;
+    padding: 0 14px;
+  }
+}
+
+/* ----- Las piezas propias de la gestión ----- */
+/* Cada mesa lleva el color de su materia en una banda a la izquierda, como
+   las tarjetas de Módulos. Una materia sin cursada abierta no tiene color
+   propio: ahí la banda va en gris. */
+.finales-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: aparecer 0.25s ease;
+}/* ---------- Resumen y filtros ---------- */
+.finales-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.finales-dato {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 150px;
+  padding: 14px 20px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+}
+
+.finales-dato strong {
+  font-size: 1.8rem;
+  line-height: 1.1;
+  color: var(--oscuro);
+}
+
+.finales-dato span {
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+.finales-exportar,
+.finales-nueva {
+  margin-left: auto;
+  align-self: center;
+}
+
+.finales-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.finales-busqueda {
+  flex: 1 1 240px;
+}
+
+.finales-casilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+/* ---------- Piezas comunes ---------- */
+.finales-materia {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.finales-punto {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.finales-materia small {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+}
+
+.finales-materia strong {
+  color: var(--oscuro);
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}/* Rendir libre es la excepción: se marca para que el tribunal lo vea */
+.finales-sin-gente {
+  padding: 4px 4px 2px;
+}
+
+.finales-advertencia,
+.finales-motivo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.finales-advertencia svg,
+.finales-motivo svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--alerta);
+}
+
+/* ---------- Inscriptos: una tarjeta por mesa ---------- */
+.finales-grupo,
+.finales-mesa {
+  position: relative;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  overflow: hidden;
+  animation: aparecer-subiendo 0.3s ease backwards;
+  animation-delay: var(--retraso, 0ms);
+}
+
+/* La banda del color de la materia */
+.finales-grupo::before,
+.finales-mesa::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--color-materia, var(--gris));
+}
+
+.finales-grupo.cancelada,
+.finales-mesa.cancelada {
+  background: var(--fondo);
+}
+
+.finales-grupo.cancelada::before,
+.finales-mesa.cancelada::before {
+  background: var(--borde);
+}
+
+.finales-grupo {
+  padding: 18px 20px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.finales-grupo-cabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.finales-grupo-cabecera h3 {
+  margin: 4px 0 6px;
+  font-size: 1.1rem;
+  color: var(--oscuro);
+}
+
+.finales-datos-mesa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.finales-datos-mesa span,
+.finales-detalles li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.finales-datos-mesa svg,
+.finales-detalles svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.finales-grupo-cuenta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.finales-grupo-cuenta strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.finales-grupo-cuenta strong small {
+  font-size: 1rem;
+  color: var(--texto-suave);
+}
+
+.finales-grupo-cuenta > small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+/* ---------- Tablas ---------- */
+.finales-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.finales-tabla th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.finales-tabla td {
+  padding: 10px;
+  border-bottom: 1px solid var(--panel);
+  vertical-align: middle;
+}
+
+.finales-tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.finales-tabla tr.baja td {
+  color: var(--texto-suave);
+}
+
+.finales-tabla tr.baja strong {
+  text-decoration: line-through;
+  color: var(--texto-suave);
+}
+
+.finales-baja {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--alerta);
+}
+
+.finales-alumno {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.finales-alumno strong,
+.finales-alumno small {
+  display: block;
+}
+
+.finales-alumno strong {
+  color: var(--oscuro);
+}
+
+.finales-alumno small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+.finales-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.finales-avatar.avatar-estado::after {
+  width: 10px;
+  height: 10px;
+  border-color: var(--blanco);
+}
+
+.finales-celda-boton {
+  width: 44px;
+  text-align: right;
+}
+
+.finales-ver {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.finales-ver:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.finales-ver svg {
+  transition: transform 0.2s ease;
+}
+
+.finales-ver.abierto svg {
+  transform: rotate(90deg);
+}
+
+.finales-ficha-fila td {
+  padding-top: 0;
+}
+
+.finales-ficha {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  animation: aparecer 0.2s ease;
+}
+
+.finales-ficha dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px 16px;
+}
+
+.finales-ficha dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+}
+
+.finales-ficha dd {
+  margin: 2px 0 0;
+  color: var(--oscuro);
+  overflow-wrap: anywhere;
+}
+
+.finales-intentos h4 {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--oscuro);
+}
+
+.finales-intentos ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.86rem;
+}
+
+.finales-intentos li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.finales-escribir {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ---------- Fechas: tarjetas de mesas ---------- */
+.finales-mesas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
+}
+
+.finales-mesa {
+  padding: 18px 18px 14px 23px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.finales-mesa-cuerpo {
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Taco de almanaque */
+.finales-taco {
+  width: 62px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7px 0 8px;
+  border-radius: 14px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  text-transform: capitalize;
+  line-height: 1.15;
+}
+
+.finales-taco strong {
+  font-size: 1.7rem;
+}
+
+.finales-taco small {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.finales-mesa.cancelada .finales-taco {
+  background: var(--gris);
+}
+
+.finales-mesa-datos {
+  min-width: 0;
+}
+
+.finales-mesa-datos h3 {
+  margin: 4px 0 8px;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+}
+
+.finales-mesa.cancelada h3 {
+  text-decoration: line-through;
+  color: var(--texto-suave);
+}
+
+.finales-detalles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+.finales-cupo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.finales-cupo-texto {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+  color: var(--texto-suave);
+}
+
+.finales-cupo-texto strong {
+  color: var(--oscuro);
+}
+
+.finales-cupo .barra-pista {
+  background: var(--panel);
+}
+
+/* El cupo no es avance: va en el color de la materia, y en rojo si se llenó */
+.finales-cupo-relleno {
+  background: var(--color-materia, var(--oscuro));
+}
+
+.finales-cupo-relleno.lleno {
+  background: var(--alerta);
+}
+
+.finales-mesa-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel);
+}
+
+.finales-mesa-acciones .boton-suave {
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.finales-cambios-boton {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.finales-cambios-boton:hover {
+  color: var(--oscuro);
+}
+
+.finales-cambios {
+  margin: 0;
+  padding: 10px 14px 10px 30px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  font-size: 0.84rem;
+  color: var(--texto-suave);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: aparecer 0.2s ease;
+}
+
+.finales-cambios strong {
+  color: var(--oscuro);
+}
+
+.finales-cambios p {
+  margin-top: 2px;
+}
+
+/* ---------- Formulario de mesa ---------- */
+.finales-grupo-campos {
+  margin: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.finales-grupo-campos legend {
+  padding: 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--oscuro);
+}
+
+.finales-tribunal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.finales-fijo {
+  cursor: default;
+}
+
+.lector.aporte.finales-ventana-chica {
+  max-width: 540px;
+}/* ---------- Resultados ---------- */
+.finales-resultados {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  animation: aparecer 0.25s ease;
+}
+
+.finales-actas {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radio);
+  background: var(--panel);
+}
+
+.finales-actas ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.finales-actas-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-suave);
+}
+
+.finales-actas-titulo small {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--blanco);
+  font-size: 0.75rem;
+}
+
+.finales-acta {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 12px 14px 12px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.finales-acta::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--color-materia);
+}
+
+.finales-acta:hover {
+  border-color: var(--gris);
+}
+
+.finales-acta.activa {
+  border-color: var(--oscuro);
+  box-shadow: 0 0 0 1px var(--oscuro);
+}
+
+.finales-acta > small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.finales-acta .barra-pista {
+  background: var(--panel);
+}
+
+.finales-acta-cerrada {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--progreso-alto-texto);
+}
+
+.finales-planilla {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 22px 18px 27px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--blanco);
+  overflow: hidden;
+  animation: aparecer 0.25s ease;
+}
+
+.finales-planilla::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--color-materia, var(--gris));
+}
+
+.finales-planilla-cargando {
+  min-height: 320px;
+}
+
+.finales-planilla-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.finales-planilla-cabecera h2 {
+  margin: 4px 0 4px;
+  font-size: 1.35rem;
+  color: var(--oscuro);
+}
+
+.finales-conteo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.finales-conteo > span:not(.finales-regla) {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 0.84rem;
+  color: var(--texto-suave);
+}
+
+.finales-conteo strong {
+  font-size: 0.95rem;
+}
+
+.finales-conteo .aprobado strong {
+  color: var(--progreso-alto-texto);
+}
+
+.finales-conteo .desaprobado strong,
+.finales-conteo .falta strong {
+  color: var(--alerta);
+}
+
+.finales-conteo .ausente strong {
+  color: var(--oscuro);
+}
+
+.finales-regla {
+  margin-left: auto;
+}
+
+.finales-tabla.planilla tr.con-problema td {
+  background: rgba(216, 0, 50, 0.04);
+}
+
+.finales-nota {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.finales-nota input {
+  width: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--blanco);
+  font-weight: 600;
+  text-align: center;
+}
+
+.finales-nota input:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.finales-nota input:disabled {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.finales-nota input[aria-invalid='true'] {
+  border-color: var(--alerta);
+}
+
+.finales-problema {
+  color: var(--alerta);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+/* Las tres condiciones como un control segmentado */
+.finales-segmentos {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.finales-segmentos button {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.finales-segmentos button:hover {
+  color: var(--oscuro);
+}
+
+.finales-segmentos button:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.finales-segmentos button.elegido {
+  color: var(--blanco);
+}
+
+.finales-segmentos button.elegido.aprobado {
+  background: var(--progreso-alto);
+}
+
+.finales-segmentos button.elegido.desaprobado {
+  background: var(--alerta);
+}
+
+.finales-segmentos button.elegido.ausente {
+  background: var(--oscuro);
+}
+
+.finales-planilla-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borde);
+}
+
+.finales-planilla-pie > span {
+  margin-right: auto;
+}
+
+.finales-cerrada {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.finales-cerrada svg {
+  color: var(--progreso-alto-texto);
+}
+
+@media (max-width: 1100px) {
+  .finales-resultados {
+    grid-template-columns: 1fr;
+  }
+  .finales-actas {
+    position: static;
+  }
+  .finales-ficha {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* En celular las tablas pasan a fichas: cada fila es un recuadro y cada
+   celda lleva su título adelante (data-etiqueta). */
+@media (max-width: 760px) {
+  .finales-mesas {
+    grid-template-columns: 1fr;
+  }
+  .finales-exportar,
+  .finales-nueva {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+  .finales-dato {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+  .finales-grupo-campos {
+    grid-template-columns: 1fr 1fr;
+  }
+  .finales-grupo-cuenta {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .finales-regla {
+    margin-left: 0;
+  }
+  .finales-tabla thead {
+    display: none;
+  }
+  .finales-tabla,
+  .finales-tabla tbody,
+  .finales-tabla tr,
+  .finales-tabla td {
+    display: block;
+  }
+  .finales-tabla tr {
+    position: relative;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .finales-tabla td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0;
+    border: none;
+  }
+  .finales-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--texto-suave);
+  }
+  .finales-tabla td[data-etiqueta='Alumno']::before {
+    display: none;
+  }
+  .finales-celda-boton {
+    position: absolute;
+    top: 10px;
+    right: 0;
+    width: auto;
+  }
+  .finales-segmentos button {
+    padding: 6px 9px;
+  }
+  .finales-planilla,
+  .finales-grupo {
+    padding-left: 20px;
+    padding-right: 14px;
+  }
+}
