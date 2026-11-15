@@ -300,9 +300,6 @@ function Inscripciones({ datos, recargar }) {
             Todavía no habilitadas
             <small>{noPuede.length}</small>
           </h2>
-          <p className="nota-bloque">
-            Para rendir un final tenés que tener la cursada de esa materia aprobada.
-          </p>
           <div className="lista-mesas">
             {noPuede.map((mesa) => (
               <Mesa

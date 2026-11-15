@@ -24,6 +24,55 @@ from fastapi import Depends, HTTPException, Request
 from firebase_admin import auth
 
 from .. import datos as d
+from . import auditoria
+
+# ===================== El ingreso, en el registro =====================
+# `identificar` corre en **cada** consulta, así que anotar un ingreso por
+# llamada llenaría la auditoría de ruido y no diría nada. Se anota uno por
+# persona cada media hora: eso es, en la práctica, "entró".
+#
+# Los intentos fallidos sí se anotan todos: son pocos y son justamente lo que
+# hay que poder mirar.
+MINUTOS_ENTRE_INGRESOS = 30
+_ultimo_ingreso: dict[int, float] = {}
+
+
+def _anotar_ingreso(persona: dict) -> None:
+    import time
+
+    ahora = time.time()
+    previo = _ultimo_ingreso.get(persona["id"])
+    if previo and (ahora - previo) < MINUTOS_ENTRE_INGRESOS * 60:
+        return
+    _ultimo_ingreso[persona["id"]] = ahora
+    auditoria.registrar(
+        persona,
+        "ingreso",
+        "sesion",
+        elemento=persona["nombre"],
+        elemento_id=persona["id"],
+        elemento_tipo="persona",
+        persona_id=persona["id"],
+        detalle="Entró al campus",
+    )
+
+
+def _anotar_fallo(motivo: str, correo: str | None = None) -> None:
+    """Un intento que no entró.
+
+    **No se guarda el token**: solo por qué falló y, si se sabe, con qué
+    correo se intentó. Un registro que no se puede borrar es el peor lugar
+    para una credencial.
+    """
+    auditoria.registrar(
+        None,
+        "ingreso_fallido",
+        "sesion",
+        elemento=correo or "Sin identificar",
+        elemento_tipo="sesion",
+        resultado="fallo",
+        detalle=motivo,
+    )
 
 # Mientras el campus se desarrolla conviene poder usarlo sin iniciar sesión.
 # Si no llega token, se responde como el usuario de prueba.
@@ -69,13 +118,17 @@ def identificar(peticion: Request) -> dict:
     try:
         datos_token = auth.verify_id_token(token)
     except auth.ExpiredIdTokenError:
+        _anotar_fallo("La sesión venció")
         raise HTTPException(401, "La sesión venció. Volvé a iniciar sesión.")
     except auth.RevokedIdTokenError:
+        _anotar_fallo("La sesión había sido cerrada")
         raise HTTPException(401, "La sesión fue cerrada. Volvé a iniciar sesión.")
     except (auth.InvalidIdTokenError, auth.UserDisabledError):
+        _anotar_fallo("Token inválido o cuenta deshabilitada")
         raise HTTPException(401, "La sesión no es válida. Volvé a iniciar sesión.")
     except Exception:
         # Un fallo al verificar no puede interpretarse como "pase"
+        _anotar_fallo("No se pudo verificar la sesión")
         raise HTTPException(503, "No se pudo verificar la sesión. Probá de nuevo.")
 
     persona = _persona_por_correo(datos_token.get("email"))
@@ -83,11 +136,13 @@ def identificar(peticion: Request) -> dict:
         # La cuenta existe en Firebase pero nadie con ese correo está en el
         # campus. Es un caso real: alguien de la facultad con cuenta de Google
         # que todavía no fue dado de alta.
+        _anotar_fallo("El correo no está dado de alta en el campus", datos_token.get("email"))
         raise HTTPException(
             403,
             "Tu cuenta no está dada de alta en el campus. Pedí el alta en la secretaría.",
         )
 
+    _anotar_ingreso(persona)
     return persona
 
 

@@ -17,7 +17,7 @@ YO = d.usuario_actual["id"]
 def _autor_de(id_persona: int) -> dict | None:
     persona = d.buscar_persona(id_persona)
     return (
-        {"id": persona["id"], "nombre": persona["nombre"], "rol": persona["rol"]}
+        {"id": persona["id"], "nombre": persona["nombre"], "rol": d.rol_principal(persona)}
         if persona
         else None
     )

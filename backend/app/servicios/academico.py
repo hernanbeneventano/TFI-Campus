@@ -57,20 +57,24 @@ def materia_publica(materia: dict) -> dict:
 
     El frontend muestra "Programación I", no el número 103.
     """
-    docente = d.buscar_persona(materia.get("docenteId")) if materia.get("docenteId") else None
+    # El docente ya no es de la materia sino del dictado: la misma materia
+    # la dan distintas personas según la comisión.
+    docentes = [d.buscar_persona(x) for x in d.docentes_de_materia(materia["id"])]
+    docentes = [x for x in docentes if x]
     return {
         "id": materia["id"],
         "codigo": materia["codigo"],
         "nombre": materia["nombre"],
-        "carrera": materia["carrera"],
-        "plan": materia["plan"],
+        "carreraId": materia.get("carreraId"),
+        "planId": materia.get("planId"),
         "anio": materia["anio"],
         "cuatrimestre": materia["cuatrimestre"],
         "cupo": materia["cupo"],
         "comision": materia.get("comision"),
         "horario": materia.get("horario"),
         "cursoId": materia.get("cursoId"),
-        "docente": docente["nombre"] if docente else None,
+        "docente": docentes[0]["nombre"] if docentes else None,
+        "docentes": [x["nombre"] for x in docentes],
         "correlativas": [
             {
                 "id": c["id"],

@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import datos as d
 from ..servicios import academico as ac
+from ..servicios import auditoria
 from ..servicios.autenticacion import IdUsuarioActual
 
 router = APIRouter(prefix="/api/finales", tags=["Finales"])
@@ -146,6 +147,19 @@ def inscribirse(id_mesa: int, yo: int = IdUsuarioActual):
             }
         )
 
+    materia = d.buscar_materia(mesa["materiaId"])
+    auditoria.registrar(
+        yo,
+        "creacion",
+        "finales",
+        elemento=f"Inscripción a {materia['nombre'] if materia else 'un final'} ({mesa.get('llamado')})",
+        elemento_id=mesa["id"],
+        elemento_tipo="inscripcionFinal",
+        persona_id=yo,
+        materia_id=mesa["materiaId"],
+        despues={"estado": ac.MESA_INSCRIPTO, "fecha": mesa.get("fecha")},
+        detalle="Se inscribió a una mesa de examen",
+    )
     return _mesa_con_estado(yo, mesa)
 
 
@@ -173,4 +187,18 @@ def cancelar(id_mesa: int, yo: int = IdUsuarioActual):
     inscripcion["estado"] = ac.MESA_CANCELADO
     inscripcion["canceladaEl"] = d.iso(ahora)
 
+    materia = d.buscar_materia(mesa["materiaId"])
+    auditoria.registrar(
+        yo,
+        "baja",
+        "finales",
+        elemento=f"Inscripción a {materia['nombre'] if materia else 'un final'} ({mesa.get('llamado')})",
+        elemento_id=mesa["id"],
+        elemento_tipo="inscripcionFinal",
+        persona_id=yo,
+        materia_id=mesa["materiaId"],
+        antes={"estado": ac.MESA_INSCRIPTO},
+        despues={"estado": ac.MESA_CANCELADO},
+        detalle="Se dio de baja de una mesa de examen",
+    )
     return _mesa_con_estado(yo, mesa)

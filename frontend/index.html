@@ -4,12 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CampusTFI</title>
+    <!--
+      La fuente se carga sin bloquear el renderizado.
+
+      Una hoja de estilos externa en el <head> frena el parseo del documento,
+      y los <script type="module"> no se ejecutan hasta que termina. Con
+      Google Fonts lento, bloqueado o sin internet, eso deja la pantalla en
+      blanco hasta que el pedido vence: la aplicación no monta nunca.
+
+      El truco es pedirla como hoja de impresión —que no bloquea— y pasarla a
+      todos los medios cuando llega. Si nunca llega, el campus se ve con la
+      tipografía del sistema, que es el respaldo que ya declara global.css.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
   </head>
   <body>
     <div id="root"></div>

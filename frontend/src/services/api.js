@@ -77,6 +77,57 @@ export const marcarFavorito = (id) =>
     return curso;
   });
 export const obtenerModulo = (id) => pedir(`/cursos/${id}/modulo`);
+
+// --- Administración del módulo (solo el docente a cargo) ---
+// Las que tocan el contenido devuelven las carpetas enteras, no solo lo que
+// cambió: agregar un trabajo toca las carpetas y la lista de tareas a la vez.
+export const crearSeccion = (idCurso, datos) => enviar(`/cursos/${idCurso}/carpetas`, datos);
+export const editarSeccion = (idCurso, idSeccion, datos) =>
+  parchear(`/cursos/${idCurso}/carpetas/${idSeccion}`, datos);
+export const borrarSeccion = (idCurso, idSeccion) =>
+  borrar(`/cursos/${idCurso}/carpetas/${idSeccion}`);
+// `hacia` mueve un lugar (teclado); `posicion` lleva a un lugar concreto,
+// que es lo que manda el arrastre con el mouse.
+export const moverSeccion = (idCurso, idSeccion, destino) =>
+  enviar(`/cursos/${idCurso}/carpetas/${idSeccion}/mover`, destino);
+
+export const crearElemento = (idCurso, idSeccion, datos) =>
+  enviar(`/cursos/${idCurso}/carpetas/${idSeccion}/items`, datos);
+export const editarElemento = (idCurso, idSeccion, idItem, datos) =>
+  parchear(`/cursos/${idCurso}/carpetas/${idSeccion}/items/${idItem}`, datos);
+export const borrarElemento = (idCurso, idSeccion, idItem) =>
+  borrar(`/cursos/${idCurso}/carpetas/${idSeccion}/items/${idItem}`);
+export const moverElemento = (idCurso, idSeccion, idItem, destino) =>
+  enviar(`/cursos/${idCurso}/carpetas/${idSeccion}/items/${idItem}/mover`, destino);
+
+// `abierta` manda sobre la fecha límite; con null vuelve a mandar la fecha
+export const cambiarEntrega = (idCurso, idTarea, abierta) =>
+  enviar(`/cursos/${idCurso}/tareas/${idTarea}/entrega`, { abierta });
+
+export const publicarAnuncio = (idCurso, datos) => enviar(`/cursos/${idCurso}/anuncios`, datos);
+export const editarAnuncio = (idCurso, idAnuncio, datos) =>
+  parchear(`/cursos/${idCurso}/anuncios/${idAnuncio}`, datos);
+export const borrarAnuncio = (idCurso, idAnuncio) =>
+  borrar(`/cursos/${idCurso}/anuncios/${idAnuncio}`);
+
+export const obtenerSeguimiento = (idCurso) => pedir(`/cursos/${idCurso}/seguimiento`);
+export const obtenerEntregasDeSeccion = (idCurso, idSeccion) =>
+  pedir(`/cursos/${idCurso}/carpetas/${idSeccion}/entregas`);
+export const obtenerNotas = (idCurso) => pedir(`/cursos/${idCurso}/notas`);
+export const guardarNota = (idCurso, datos) => actualizar(`/cursos/${idCurso}/notas`, datos);
+// La condición que fija el docente pesa más que el promedio; con
+// `condicion: null` vuelve a mandar el cálculo.
+export const fijarCierre = (idCurso, datos) => actualizar(`/cursos/${idCurso}/cierre`, datos);
+export const obtenerRespuestasCuestionario = (idCurso, idTarea) =>
+  pedir(`/cursos/${idCurso}/tareas/${idTarea}/cuestionario`);
+
+// --- Mi cursada (lo que ve cada alumno de lo suyo) ---
+// De quién son las notas sale de la sesión: no hay forma de pedir las de
+// otro, y el servidor tampoco las daría.
+export const obtenerMisNotas = (idCurso) => pedir(`/cursos/${idCurso}/mis-notas`);
+export const abrirCuestionario = (idTarea) => pedir(`/tareas/${idTarea}/cuestionario`);
+export const responderCuestionario = (idTarea, respuestas) =>
+  enviar(`/tareas/${idTarea}/respuestas`, { respuestas });
 export const obtenerTareasPendientes = () => pedir('/tareas/pendientes');
 
 // --- Mensajes ---
@@ -160,6 +211,84 @@ export const darDeBajaMateria = (id) =>
     return materia;
   });
 
+// --- Perfil, cuentas y estructura institucional ---
+// El perfil propio y la administración son rutas distintas a propósito:
+// nadie se cambia los roles a sí mismo.
+export const obtenerMiPerfil = () => pedir('/usuarios/yo');
+export const guardarMiPerfil = (datos) => actualizar('/usuarios/yo', datos);
+export const obtenerUsuarios = (filtros = {}) => {
+  const p = new URLSearchParams();
+  if (filtros.q) p.set('q', filtros.q);
+  if (filtros.rol) p.set('rol', filtros.rol);
+  const cola = p.toString();
+  return pedir(`/usuarios${cola ? `?${cola}` : ''}`);
+};
+export const crearUsuario = (datos) => enviar('/usuarios', datos);
+export const administrarUsuario = (id, datos) => parchear(`/usuarios/${id}`, datos);
+
+// El catálogo lo lee cualquiera; modificarlo es del administrador.
+export const obtenerInstitucion = () => pedir('/institucion');
+export const crearCarrera = (datos) => enviar('/institucion/carreras', datos);
+export const editarCarrera = (id, datos) => parchear(`/institucion/carreras/${id}`, datos);
+export const borrarCarrera = (id) => borrar(`/institucion/carreras/${id}`);
+export const crearSede = (datos) => enviar('/institucion/sedes', datos);
+export const editarSede = (id, datos) => parchear(`/institucion/sedes/${id}`, datos);
+export const borrarSede = (id) => borrar(`/institucion/sedes/${id}`);
+export const crearPlan = (datos) => enviar('/institucion/planes', datos);
+export const editarPlan = (id, datos) => parchear(`/institucion/planes/${id}`, datos);
+export const borrarPlan = (id) => borrar(`/institucion/planes/${id}`);
+export const crearComision = (datos) => enviar('/institucion/comisiones', datos);
+// Las materias de una comisión y quién las dicta
+export const obtenerComision = (id) => pedir(`/institucion/comisiones/${id}`);
+export const configurarDictado = (idComision, idMateria, datos) =>
+  actualizar(`/institucion/comisiones/${idComision}/materias/${idMateria}`, datos);
+export const quitarDictado = (idComision, idMateria) =>
+  borrar(`/institucion/comisiones/${idComision}/materias/${idMateria}`);
+export const editarComision = (id, datos) => parchear(`/institucion/comisiones/${id}`, datos);
+export const borrarComision = (id) => borrar(`/institucion/comisiones/${id}`);
+
+// La distribución de estudiantes: del supervisor.
+export const obtenerAsignaciones = (filtros = {}) => {
+  const p = new URLSearchParams();
+  if (filtros.carreraId) p.set('carreraId', filtros.carreraId);
+  if (filtros.comisionId) p.set('comisionId', filtros.comisionId);
+  if (filtros.sinComision) p.set('sinComision', 'true');
+  const cola = p.toString();
+  return pedir(`/institucion/asignaciones${cola ? `?${cola}` : ''}`);
+};
+export const crearAsignacion = (datos) => enviar('/institucion/asignaciones', datos);
+export const editarAsignacion = (id, datos) =>
+  parchear(`/institucion/asignaciones/${id}`, datos);
+
+// --- Asistencias ---
+// Del docente: planificar, tomar lista y ver cómo viene el curso.
+export const obtenerPlanificacion = (idCurso) =>
+  pedir(`/cursos/${idCurso}/asistencias/planificacion`);
+export const guardarPlanificacion = (idCurso, clasesPlanificadas) =>
+  actualizar(`/cursos/${idCurso}/asistencias/planificacion`, { clasesPlanificadas });
+export const obtenerClases = (idCurso) => pedir(`/cursos/${idCurso}/asistencias/clases`);
+export const crearClase = (idCurso, datos) =>
+  enviar(`/cursos/${idCurso}/asistencias/clases`, datos);
+export const obtenerListaDeClase = (idCurso, idClase) =>
+  pedir(`/cursos/${idCurso}/asistencias/clases/${idClase}`);
+export const guardarLista = (idCurso, idClase, datos) =>
+  actualizar(`/cursos/${idCurso}/asistencias/clases/${idClase}`, datos);
+export const obtenerAsistenciaDeAlumnos = (idCurso) =>
+  pedir(`/cursos/${idCurso}/asistencias/alumnos`);
+export const obtenerHistorialAsistencia = (idCurso) =>
+  pedir(`/cursos/${idCurso}/asistencias/historial`);
+
+// Del alumno: lo suyo, en una materia o en todas.
+export const obtenerMiSituacion = () => pedir('/asistencias/mi-situacion');
+export const obtenerMiAsistencia = (idCurso) =>
+  pedir(`/cursos/${idCurso}/asistencias/mi-detalle`);
+
+// Justificaciones: el alumno pide, el docente resuelve.
+export const obtenerJustificaciones = () => pedir('/asistencias/justificaciones');
+export const pedirJustificacion = (datos) => enviar('/asistencias/justificaciones', datos);
+export const resolverJustificacion = (id, datos) =>
+  actualizar(`/asistencias/justificaciones/${id}`, datos);
+
 // --- Biblioteca ---
 // Los ids externos traen dos puntos y barras ("openlibrary:/works/OL1W"), así
 // que van codificados o romperían la ruta.
@@ -170,7 +299,12 @@ export const obtenerOpcionesBiblioteca = () => pedir('/biblioteca/opciones');
 export const buscarEnBiblioteca = (filtros) => {
   const parametros = new URLSearchParams();
   for (const [clave, valor] of Object.entries(filtros)) {
-    if (valor !== '' && valor != null) parametros.set(clave, valor);
+    // Una lista vacía quiere decir "sin filtrar", así que no se manda
+    if (Array.isArray(valor)) {
+      if (valor.length > 0) parametros.set(clave, valor.join(','));
+    } else if (valor !== '' && valor != null) {
+      parametros.set(clave, valor);
+    }
   }
   return pedir(`/biblioteca?${parametros}`);
 };
@@ -238,3 +372,32 @@ export function subirArchivoMaterial(id, archivo, alAvanzar) {
     lector.readAsDataURL(archivo);
   }  );
 }
+
+// --- Auditoría ---
+// El registro es de solo lectura: no hay función para escribir ni para borrar
+// un evento, igual que no hay ruta en el servidor. Los eventos los escribe
+// cada módulo del backend al hacer lo suyo.
+function parametrosDe(filtros = {}) {
+  const parametros = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(filtros)) {
+    if (valor !== '' && valor != null) parametros.set(clave, valor);
+  }
+  return parametros;
+}
+
+export const obtenerOpcionesAuditoria = () => pedir('/auditoria/opciones');
+
+export const obtenerAuditoria = (filtros) => pedir(`/auditoria?${parametrosDe(filtros)}`);
+
+export const obtenerMovimiento = (id) => pedir(`/auditoria/${id}`);
+
+export const obtenerAuditoriaDeMisMaterias = (filtros) =>
+  pedir(`/auditoria/mis-materias?${parametrosDe(filtros)}`);
+
+/** La dirección de descarga, con los filtros puestos: baja lo que se ve. */
+export const enlaceExportarAuditoria = (filtros, formato) =>
+  `/api/auditoria/exportar?${parametrosDe({ ...filtros, formato })}`;
+
+// --- Panel de control ---
+export const obtenerPanel = () => pedir('/panel');
+export const obtenerAlertas = () => pedir('/panel/alertas');

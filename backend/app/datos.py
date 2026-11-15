@@ -100,7 +100,10 @@ temas_foro: list[dict] = _iniciales["temasForo"]
 # ----- Biblioteca -----
 materiales: list[dict] = _iniciales["materiales"]
 categorias: list[dict] = _iniciales["categorias"]
-carreras: list[str] = _iniciales["carreras"]
+# La Biblioteca etiqueta sus materiales con el nombre de la carrera, que es
+# un filtro y no una relación fuerte. El catálogo institucional, en cambio,
+# son entidades: ver `carreras_institucion`.
+carreras: list[str] = _iniciales["carrerasNombres"]
 favoritos_biblioteca: list[dict] = _iniciales["favoritosBiblioteca"]
 moderacion_biblioteca: list[dict] = _iniciales["moderacionBiblioteca"]
 TIPOS_MATERIAL: list[str] = _iniciales["TIPOS_MATERIAL"]
@@ -125,6 +128,123 @@ CONDICIONES_FINAL: list[str] = _iniciales["CONDICIONES_FINAL"]
 MODALIDADES_FINAL: list[str] = _iniciales["MODALIDADES_FINAL"]
 INSTANCIAS_FINAL: list[str] = _iniciales["INSTANCIAS_FINAL"]
 
+# ----- Notas de la cursada -----
+# Una calificación por alumno y por tarea. Es distinta del resultado de un
+# final: esto es la corrección de lo que se entrega durante el cuatrimestre.
+calificaciones: list[dict] = _iniciales["calificaciones"]
+
+# Qué material marcó como visto cada alumno. Hoy el alumno lo guarda en su
+# navegador (`services/progreso.js`); acá está del lado del servidor porque el
+# docente necesita ver cómo viene el curso, y el navegador de un alumno no
+# puede contestar eso. Cuando el progreso del alumno se guarde acá, las dos
+# puntas usan esta misma lista.
+progreso_alumnos: list[dict] = _iniciales["progresoAlumnos"]
+
+# Qué entregó cada alumno. `tareas[].entregada` era un solo booleano para todo
+# el curso: servía para la pantalla del alumno de prueba, pero no deja saber
+# quién entregó y quién no, que es lo primero que mira el docente al corregir.
+entregas: list[dict] = _iniciales["entregas"]
+
+# Lo que respondió cada alumno en un cuestionario de opción múltiple. Va
+# aparte de `entregas` porque no hay archivo: la respuesta es el dato, y la
+# corrección es automática.
+respuestas_cuestionario: list[dict] = _iniciales["respuestasCuestionario"]
+
+# Cómo se toma un trabajo. La modalidad dice dónde se rinde y el formato
+# cómo se corrige: un presencial no tiene nada que subir y su nota la carga
+# el docente; un cuestionario se corrige solo.
+MODALIDADES_TRABAJO: list[str] = _iniciales["MODALIDADES_TRABAJO"]
+FORMATOS_TRABAJO: list[str] = _iniciales["FORMATOS_TRABAJO"]
+
+# ----- Estructura institucional -----
+# Carreras, sedes, planes y comisiones como entidades con identificador: lo
+# demás las referencia en vez de repetir el nombre. Nada de esto está escrito
+# en el código; lo administra quien tenga el rol de administrador.
+carreras_institucion: list[dict] = _iniciales["carreras"]
+sedes: list[dict] = _iniciales["sedes"]
+planes_estudio: list[dict] = _iniciales["planesEstudio"]
+comisiones: list[dict] = _iniciales["comisiones"]
+# Dónde está cada persona: carrera + sede + comisión + plan. Una persona
+# puede tener varias, en carreras distintas.
+asociaciones_academicas: list[dict] = _iniciales["asociacionesAcademicas"]
+historial_usuarios: list[dict] = _iniciales["historialUsuarios"]
+
+# El registro de auditoría de todo el campus. Es **solo de agregar**: no hay
+# ninguna función que edite o borre un evento, ni acá ni en las rutas.
+# Ver servicios/auditoria.py.
+auditoria: list[dict] = _iniciales["auditoria"]
+ESTADOS_CUENTA: list[str] = _iniciales["ESTADOS_CUENTA"]
+ESTADOS_ASOCIACION: list[str] = _iniciales["ESTADOS_ASOCIACION"]
+TURNOS: list[str] = _iniciales["TURNOS"]
+
+
+def buscar_en(coleccion: list[dict], id_buscado: Any) -> dict | None:
+    """Busca por id en cualquiera de los catálogos."""
+    try:
+        buscado = int(id_buscado)
+    except (TypeError, ValueError):
+        return None
+    return next((x for x in coleccion if x["id"] == buscado), None)
+
+
+# Qué materia se dicta en qué comisión y quién la da. Es una relación de
+# tres: la misma materia se dicta en varias comisiones con docentes
+# distintos, y una comisión puede tener dos docentes para la misma materia.
+dictados: list[dict] = _iniciales["dictados"]
+
+
+def dictados_de_comision(comision_id: int) -> list[dict]:
+    return [x for x in dictados if x["comisionId"] == comision_id]
+
+
+def dictados_de_materia(materia_id: int) -> list[dict]:
+    return [x for x in dictados if x["materiaId"] == materia_id]
+
+
+def docentes_de_materia(materia_id: int) -> list[int]:
+    """Todos los que dictan esa materia, en cualquier comisión."""
+    vistos: list[int] = []
+    for dictado in dictados_de_materia(materia_id):
+        for docente in dictado.get("docentes") or []:
+            if docente not in vistos:
+                vistos.append(docente)
+    return vistos
+
+
+def dicta_materia(persona_id: int, materia_id: int) -> bool:
+    return persona_id in docentes_de_materia(materia_id)
+
+
+def materias_que_dicta(persona_id: int) -> list[dict]:
+    """Las materias del plan en las que la persona figura como docente."""
+    ids = {
+        x["materiaId"] for x in dictados if persona_id in (x.get("docentes") or [])
+    }
+    return [m for m in materias_plan if m["id"] in ids]
+
+
+def asociaciones_de(persona_id: int) -> list[dict]:
+    return [a for a in asociaciones_academicas if a["personaId"] == persona_id]
+
+
+# ----- Asistencias -----
+# Las clases efectivamente dictadas y quién estuvo en cada una. Una clase
+# suspendida queda registrada pero no cuenta: no existió para nadie.
+clases_asistencia: list[dict] = _iniciales["clasesAsistencia"]
+asistencias: list[dict] = _iniciales["asistencias"]
+justificaciones: list[dict] = _iniciales["justificaciones"]
+planificacion_asistencia: list[dict] = _iniciales["planificacionAsistencia"]
+historial_asistencia: list[dict] = _iniciales["historialAsistencia"]
+CONFIG_ASISTENCIA: dict = _iniciales["CONFIG_ASISTENCIA"]
+ESTADOS_ASISTENCIA: list[str] = _iniciales["ESTADOS_ASISTENCIA"]
+ESTADOS_JUSTIFICACION: list[str] = _iniciales["ESTADOS_JUSTIFICACION"]
+
+# El cierre de cursada de cada alumno, cuando el docente lo fija a mano.
+# Si no está, la condición sale del promedio: se aprueba con 6.
+cierres_cursada: list[dict] = []
+NOTA_PARA_APROBAR = 6
+ESTADOS_CALIFICACION: list[str] = _iniciales["ESTADOS_CALIFICACION"]
+
 
 def buscar_materia(id_materia: Any) -> dict | None:
     try:
@@ -143,12 +263,30 @@ def buscar_mesa(id_mesa: Any) -> dict | None:
 
 
 def carrera_de(persona_id: int) -> dict | None:
-    """La carrera y el plan en los que está inscripta la persona.
+    """La asociación académica activa de la persona.
 
-    Es lo que la institución registra al ingresar; sin esto el alumno no
-    tiene plan de estudios y no puede inscribirse a nada.
+    Es lo que la institución registra al ingresar —carrera, sede, comisión y
+    plan—; sin esto el alumno no tiene plan de estudios y no puede
+    inscribirse a nada. Si tuviera varias carreras se devuelve la primera
+    activa: la pantalla de inscripción trabaja sobre una por vez.
     """
-    return next((i for i in inscripcion_carrera if i["personaId"] == persona_id), None)
+    suyas = [a for a in asociaciones_de(persona_id) if a.get("estado") == "activa"]
+    return suyas[0] if suyas else None
+
+
+def asociacion_completa(asociacion: dict) -> dict:
+    """La asociación con los nombres resueltos, para mostrarla."""
+    carrera = buscar_en(carreras_institucion, asociacion.get("carreraId"))
+    sede = buscar_en(sedes, asociacion.get("sedeId"))
+    comision = buscar_en(comisiones, asociacion.get("comisionId"))
+    plan = buscar_en(planes_estudio, asociacion.get("planId"))
+    return {
+        **asociacion,
+        "carrera": carrera["nombre"] if carrera else None,
+        "sede": sede["nombre"] if sede else None,
+        "comision": comision["nombre"] if comision else None,
+        "plan": plan["nombre"] if plan else None,
+    }
 
 
 def condicion_en(persona_id: int, materia_id: int) -> str | None:
@@ -184,7 +322,55 @@ def con_presencia(persona: dict) -> dict:
     """
     resto = {k: v for k, v in persona.items() if k != "accesoHaceMin"}
     ultimo_acceso = iso(ahora() - timedelta(minutes=persona["accesoHaceMin"]))
-    return {**resto, "ultimoAcceso": ultimo_acceso, "estado": estado_por_acceso(ultimo_acceso)}
+    return {
+        **resto,
+        # `rol` va derivado para las pantallas que muestran uno solo
+        "rol": rol_principal(persona),
+        "roles": roles_de(persona),
+        "ultimoAcceso": ultimo_acceso,
+        "estado": estado_por_acceso(ultimo_acceso),
+    }
+
+
+# ===================== Roles =====================
+# Una persona puede tener varios: un docente que además supervisa, alguien de
+# secretaría que también cursa. `roles` es la fuente de verdad; `rol` se
+# deriva para las pantallas que muestran uno solo.
+ROLES: list[str] = _iniciales["ROLES"]
+
+
+def roles_de(persona: dict | None) -> list[str]:
+    if not persona:
+        return []
+    return persona.get("roles") or ([persona["rol"]] if persona.get("rol") else [])
+
+
+def tiene_rol(persona: dict | None, *buscados: str) -> bool:
+    """Si la persona tiene alguno de esos roles.
+
+    Es lo que reemplaza a `persona["rol"] == "Docente"` en todo el campus:
+    con varios roles, comparar contra uno solo deja afuera al que además es
+    otra cosa.
+    """
+    suyos = set(roles_de(persona))
+    return any(r in suyos for r in buscados)
+
+
+def rol_principal(persona: dict | None) -> str | None:
+    """El primero de la lista: el que se muestra cuando hay lugar para uno."""
+    suyos = roles_de(persona)
+    return suyos[0] if suyos else None
+
+
+def con_rol(persona: dict | None) -> dict | None:
+    """La persona con `rol` agregado, para las pantallas que muestran uno.
+
+    El frontend nunca decide permisos con esto —eso lo hace el servidor—,
+    pero sí lo usa para escribir "Docente" debajo de un nombre.
+    """
+    if not persona:
+        return None
+    return {**persona, "rol": rol_principal(persona), "roles": roles_de(persona)}
 
 
 def buscar_persona(id_persona: Any) -> dict | None:
@@ -277,6 +463,16 @@ def carpetas_de_curso(curso: dict) -> list[dict]:
                     **item,
                     "fechaLimite": tarea.get("fechaLimite") if tarea else None,
                     "entregada": tarea.get("entregada", False) if tarea else False,
+                    # `cerrada` pesa más que la fecha: el docente puede cortar
+                    # las entregas antes o darle prórroga al curso. Sin esto,
+                    # la pantalla muestra un plazo que ya no manda.
+                    "cerrada": tarea.get("cerrada") if tarea else None,
+                    "consigna": tarea.get("consigna") if tarea else None,
+                    # Cómo se toma: la pantalla del alumno necesita saberlo
+                    # para mostrar el cuestionario, el aviso del presencial o
+                    # la subida de archivo.
+                    "modalidad": tarea.get("modalidad", "virtual") if tarea else "virtual",
+                    "formato": tarea.get("formato", "entrega") if tarea else "entrega",
                 }
             )
         carpetas.append({**carpeta, "items": items})
@@ -384,6 +580,7 @@ def contactos_de(persona_id: int) -> list[dict]:
 # ===================== Identificadores =====================
 # Arrancan altos para no chocar con los de los datos de prueba.
 _proximos = {
+    "auditoria": 1,
     "mensaje": 100,
     "conversacion": 100,
     "publicacion": 100,
@@ -395,6 +592,23 @@ _proximos = {
     "inscripcionFinal": 100,
     "mesa": 100,
     "resultadoFinal": 100,
+    "carpeta": 100,
+    "anuncio": 100,
+    "tarea": 100,
+    "calificacion": 100,
+    "entrega": 100,
+    "respuesta": 100,
+    "clase": 100,
+    "asistencia": 1000,
+    "justificacion": 100,
+    "historialAsistencia": 100,
+    "carrera": 100,
+    "sede": 100,
+    "plan": 100,
+    "comision": 100,
+    "asociacion": 100,
+    "historialUsuario": 100,
+    "dictado": 100,
 }
 
 
@@ -446,6 +660,103 @@ def nuevo_id_mesa() -> int:
 
 def nuevo_id_resultado_final() -> int:
     return _nuevo_id("resultadoFinal")
+
+
+def nuevo_id_carpeta() -> int:
+    return _nuevo_id("carpeta")
+
+
+def nuevo_id_anuncio() -> int:
+    return _nuevo_id("anuncio")
+
+
+def nuevo_id_tarea() -> int:
+    return _nuevo_id("tarea")
+
+
+def nuevo_id_calificacion() -> int:
+    return _nuevo_id("calificacion")
+
+
+def nuevo_id_entrega() -> int:
+    return _nuevo_id("entrega")
+
+
+def nuevo_id_respuesta() -> int:
+    return _nuevo_id("respuesta")
+
+
+def nuevo_id_clase_asistencia() -> int:
+    return _nuevo_id("clase")
+
+
+def nuevo_id_asistencia() -> int:
+    return _nuevo_id("asistencia")
+
+
+def nuevo_id_justificacion() -> int:
+    return _nuevo_id("justificacion")
+
+
+def nuevo_id_historial_asistencia() -> int:
+    return _nuevo_id("historialAsistencia")
+
+
+def nuevo_id_carrera() -> int:
+    return _nuevo_id("carrera")
+
+
+def nuevo_id_sede() -> int:
+    return _nuevo_id("sede")
+
+
+def nuevo_id_plan() -> int:
+    return _nuevo_id("plan")
+
+
+def nuevo_id_comision() -> int:
+    return _nuevo_id("comision")
+
+
+def nuevo_id_asociacion() -> int:
+    return _nuevo_id("asociacion")
+
+
+def nuevo_id_historial_usuario() -> int:
+    return _nuevo_id("historialUsuario")
+
+
+def nuevo_id_auditoria() -> int:
+    return _nuevo_id("auditoria")
+
+
+def nuevo_id_dictado() -> int:
+    return _nuevo_id("dictado")
+
+
+# ===================== Contenido propio de un módulo =====================
+def asegurar_contenido(curso: dict) -> list[dict]:
+    """Las carpetas del módulo, listas para editar.
+
+    `carpetas_de_curso` devuelve el contenido genérico cuando el módulo no
+    tiene uno propio, pero ese genérico se arma al vuelo en cada pedido: si el
+    docente edita eso, el cambio se pierde. Entonces, la primera vez que
+    alguien va a modificar un módulo sin contenido propio, se guarda una copia
+    del genérico y a partir de ahí se edita esa.
+    """
+    propio = contenidos.get(curso["id"])
+    if propio is None:
+        propio = contenido_generico(curso)
+        contenidos[curso["id"]] = propio
+    return propio
+
+
+def buscar_tarea(id_tarea: Any) -> dict | None:
+    try:
+        buscado = int(id_tarea)
+    except (TypeError, ValueError):
+        return None
+    return next((t for t in tareas if t["id"] == buscado), None)
 
 
 # ===================== Avisos por mensaje =====================

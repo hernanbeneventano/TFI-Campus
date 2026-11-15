@@ -405,6 +405,13 @@ select {
   align-items: start;
 }
 
+/* Sin panel a la derecha no hay por qué reservarle la columna: el docente y
+   quien administra no tienen entregas propias, y la grilla se apretaba a la
+   izquierda dejando media pantalla vacía. */
+.pagina-cuerpo.sin-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .pagina-principal {
   display: flex;
   flex-direction: column;
@@ -886,14 +893,28 @@ select {
   overflow: hidden;
 }
 
+/* La cabecera es un contenedor, no un botón: adentro van el botón que abre
+   la carpeta y, en modo editor, el asa y las acciones. Antes era un <button>
+   con botones adentro —HTML inválido— y por eso el asa no se podía arrastrar. */
 .carpeta-cabecera {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 18px 22px;
+}
+
+.carpeta-abrir {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
   border: none;
   background: transparent;
+  font: inherit;
+  color: inherit;
   cursor: pointer;
   text-align: left;
 }
@@ -2293,6 +2314,39 @@ a.panel-tarea:focus-visible {
 /* Con los cuatrimestres separados cada recuadro se adapta a lo que tiene */
 .grupo-modulos .modulos-contenedor {
   min-height: 0;
+}
+
+/* ---------- La carrera, por encima de los cuatrimestres ----------
+   Solo aparece cuando hay más de una: para un estudiante, que casi siempre
+   cursa una sola, el título sobraría. El peso visual va de mayor a menor —
+   carrera, cuatrimestre, tarjeta—, así se lee la jerarquía sin pensarla. */
+.grupo-carrera {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.carrera-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 6px 0 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--borde);
+  color: var(--oscuro);
+  font-size: 1.05rem;
+}
+
+.carrera-titulo small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+/* Dentro de una carrera el cuatrimestre baja un escalón: deja de ser el
+   título de la sección y pasa a ser una división adentro. */
+.grupo-carrera .periodo-titulo {
+  font-size: 0.8rem;
 }
 
 /* ===================== Barra de desplazamiento ===================== */
@@ -7986,5 +8040,3576 @@ a.proxima:hover {
   .finales-grupo {
     padding-left: 20px;
     padding-right: 14px;
+  }
+}
+
+/* =====================================================================
+   Administración de un módulo (docente a cargo)
+   =====================================================================
+   Los controles del editor son discretos a propósito: el docente pasa más
+   tiempo mirando su módulo que editándolo, y una pantalla llena de botones
+   tapa el contenido, que es lo que importa. Aparecen al encender el modo
+   editor y no antes. */
+
+.aviso-editor {
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: var(--radio-chico);
+  background: color-mix(in srgb, var(--principal) 10%, var(--blanco));
+  border: 1px solid color-mix(in srgb, var(--principal) 28%, transparent);
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+  font-size: 0.88rem;
+}
+
+/* La barra del módulo tiene que dejar lugar al botón de editar */
+.modulo-barra {
+  flex-wrap: wrap;
+}
+
+.modulo-barra .boton-principal,
+.modulo-barra .boton-suave {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.boton-suave.activo {
+  border-color: var(--progreso-alto);
+  color: var(--progreso-alto-texto);
+}
+
+/* ----- Los controles de ordenar, editar y borrar ----- */
+.acciones-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.acciones-editor button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.acciones-editor button:hover:not(:disabled) {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.acciones-editor button.peligro:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+}
+
+.acciones-editor button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* El chevron apunta a la derecha; para subir y bajar se lo gira */
+.gira-arriba {
+  transform: rotate(-90deg);
+}
+
+.gira-abajo {
+  transform: rotate(90deg);
+}
+
+/* ----- El avance del curso en la cabecera de la sección ----- */
+/* Reemplaza a la barra de progreso personal: al docente no le sirve su
+   propio avance, le sirve cuántos de sus alumnos completaron la sección. */
+.carpeta-curso {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.carpeta-curso strong {
+  color: var(--oscuro);
+  font-size: 0.92rem;
+}
+
+.carpeta-vacia {
+  margin: 0;
+  padding: 6px 0;
+  font-size: 0.88rem;
+}
+
+/* ----- Abrir y cerrar la entrega de un trabajo ----- */
+.item-entrega {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.item-entrega.abierta:hover {
+  border-color: color-mix(in srgb, var(--alerta) 40%, transparent);
+  color: var(--alerta);
+}
+
+.item-entrega.cerrada {
+  border-color: color-mix(in srgb, var(--progreso-alto) 40%, transparent);
+  color: var(--progreso-alto-texto);
+}
+
+.item-estado.cerrada {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.item-estado.reabierta {
+  color: var(--progreso-medio-texto);
+  font-weight: 600;
+}
+
+/* ----- Agregar ----- */
+.item-fila.agregar {
+  padding: 4px 0;
+}
+
+.boton-agregar,
+.boton-seccion-nueva {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+  background: transparent;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.boton-agregar:hover,
+.boton-seccion-nueva:hover {
+  border-color: var(--principal);
+  color: var(--principal);
+  background: color-mix(in srgb, var(--principal) 6%, transparent);
+}
+
+.boton-seccion-nueva {
+  padding: 16px;
+}
+
+/* ----- Los formularios del editor ----- */
+.editor-seccion,
+.editor-elemento {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--principal);
+  border-radius: var(--radio-chico);
+  animation: aparecer-subiendo 0.22s ease;
+}
+
+.editor-seccion label,
+.editor-elemento label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editor-seccion label > span,
+.editor-elemento label > span {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.editor-seccion label > span small,
+.editor-elemento label > span small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.editor-seccion input,
+.editor-seccion textarea,
+.editor-elemento input,
+.editor-elemento textarea,
+.editor-elemento select,
+.correccion input,
+.correccion textarea,
+.correccion select {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--fondo);
+  font: inherit;
+  font-size: 0.93rem;
+  color: var(--texto);
+}
+
+.editor-seccion textarea,
+.editor-elemento textarea,
+.correccion textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.editor-seccion input:focus,
+.editor-seccion textarea:focus,
+.editor-elemento input:focus,
+.editor-elemento textarea:focus,
+.editor-elemento select:focus,
+.correccion input:focus,
+.correccion textarea:focus,
+.correccion select:focus {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.editor-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.editor-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.editor-nota {
+  margin: 0;
+  padding: 9px 13px;
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+/* ----- Elegir qué tipo de elemento se agrega ----- */
+.editor-tipos {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.editor-tipos legend {
+  padding: 0 0 10px;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.editor-tipos > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.editor-tipos .tipo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.editor-tipos .tipo input {
+  /* El recuadro entero es el control; el radio queda para el teclado */
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.editor-tipos .tipo strong {
+  font-size: 0.92rem;
+}
+
+.editor-tipos .tipo small {
+  grid-column: 1 / -1;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+.editor-tipos .tipo:hover {
+  border-color: var(--principal);
+}
+
+.editor-tipos .tipo.elegido {
+  border-color: var(--principal);
+  background: color-mix(in srgb, var(--principal) 8%, transparent);
+}
+
+.editor-tipos .tipo:focus-within {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+/* ----- Los anuncios, en modo editor ----- */
+.anuncio {
+  position: relative;
+}
+
+.anuncio .acciones-editor {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  margin-left: 0;
+}
+
+/* ----- La grilla de notas ----- */
+.tabla-envoltorio {
+  overflow-x: auto;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.tabla-notas.grilla {
+  border: none;
+  border-radius: 0;
+  min-width: 100%;
+}
+
+.tabla-notas.grilla thead th {
+  white-space: nowrap;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabla-notas.grilla tbody th {
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--oscuro);
+}
+
+.celda-nota {
+  width: 1%;
+  padding: 6px !important;
+  text-align: center !important;
+}
+
+.nota-celda {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 38px;
+  margin: 0 auto;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--blanco);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+}
+
+.nota-celda:hover {
+  border-color: var(--principal);
+  transform: translateY(-1px);
+}
+
+.nota-celda.aprobada {
+  background: color-mix(in srgb, var(--progreso-alto) 12%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-alto) 35%, transparent);
+  color: var(--progreso-alto-texto);
+}
+
+.nota-celda.desaprobada {
+  background: color-mix(in srgb, var(--alerta) 9%, var(--blanco));
+  border-color: color-mix(in srgb, var(--alerta) 30%, transparent);
+  color: var(--alerta);
+}
+
+.nota-celda.vacia {
+  color: var(--gris);
+  border-style: dashed;
+}
+
+/* ----- Corregir una entrega ----- */
+.correccion-fondo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(12 16 31 / 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 60;
+  animation: aparecer 0.18s ease;
+}
+
+.correccion {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px 28px 22px;
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: 0 24px 60px rgb(12 16 31 / 0.35);
+  animation: aparecer-subiendo 0.22s ease;
+}
+
+.correccion h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--oscuro);
+}
+
+.correccion-trabajo {
+  margin: -8px 0 0;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.correccion label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.correccion label > span {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.correccion label > span small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.correccion-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.correccion-cerrar:hover:not(:disabled) {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+/* ----- El avance del curso en el panel derecho ----- */
+.avance-curso {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avance-curso strong {
+  font-size: 1.1rem;
+  color: var(--oscuro);
+}
+
+.avance-curso .barra-avance {
+  flex: 1;
+  background: var(--panel);
+}
+
+.panel-vacio.destacado {
+  color: var(--alerta);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .editor-fila {
+    grid-template-columns: 1fr;
+  }
+  .editor-botones {
+    flex-direction: column-reverse;
+  }
+  .editor-botones button {
+    width: 100%;
+  }
+  .acciones-editor {
+    margin-left: 0;
+  }
+}
+
+/* =====================================================================
+   Reordenar arrastrando, y el detalle de entregas de una sección
+   ===================================================================== */
+
+/* ----- El asa ----- */
+.acciones-editor .asa {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--gris);
+  cursor: grab;
+  transition: background 0.15s, color 0.15s;
+}
+
+.acciones-editor .asa:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.acciones-editor .asa:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.acciones-editor .asa.arrastrando {
+  cursor: grabbing;
+  color: var(--principal);
+}
+
+/* Mientras se arrastra, la caja tomada sigue al puntero y las demás se
+   corren para abrir el hueco. La transición va en las que se corren, no en
+   la tomada: esa tiene que ir pegada al dedo, sin retardo. */
+/* La transición se pone solo mientras se arrastra. Dejarla puesta siempre
+   hace que el navegador trate a cada caja como animable todo el tiempo, y
+   cualquier cambio de posición —abrir una carpeta, filtrar— arrastra un
+   deslizamiento que nadie pidió. */
+.carpetas.moviendo .carpeta,
+.carpeta-items.moviendo .item-fila {
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.carpeta.se-arrastra,
+.item-fila.se-arrastra {
+  /* Se despega del resto: sombra, un pelo más grande y por encima */
+  box-shadow: 0 14px 34px rgb(12 16 31 / 0.22);
+  cursor: grabbing;
+}
+
+.carpeta.se-arrastra {
+  border-radius: var(--radio-chico);
+}
+
+/* En modo editor la caja entera se puede tomar */
+.carpetas.moviendo {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.carpeta:has(.asa) .carpeta-abrir,
+.item-fila:has(.asa) {
+  cursor: grab;
+}
+
+/* Con prefers-reduced-motion el bloque general ya achica las duraciones,
+   así que esto no agrega movimiento para quien lo pidió apagado. */
+
+/* ----- El estado de la entrega: abierto o cerrado ----- */
+.item-entrega {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.item-entrega .punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.item-entrega.abierta {
+  border-color: color-mix(in srgb, var(--progreso-alto) 40%, transparent);
+  background: color-mix(in srgb, var(--progreso-alto) 10%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.item-entrega.abierta:hover {
+  border-color: var(--progreso-alto);
+  background: color-mix(in srgb, var(--progreso-alto) 16%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.item-entrega.cerrada {
+  border-color: color-mix(in srgb, var(--alerta) 38%, transparent);
+  background: color-mix(in srgb, var(--alerta) 8%, var(--blanco));
+  color: var(--alerta);
+}
+
+.item-entrega.cerrada:hover {
+  border-color: var(--alerta);
+  background: color-mix(in srgb, var(--alerta) 14%, var(--blanco));
+}
+
+/* ----- El chip del avance, ahora clickeable ----- */
+.carpeta-curso[role='button'] {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.carpeta-curso[role='button']:hover {
+  border-color: var(--principal);
+  background: color-mix(in srgb, var(--principal) 8%, var(--blanco));
+}
+
+.carpeta-curso[role='button']:focus-visible {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+/* ----- El detalle de entregas ----- */
+.entregas-fondo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(12 16 31 / 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 55;
+  animation: aparecer 0.18s ease;
+}
+
+.entregas {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 26px 28px 22px;
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: 0 24px 60px rgb(12 16 31 / 0.35);
+  animation: aparecer-subiendo 0.22s ease;
+}
+
+.entregas-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.entregas-cerrar:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.entregas-encabezado {
+  margin-bottom: 16px;
+  padding-right: 40px;
+}
+
+.entregas-encabezado h2 {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  color: var(--oscuro);
+}
+
+.entregas-encabezado p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.entregas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entrega-alumno {
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--progreso-medio);
+  border-radius: var(--radio-chico);
+  overflow: hidden;
+}
+
+.entrega-alumno.completo {
+  border-left-color: var(--progreso-alto);
+}
+
+.entrega-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 15px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entrega-cabecera:hover {
+  background: var(--fondo);
+}
+
+.entrega-nombre {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--progreso-medio-texto);
+}
+
+.entrega-alumno.completo .entrega-nombre {
+  color: var(--progreso-alto-texto);
+}
+
+.entrega-nombre strong {
+  color: var(--oscuro);
+  font-size: 0.95rem;
+}
+
+.entrega-cuentas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.entrega-cuentas small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.entrega-cuentas .pendiente {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+  font-weight: 600;
+}
+
+.entrega-trabajos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--borde);
+  border-top: 1px solid var(--borde);
+}
+
+.entrega-trabajos li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 15px;
+  background: var(--fondo);
+}
+
+.entrega-trabajo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.entrega-trabajo strong {
+  font-size: 0.9rem;
+  color: var(--oscuro);
+}
+
+.entrega-trabajo small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.entrega-trabajo small.atrasada {
+  color: var(--progreso-medio-texto);
+  font-weight: 600;
+}
+
+.entrega-trabajo small.sin-entregar {
+  color: var(--alerta);
+  font-weight: 600;
+}
+
+.entrega-comentario {
+  font-style: italic;
+}
+
+.entrega-nota {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.entrega-nota .nota-celda {
+  cursor: default;
+}
+
+.entrega-nota .nota-celda:hover {
+  transform: none;
+  border-color: var(--borde);
+}
+
+.entrega-vacia {
+  margin: 0;
+  padding: 12px 15px;
+  border-top: 1px solid var(--borde);
+  background: var(--fondo);
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 680px) {
+  .entrega-cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .entrega-trabajos li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* =====================================================================
+   Evaluación: modalidad, cuestionarios y cierre de cursada
+   ===================================================================== */
+
+/* El selector de modalidad reusa `.editor-tipos`, pero más compacto: son
+   dos opciones, no cuatro, y van dentro de un formulario que ya es largo. */
+.editor-tipos.compacto > div {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.editor-tipos.compacto .tipo {
+  padding: 10px 13px;
+}
+
+/* ----- El editor de preguntas ----- */
+.editor-preguntas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--borde);
+}
+
+.editor-preguntas h4 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: var(--oscuro);
+}
+
+.editor-preguntas h4 small {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.pregunta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--fondo);
+}
+
+.pregunta legend {
+  padding: 0 6px;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pregunta-quitar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.pregunta-quitar:hover {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+}
+
+.pregunta .opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pregunta .opciones li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.pregunta .opciones li > button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.pregunta .opciones li > button:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+/* El radio marca cuál es la correcta. Se dibuja a mano: el del navegador no
+   se puede peinar y acá tiene que leerse como un "esta es". */
+.pregunta .opciones label,
+.cuestionario .opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.pregunta .opciones label input,
+.cuestionario .opcion input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.pregunta .opciones .marca,
+.cuestionario .opcion .marca {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--borde);
+  border-radius: 50%;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pregunta .opciones .marca::after,
+.cuestionario .opcion .marca::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.pregunta .opciones label:has(input:checked) .marca {
+  border-color: var(--progreso-alto);
+}
+
+.pregunta .opciones label:has(input:checked) .marca::after {
+  background: var(--progreso-alto);
+}
+
+.pregunta .opciones label:has(input:focus-visible) .marca,
+.cuestionario .opcion:has(input:focus-visible) .marca {
+  outline: 2px solid var(--principal);
+  outline-offset: 2px;
+}
+
+.boton-agregar.chico {
+  align-self: flex-start;
+  width: auto;
+  padding: 7px 13px;
+  font-size: 0.84rem;
+}
+
+/* ----- La modalidad en la cabecera de cada columna de notas ----- */
+.columna-trabajo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.columna-trabajo .modalidad {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.modalidad.entrega {
+  background: color-mix(in srgb, var(--principal) 14%, var(--blanco));
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+}
+
+.modalidad.cuestionario {
+  background: color-mix(in srgb, var(--progreso-alto) 14%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.modalidad.presencial {
+  background: color-mix(in srgb, var(--progreso-medio) 18%, var(--blanco));
+  color: var(--progreso-medio-texto);
+}
+
+/* ----- La columna de nota final ----- */
+.columna-cierre,
+.celda-cierre {
+  border-left: 2px solid var(--borde) !important;
+}
+
+.celda-cierre {
+  width: 1%;
+  padding: 6px 10px !important;
+}
+
+.cierre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 96px;
+  padding: 7px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--progreso-alto) 10%, var(--blanco));
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s;
+}
+
+.cierre:hover {
+  border-color: var(--principal);
+  transform: translateY(-1px);
+}
+
+.cierre strong {
+  font-size: 1.15rem;
+  color: var(--progreso-alto-texto);
+}
+
+.cierre small {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--progreso-alto-texto);
+}
+
+.cierre.final {
+  background: color-mix(in srgb, var(--alerta) 8%, var(--blanco));
+}
+
+.cierre.final strong,
+.cierre.final small {
+  color: var(--alerta);
+}
+
+.cierre.vacio {
+  background: var(--blanco);
+  border-style: dashed;
+}
+
+.cierre.vacio strong,
+.cierre.vacio small {
+  color: var(--texto-suave);
+}
+
+/* Una condición puesta a mano no es lo mismo que una calculada: se marca,
+   porque explica por qué el número y la condición no coinciden. */
+.marca-mano {
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ----- Las notas propias del alumno ----- */
+.mi-cierre {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 24px;
+  border-radius: var(--radio);
+  background: color-mix(in srgb, var(--progreso-alto) 9%, var(--blanco));
+  border: 1px solid color-mix(in srgb, var(--progreso-alto) 30%, transparent);
+}
+
+.mi-cierre.final {
+  background: color-mix(in srgb, var(--alerta) 7%, var(--blanco));
+  border-color: color-mix(in srgb, var(--alerta) 28%, transparent);
+}
+
+.mi-cierre-nota {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 92px;
+  padding: 12px;
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+}
+
+.mi-cierre-nota strong {
+  font-size: 2.1rem;
+  line-height: 1;
+  color: var(--progreso-alto-texto);
+}
+
+.mi-cierre.final .mi-cierre-nota strong {
+  color: var(--alerta);
+}
+
+.mi-cierre-nota small {
+  margin-top: 4px;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mi-cierre-texto h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 5px;
+  font-size: 1.1rem;
+  color: var(--progreso-alto-texto);
+}
+
+.mi-cierre.final .mi-cierre-texto h3 {
+  color: var(--alerta);
+}
+
+.mi-cierre-texto p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.mi-cierre-pendiente {
+  margin-top: 6px !important;
+  color: var(--progreso-medio-texto) !important;
+  font-weight: 600;
+}
+
+.mi-cierre-nota-docente {
+  margin-top: 6px !important;
+  font-style: italic;
+}
+
+.mis-trabajos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mi-trabajo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 18px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.mi-trabajo-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mi-trabajo-texto strong {
+  font-size: 0.96rem;
+  color: var(--oscuro);
+}
+
+.mi-trabajo-texto small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texto-suave);
+  font-size: 0.83rem;
+}
+
+.mi-trabajo-texto .entregado {
+  color: var(--progreso-alto-texto);
+}
+
+.mi-trabajo-texto .sin-entregar {
+  color: var(--alerta);
+  font-weight: 600;
+}
+
+.mi-trabajo-devolucion {
+  margin: 5px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.mi-trabajo-nota {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mi-trabajo-nota small {
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+/* ----- El cuestionario ----- */
+.cuestionario {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+}
+
+.cuestionario-resultado {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+}
+
+.cuestionario-resultado h3 {
+  margin: 0 0 3px;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+}
+
+.cuestionario-resultado p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.preguntas-resueltas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pregunta;
+}
+
+.preguntas-resueltas > li {
+  padding: 16px 18px;
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+}
+
+.preguntas-resueltas > li.bien {
+  border-left-color: var(--progreso-alto);
+}
+
+.preguntas-resueltas > li.mal {
+  border-left-color: var(--alerta);
+}
+
+.preguntas-resueltas > li.contestada {
+  border-left-color: var(--principal);
+}
+
+.preguntas-resueltas h4 {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 11px;
+  font-size: 0.97rem;
+  color: var(--oscuro);
+}
+
+.preguntas-resueltas > li.bien h4 {
+  color: var(--progreso-alto-texto);
+}
+
+.preguntas-resueltas > li.mal h4 {
+  color: var(--alerta);
+}
+
+.preguntas-resueltas .numero {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.preguntas-resueltas ul {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preguntas-resueltas ul > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 13px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  font-size: 0.91rem;
+}
+
+.preguntas-resueltas ul > li small {
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.preguntas-resueltas ul > li.correcta {
+  border-color: color-mix(in srgb, var(--progreso-alto) 40%, transparent);
+  background: color-mix(in srgb, var(--progreso-alto) 9%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.preguntas-resueltas ul > li.elegida-mal {
+  border-color: color-mix(in srgb, var(--alerta) 35%, transparent);
+  background: color-mix(in srgb, var(--alerta) 7%, var(--blanco));
+  color: var(--alerta);
+}
+
+/* Mientras se responde, la opción entera es el control */
+.preguntas-resueltas.respondiendo ul > li {
+  padding: 0;
+  border: none;
+}
+
+.cuestionario .opcion {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cuestionario .opcion:hover {
+  border-color: var(--principal);
+}
+
+.cuestionario .opcion.elegida {
+  border-color: var(--principal);
+  background: color-mix(in srgb, var(--principal) 8%, var(--blanco));
+}
+
+.cuestionario .opcion.elegida .marca {
+  border-color: var(--principal);
+}
+
+.cuestionario .opcion.elegida .marca::after {
+  background: var(--principal);
+}
+
+.cuestionario-pie {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.cuestionario-pie small {
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 680px) {
+  .mi-cierre {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .mi-cierre-texto h3 {
+    justify-content: center;
+  }
+  .mi-trabajo {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .preguntas-resueltas ul > li {
+    flex-wrap: wrap;
+  }
+}
+
+/* =====================================================================
+   Asistencias
+   =====================================================================
+   El semáforo es el mismo de las barras de avance: verde dentro del cupo,
+   ámbar cerca del límite, rojo pasado. No se agrega una paleta nueva. */
+
+.asistencias {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+/* ----- Las tarjetas de números ----- */
+.datos-asistencia {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.dato-asistencia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 16px 12px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+  text-align: center;
+}
+
+.dato-asistencia strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.dato-asistencia small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+.dato-asistencia.destacado {
+  background: var(--oscuro);
+}
+
+.dato-asistencia.destacado strong,
+.dato-asistencia.destacado small {
+  color: var(--blanco);
+}
+
+.dato-asistencia.verde strong {
+  color: var(--progreso-alto-texto);
+}
+
+.dato-asistencia.ambar {
+  background: color-mix(in srgb, var(--progreso-medio) 16%, var(--blanco));
+}
+
+.dato-asistencia.ambar strong {
+  color: var(--progreso-medio-texto);
+}
+
+.dato-asistencia.rojo {
+  background: color-mix(in srgb, var(--alerta) 9%, var(--blanco));
+}
+
+.dato-asistencia.rojo strong {
+  color: var(--alerta);
+}
+
+/* ----- El semáforo ----- */
+.situacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.situacion.chica {
+  padding: 3px 9px;
+  font-size: 0.76rem;
+}
+
+.situacion.al-dia {
+  background: color-mix(in srgb, var(--progreso-alto) 12%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-alto) 35%, transparent);
+  color: var(--progreso-alto-texto);
+}
+
+.situacion.en-riesgo {
+  background: color-mix(in srgb, var(--progreso-medio) 16%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-medio) 42%, transparent);
+  color: var(--progreso-medio-texto);
+}
+
+.situacion.por-debajo {
+  background: color-mix(in srgb, var(--alerta) 9%, var(--blanco));
+  border-color: color-mix(in srgb, var(--alerta) 32%, transparent);
+  color: var(--alerta);
+}
+
+.situacion.sin-clases {
+  background: var(--panel);
+  border-color: var(--borde);
+  color: var(--texto-suave);
+}
+
+/* ----- La barra, con la marca del mínimo ----- */
+.barra-asistencia {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.barra-asistencia-relleno {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gris);
+  transition: width 0.4s ease;
+}
+
+.barra-asistencia-relleno.al-dia {
+  background: var(--progreso-alto);
+}
+
+.barra-asistencia-relleno.en-riesgo {
+  background: var(--progreso-medio);
+}
+
+.barra-asistencia-relleno.por-debajo {
+  background: var(--alerta);
+}
+
+/* La rayita del mínimo exigido: sin ella, un 68 % no dice nada */
+.barra-asistencia-minimo {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--oscuro);
+  opacity: 0.55;
+}
+
+/* ----- El estado de una persona en una clase ----- */
+.estado-asistencia {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.estado-asistencia.presente {
+  background: color-mix(in srgb, var(--progreso-alto) 13%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.estado-asistencia.ausente {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+}
+
+.estado-asistencia.tarde {
+  background: color-mix(in srgb, var(--progreso-medio) 18%, var(--blanco));
+  color: var(--progreso-medio-texto);
+}
+
+.estado-asistencia.justificada {
+  background: color-mix(in srgb, var(--principal) 12%, var(--blanco));
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+}
+
+.estado-asistencia.vacio {
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-weight: 400;
+}
+
+/* ----- Planificación ----- */
+.planificacion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.planificacion .boton-suave {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.barra-asistencias {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.barra-asistencias .boton-principal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ----- La lista de clases ----- */
+.clases {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clase {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+/* Una clase suspendida no cuenta para nadie: se ve apagada */
+.clase.suspendida {
+  background: color-mix(in srgb, var(--panel) 50%, var(--blanco));
+}
+
+.clase-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 46px;
+}
+
+.clase-dia strong {
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.clase-dia small {
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+.clase-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clase-texto strong {
+  font-size: 0.95rem;
+  color: var(--oscuro);
+}
+
+.clase-texto small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.clase-motivo {
+  font-style: italic;
+}
+
+.clase-resumen {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.cuenta {
+  font-size: 0.82rem;
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
+.cuenta strong {
+  font-size: 0.95rem;
+}
+
+.cuenta.presente strong {
+  color: var(--progreso-alto-texto);
+}
+
+.cuenta.ausente strong {
+  color: var(--alerta);
+}
+
+.cuenta.tarde strong {
+  color: var(--progreso-medio-texto);
+}
+
+.cuenta.justificada strong {
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+}
+
+/* ----- Tomar lista ----- */
+.lista-fondo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(12 16 31 / 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 60;
+  animation: aparecer 0.18s ease;
+}
+
+.lista-asistencia {
+  position: relative;
+  width: min(840px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 26px 20px;
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: 0 24px 60px rgb(12 16 31 / 0.35);
+  animation: aparecer-subiendo 0.22s ease;
+}
+
+.lista-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.lista-cerrar:hover:not(:disabled) {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.lista-encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 36px;
+}
+
+.lista-encabezado h2 {
+  margin: 0 0 3px;
+  font-size: 1.15rem;
+  color: var(--oscuro);
+  text-transform: capitalize;
+}
+
+.lista-encabezado p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+}
+
+.lista-encabezado .boton-suave {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.lista-cuenta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+}
+
+.lista-alumnos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-alumnos > li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 11px 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.lista-alumno {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.lista-alumno strong {
+  font-size: 0.94rem;
+  color: var(--oscuro);
+}
+
+.lista-alumno-datos {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.lista-alumno-datos small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.lista-justificacion {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.lista-justificacion.pendiente {
+  color: var(--progreso-medio-texto);
+}
+
+.lista-justificacion.aprobada {
+  color: var(--progreso-alto-texto);
+}
+
+.lista-justificacion.rechazada {
+  color: var(--alerta);
+}
+
+/* Los cuatro estados como botones cortos: tomar lista es tocar, no elegir
+   de una lista desplegable treinta veces. */
+.lista-estados {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.opcion-estado {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--blanco);
+  color: var(--texto-suave);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.opcion-estado input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.opcion-estado:hover {
+  border-color: var(--gris);
+}
+
+.opcion-estado.elegida.presente {
+  background: color-mix(in srgb, var(--progreso-alto) 15%, var(--blanco));
+  border-color: var(--progreso-alto);
+  color: var(--progreso-alto-texto);
+}
+
+.opcion-estado.elegida.ausente {
+  background: color-mix(in srgb, var(--alerta) 12%, var(--blanco));
+  border-color: var(--alerta);
+  color: var(--alerta);
+}
+
+.opcion-estado.elegida.tarde {
+  background: color-mix(in srgb, var(--progreso-medio) 20%, var(--blanco));
+  border-color: var(--progreso-medio);
+  color: var(--progreso-medio-texto);
+}
+
+.opcion-estado.elegida.justificada {
+  background: color-mix(in srgb, var(--principal) 14%, var(--blanco));
+  border-color: var(--principal);
+  color: color-mix(in srgb, var(--principal) 80%, var(--oscuro));
+}
+
+.opcion-estado:has(input:focus-visible) {
+  outline: 2px solid var(--principal);
+  outline-offset: 1px;
+}
+
+.lista-observacion {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 7px 11px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--fondo);
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.lista-motivo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lista-motivo span {
+  color: var(--alerta);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lista-motivo input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--fondo);
+  font: inherit;
+}
+
+.lista-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid var(--borde);
+}
+
+.lista-cerrar-registro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+/* ----- Los alumnos de una materia ----- */
+.alumnos-asistencia,
+.materias-asistencia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alumnos-asistencia > li,
+.materias-asistencia > li {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.alumno-nombre,
+.materia-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 170px;
+  flex-shrink: 0;
+}
+
+.alumno-nombre strong,
+.materia-texto strong {
+  font-size: 0.95rem;
+  color: var(--oscuro);
+}
+
+.materia-texto a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.materia-texto a:hover strong {
+  color: var(--principal);
+}
+
+.materia-texto small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.alumno-barra,
+.materia-barra {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alumno-barra small,
+.materia-barra small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.alumno-faltas,
+.materia-faltas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 78px;
+}
+
+.alumno-faltas strong,
+.materia-faltas strong {
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.alumno-faltas small,
+.materia-faltas small {
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+  text-align: center;
+}
+
+.materia-banda {
+  width: 5px;
+  align-self: stretch;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* ----- La vista del alumno en una materia ----- */
+.mi-asistencia {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 24px;
+  border-radius: var(--radio);
+  background: color-mix(in srgb, var(--progreso-alto) 9%, var(--blanco));
+  border: 1px solid color-mix(in srgb, var(--progreso-alto) 28%, transparent);
+}
+
+.mi-asistencia.en-riesgo {
+  background: color-mix(in srgb, var(--progreso-medio) 12%, var(--blanco));
+  border-color: color-mix(in srgb, var(--progreso-medio) 35%, transparent);
+}
+
+.mi-asistencia.por-debajo {
+  background: color-mix(in srgb, var(--alerta) 7%, var(--blanco));
+  border-color: color-mix(in srgb, var(--alerta) 26%, transparent);
+}
+
+.mi-asistencia-nota {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 108px;
+  padding: 14px;
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+}
+
+.mi-asistencia-nota strong {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--oscuro);
+}
+
+.mi-asistencia-nota small {
+  margin-top: 4px;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+.mi-asistencia-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.mi-asistencia-texto p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.mi-asistencia-texto .barra-asistencia {
+  width: 100%;
+}
+
+.mis-clases {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mis-clases > li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.mis-clases > li.suspendida {
+  background: color-mix(in srgb, var(--panel) 50%, var(--blanco));
+}
+
+.mi-clase-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mi-clase-texto strong {
+  font-size: 0.93rem;
+  color: var(--oscuro);
+}
+
+.mi-clase-texto small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.mi-clase-obs {
+  font-style: italic;
+}
+
+/* ----- Justificaciones ----- */
+.justificaciones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.justificacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 15px 18px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+.justificacion.pendiente {
+  border-left-color: var(--progreso-medio);
+}
+
+.justificacion.aprobada {
+  border-left-color: var(--progreso-alto);
+}
+
+.justificacion.rechazada {
+  border-left-color: var(--alerta);
+}
+
+.justificacion-texto {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.justificacion-texto strong {
+  font-size: 0.96rem;
+  color: var(--oscuro);
+}
+
+.justificacion-texto small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.justificacion-texto p {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--texto-suave);
+}
+
+.justificacion-archivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.justificacion-respuesta {
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.justificacion-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.estado-justificacion {
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.estado-justificacion.pendiente {
+  background: color-mix(in srgb, var(--progreso-medio) 18%, var(--blanco));
+  color: var(--progreso-medio-texto);
+}
+
+.estado-justificacion.aprobada {
+  background: color-mix(in srgb, var(--progreso-alto) 13%, var(--blanco));
+  color: var(--progreso-alto-texto);
+}
+
+.estado-justificacion.rechazada {
+  background: color-mix(in srgb, var(--alerta) 10%, var(--blanco));
+  color: var(--alerta);
+}
+
+.justificacion-acciones {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pestana-cantidad.alerta {
+  background: var(--alerta);
+  color: var(--blanco);
+}
+
+@media (max-width: 760px) {
+  .clase,
+  .mis-clases > li,
+  .alumnos-asistencia > li,
+  .materias-asistencia > li {
+    flex-wrap: wrap;
+  }
+  .lista-alumnos > li {
+    grid-template-columns: 1fr;
+  }
+  .lista-estados {
+    justify-content: space-between;
+  }
+  .opcion-estado {
+    flex: 1;
+  }
+  .mi-asistencia {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .mi-asistencia-texto {
+    align-items: center;
+  }
+  .lista-encabezado {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================================
+   Ajustes: perfil, estructura académica y cuentas
+   ===================================================================== */
+
+.cuerpo-ajustes {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+/* ----- La ficha de arriba ----- */
+.perfil-ficha {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: var(--oscuro);
+  border-radius: var(--radio);
+  color: var(--blanco);
+}
+
+.perfil-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.12);
+  color: var(--blanco);
+}
+
+.perfil-avatar.chica {
+  width: 38px;
+  height: 38px;
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.perfil-datos h2 {
+  margin: 0 0 7px;
+  font-size: 1.25rem;
+}
+
+.perfil-datos p {
+  margin: 7px 0 0;
+  font-size: 0.86rem;
+  opacity: 0.8;
+}
+
+.perfil-roles {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.etiqueta-rol {
+  padding: 3px 11px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.16);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* En la lista de cuentas el fondo es claro */
+.fila-roles .etiqueta-rol {
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.bloque-ajustes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bloque-ajustes h3,
+.editor-seccion h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--oscuro);
+}
+
+.bloque-ajustes h3 small {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+/* ----- Las asociaciones académicas, cada una en su tarjeta ----- */
+.asociaciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 12px;
+}
+
+.asociacion {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 16px 18px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--principal);
+  border-radius: var(--radio-chico);
+}
+
+.asociacion.suspendida,
+.asociacion.egresada {
+  border-left-color: var(--gris);
+  background: color-mix(in srgb, var(--panel) 45%, var(--blanco));
+}
+
+.asociacion header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.asociacion header strong {
+  font-size: 0.98rem;
+  color: var(--oscuro);
+}
+
+.estado-asociacion {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.asociacion dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 14px;
+  margin: 0;
+}
+
+.asociacion dt {
+  margin-bottom: 2px;
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.asociacion dd {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--oscuro);
+}
+
+/* ----- Lo que todavía no se puede hacer ----- */
+.pendientes {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pendientes li {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 16px;
+  background: var(--panel);
+  border-radius: var(--radio-chico);
+  color: var(--texto-suave);
+}
+
+.pendientes strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.92rem;
+}
+
+.pendientes small {
+  font-size: 0.84rem;
+}
+
+/* ----- El catálogo: carreras, sedes, planes, comisiones, cuentas ----- */
+.catalogo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fila-catalogo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 17px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+}
+
+/* Lo dado de baja se sigue viendo, pero apagado: sigue existiendo para lo
+   que ya dependía de ello. */
+.fila-catalogo.inactiva {
+  background: color-mix(in srgb, var(--panel) 50%, var(--blanco));
+  opacity: 0.75;
+}
+
+.fila-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fila-texto strong {
+  font-size: 0.95rem;
+  color: var(--oscuro);
+}
+
+.fila-texto small {
+  color: var(--texto-suave);
+  font-size: 0.83rem;
+}
+
+.fila-baja {
+  font-style: italic;
+}
+
+.fila-usos {
+  flex-shrink: 0;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.fila-roles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* El diálogo de asignación necesita más ancho: son cinco desplegables */
+.correccion.ancha {
+  width: min(600px, 100%);
+}
+
+@media (max-width: 760px) {
+  .perfil-ficha {
+    flex-direction: column;
+    text-align: center;
+  }
+  .perfil-roles {
+    justify-content: center;
+  }
+  .fila-catalogo {
+    flex-wrap: wrap;
+  }
+  .asociacion dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----- El cuadro de materias de una comisión ----- */
+.fila-docentes {
+  color: var(--progreso-alto-texto) !important;
+  font-weight: 500;
+}
+
+.fila-acciones {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fila-catalogo.editando {
+  display: block;
+  border-color: var(--principal);
+}
+
+.editor-dictado {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.editor-dictado > strong {
+  font-size: 0.98rem;
+  color: var(--oscuro);
+}
+
+.editor-dictado label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editor-dictado label > span {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.editor-dictado label > span small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.editor-dictado input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--fondo);
+  font: inherit;
+}
+
+/* ---------- La ficha de un aporte a revisar ----------
+   Lo que hace falta para decidir sin tener que abrir el material. */
+.aporte-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  flex-basis: 100%;
+  margin: 2px 0 0;
+}
+
+.aporte-datos div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.aporte-datos dt {
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.aporte-datos dd {
+  margin: 0;
+  color: var(--oscuro);
+  font-size: 0.88rem;
+}
+
+.aporte-datos a {
+  color: var(--principal);
+}
+
+/* ---------- Elegir varias materias ----------
+   Es el filtro que manda en la Biblioteca: una biblioteca por materia, y acá
+   se eligen una, varias o todas. Se viste como los demás desplegables de la
+   barra para que sea uno más, no otro control. */
+.desplegable-materias .desplegable-boton {
+  min-width: 190px;
+}
+
+.desplegable-cuenta {
+  flex: none;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.desplegable-lista.ancha {
+  min-width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* La que borra la selección va separada del resto: no es una materia más. */
+.desplegable-todas {
+  border-bottom: 1px solid var(--borde);
+  font-weight: 600;
+}
+
+.desplegable-opcion .desplegable-nombre {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desplegable-detalle {
+  flex: none;
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+}
+
+/* La casilla se dibuja a mano, igual que los checks de los recursos de un
+   módulo: la del navegador no se puede redondear. */
+.desplegable-opcion .casilla {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--borde);
+  border-radius: 5px;
+  color: var(--blanco);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.desplegable-opcion .casilla.puesta {
+  border-color: var(--oscuro);
+  background: var(--oscuro);
+}
+
+.desplegable-opcion.elegida .desplegable-nombre {
+  font-weight: 600;
+}
+
+/* ==================== Registro de actividad ====================
+   Una pantalla de solo lectura, y se nota: no hay un control que escriba.
+   La tabla es una tabla de verdad —no una grilla de recuadros— porque lo que
+   se hace acá es recorrer filas y comparar columnas. */
+.auditoria-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.auditoria-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+.auditoria-tarjeta strong {
+  color: var(--oscuro);
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.auditoria-tarjeta span {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+/* Lo que falló lleva el rojo solo cuando hay algo que mirar: un cero en rojo
+   es una alarma que no suena por nada. */
+.auditoria-tarjeta.alerta {
+  border-color: var(--principal);
+}
+
+.auditoria-tarjeta.alerta strong {
+  color: var(--principal);
+}
+
+.filtros-plan.segunda-fila {
+  margin-top: -4px;
+  animation: aparecer 0.2s ease;
+}
+
+.filtro-fecha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filtro-fecha span {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.filtro-fecha input {
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--blanco);
+  font: inherit;
+  color: var(--oscuro);
+}
+
+.auditoria-exportar {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.auditoria-exportar .boton-suave {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+/* ---------- La tabla ---------- */
+.tabla-auditoria-caja {
+  overflow-x: auto;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer 0.3s ease;
+}
+
+.tabla-auditoria {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla-auditoria th {
+  position: sticky;
+  top: 0;
+  padding: 11px 14px;
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabla-auditoria td {
+  padding: 11px 14px;
+  border-top: 1px solid var(--borde);
+  color: var(--oscuro);
+  vertical-align: top;
+}
+
+.tabla-auditoria tbody tr:hover {
+  background: var(--fondo);
+}
+
+/* Una fila fallida se ve desde lejos: es lo que se viene a buscar. */
+.tabla-auditoria tr.fallida td {
+  background: color-mix(in srgb, var(--principal) 5%, transparent);
+}
+
+.auditoria-fecha {
+  display: block;
+  white-space: nowrap;
+}
+
+.tabla-auditoria td small {
+  display: block;
+  font-size: 0.78rem;
+}
+
+.resultado {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--progreso-alto) 14%, transparent);
+  color: var(--progreso-alto-texto, var(--progreso-alto));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.resultado.fallo {
+  background: color-mix(in srgb, var(--principal) 12%, transparent);
+  color: var(--principal);
+}
+
+/* ---------- El detalle de un movimiento ---------- */
+.movimiento-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 20px;
+  margin: 14px 0;
+}
+
+.movimiento-dato {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.movimiento-dato span {
+  color: var(--texto-suave);
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.movimiento-dato strong {
+  color: var(--oscuro);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.movimiento-detalle {
+  margin: 0 0 14px;
+  color: var(--texto-suave);
+}
+
+/* El antes y el después, uno al lado del otro: es lo que se viene a ver. */
+.movimiento-cambio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.movimiento-cambio > div {
+  padding: 12px 14px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+}
+
+.movimiento-cambio h4 {
+  margin: 0 0 8px;
+  color: var(--texto-suave);
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.movimiento-valores {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.movimiento-valores li {
+  display: flex;
+  flex-direction: column;
+}
+
+.movimiento-valores span {
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+.movimiento-valores strong {
+  color: var(--oscuro);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .movimiento-cambio {
+    grid-template-columns: 1fr;
+  }
+
+  .auditoria-exportar {
+    margin-left: 0;
+  }
+}
+
+/* ---------- Al imprimir ----------
+   El PDF del registro lo hace el navegador: pagina solo, respeta los acentos
+   y no hace falta un generador de PDF en el servidor. Se imprime la tabla y
+   nada más. */
+@media print {
+  .menu,
+  .auditoria .filtros-plan,
+  .auditoria .biblioteca-paginas,
+  .auditoria .tabla-auditoria th:last-child,
+  .auditoria .tabla-auditoria td:last-child,
+  .correccion-fondo {
+    display: none !important;
+  }
+
+  body,
+  .pagina {
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tabla-auditoria-caja {
+    overflow: visible;
+    border: none;
+  }
+
+  .tabla-auditoria {
+    font-size: 10pt;
+  }
+
+  /* Que no se parta una fila entre dos hojas */
+  .tabla-auditoria tr {
+    break-inside: avoid;
+  }
+
+  .tabla-auditoria thead {
+    display: table-header-group;
+  }
+}
+
+/* ==================== Panel de control ====================
+   Las alertas arriba y los números después: la pregunta de quien entra es
+   "¿qué hay que hacer hoy?", no "¿cuántas carreras hay?". */
+.panel-control {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------- Alertas ---------- */
+.panel-alertas h3,
+.grafico h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--oscuro);
+  font-size: 1rem;
+}
+
+.cuenta-urgente {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--principal);
+  color: var(--blanco);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.alertas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alerta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--borde);
+  /* El nivel va en una barrita a la izquierda, no en el fondo: un panel de
+     recuadros de colores se vuelve ilegible apenas hay cuatro. */
+  border-left: 3px solid var(--gris);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.3s ease;
+}
+
+.alerta.nivel-alta {
+  border-left-color: var(--principal);
+}
+
+.alerta.nivel-media {
+  border-left-color: var(--progreso-medio);
+}
+
+.alerta.nivel-info {
+  border-left-color: var(--gris);
+}
+
+.alerta-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.alerta-cantidad {
+  flex: none;
+  min-width: 34px;
+  padding: 3px 8px;
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--oscuro);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.alerta.nivel-alta .alerta-cantidad {
+  background: color-mix(in srgb, var(--principal) 12%, transparent);
+  color: var(--principal);
+}
+
+.alerta-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.alerta-texto strong {
+  color: var(--oscuro);
+}
+
+.alerta-texto small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.alerta-cabecera svg {
+  transition: transform 0.2s ease;
+}
+
+.alerta-cabecera svg.girada {
+  transform: rotate(180deg);
+}
+
+.alerta-accion {
+  flex: none;
+  padding: 7px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  color: var(--oscuro);
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.alerta-accion:hover {
+  border-color: var(--oscuro);
+  background: var(--panel);
+}
+
+.alerta-items {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 4px 0 0;
+  padding: 10px 0 0 46px;
+  border-top: 1px solid var(--borde);
+  list-style: none;
+  font-size: 0.88rem;
+  animation: aparecer 0.2s ease;
+}
+
+.alerta-items a {
+  color: var(--oscuro);
+}
+
+.alerta-items a:hover {
+  color: var(--principal);
+}
+
+/* ---------- Indicadores ---------- */
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 13px 15px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  text-decoration: none;
+}
+
+.indicador strong {
+  color: var(--oscuro);
+  font-size: 1.6rem;
+  line-height: 1.15;
+}
+
+.indicador span {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.indicador small {
+  color: var(--texto-suave);
+  font-size: 0.74rem;
+}
+
+/* Un indicador en rojo solo cuando hay algo que hacer: un cero en rojo es una
+   alarma que no suena por nada. */
+.indicador.alerta {
+  border-color: var(--principal);
+}
+
+.indicador.alerta strong {
+  color: var(--principal);
+}
+
+.indicador.enlace:hover {
+  border-color: var(--oscuro);
+  background: var(--fondo);
+}
+
+/* ---------- Gráficos ---------- */
+.panel-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.grafico {
+  padding: 16px 18px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+}
+
+/* Barras horizontales: los nombres de carrera son largos y no entran debajo
+   de una barra vertical. De un solo color porque es **una** medida — el color
+   acá no distingue nada, y pintarlas distinto haría creer que sí. */
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barras li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.4fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.barra-nombre {
+  color: var(--oscuro);
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barra-pista {
+  height: 9px;
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.barra-relleno {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: 999px;
+  background: var(--oscuro);
+  transition: width 0.4s ease;
+}
+
+.barra-valor {
+  color: var(--oscuro);
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- El número grande de asistencia ---------- */
+.numero-grande {
+  margin: 0 0 10px;
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.numero-grande small {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.numero-grande.bajo {
+  color: var(--progreso-bajo);
+}
+
+.numero-grande.medio {
+  color: var(--progreso-medio-texto, var(--progreso-medio));
+}
+
+.numero-grande.alto {
+  color: var(--progreso-alto-texto, var(--progreso-alto));
+}
+
+.medidor {
+  position: relative;
+  height: 10px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.medidor-relleno {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.medidor-relleno.bajo {
+  background: var(--progreso-bajo);
+}
+
+.medidor-relleno.medio {
+  background: var(--progreso-medio);
+}
+
+.medidor-relleno.alto {
+  background: var(--progreso-alto);
+}
+
+/* La marca del mínimo: sin ella el porcentaje no dice si está bien o mal */
+.medidor-minimo {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--oscuro);
+}
+
+.datos-sueltos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.datos-sueltos div {
+  display: flex;
+  flex-direction: column;
+}
+
+.datos-sueltos dt {
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+.datos-sueltos dd {
+  margin: 0;
+  color: var(--oscuro);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* ---------- Actividad reciente ---------- */
+.actividad-reciente {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.actividad-reciente li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--borde);
+  font-size: 0.88rem;
+}
+
+.actividad-reciente li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.actividad-que {
+  color: var(--texto-suave);
+}
+
+.actividad-que strong {
+  color: var(--oscuro);
+}
+
+.actividad-elemento {
+  color: var(--oscuro);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .alerta {
+    grid-template-columns: 1fr;
+  }
+
+  .alerta-accion {
+    justify-self: start;
+  }
+
+  .barras li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .barra-pista {
+    grid-column: 1 / -1;
   }
 }

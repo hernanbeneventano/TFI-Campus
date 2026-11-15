@@ -141,11 +141,15 @@ export default function DetalleLibro({ libro: inicial, onCerrar, onFavorito, onC
           <Dato nombre="ISBN">{libro.isbn}</Dato>
           <Dato nombre="Idioma">{idiomas[libro.idioma] ?? libro.idioma}</Dato>
           <Dato nombre="Categoría">{libro.nombreCategoria}</Dato>
-          <Dato nombre="Materia">{libro.materia}</Dato>
-          <Dato nombre="Carrera">{libro.carrera}</Dato>
+          <Dato nombre="Materia">
+            {libro.codigoMateria ? `${libro.codigoMateria} · ${libro.materia}` : libro.materia}
+          </Dato>
           <Dato nombre="Año">{libro.anio}</Dato>
           <Dato nombre="Licencia">{libro.licencia}</Dato>
-          <Dato nombre="Aportado por">{libro.subidoPorNombre}</Dato>
+          <Dato nombre="Lo subió">{libro.subidoPorNombre}</Dato>
+          {/* Quién autorizó la publicación queda a la vista, no solo en el
+              historial: es parte de que el material esté revisado. */}
+          <Dato nombre="Lo autorizó">{libro.autorizadoPorNombre}</Dato>
           <Dato nombre="Agregado">{libro.creado ? hace(libro.creado) : null}</Dato>
           {Boolean(libro.categorias?.length) && (
             <Dato nombre="Temas">{libro.categorias.slice(0, 4).join(' · ')}</Dato>

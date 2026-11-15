@@ -20,6 +20,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import datos as d
 from .rutas import biblioteca, calendario, cursos, finales, foro, gestion_finales
+from .rutas import gestion_modulo
+from .rutas import asistencias as rutas_asistencias
+from .rutas import auditoria as rutas_auditoria
+from .rutas import panel as rutas_panel
+from .servicios import auditoria
+from .rutas import institucion, mi_cursada, usuarios
 from .rutas import inscripciones
 from .rutas import mensajes, novedades, tareas
 from .rutas import salud as rutas_salud
@@ -201,6 +207,19 @@ def obtener_actividad():
 
 
 # ===================== Routers =====================
+# ===================== La petición, para la auditoría =====================
+# Deja el `Request` a mano de `servicios/auditoria.registrar`, que lo usa para
+# anotar la dirección IP. Sin esto, cada ruta del campus tendría que recibir
+# el `Request` y pasarlo solo para eso.
+@app.middleware("http")
+async def recordar_peticion(peticion, seguir):
+    marca = auditoria.peticion_actual.set(peticion)
+    try:
+        return await seguir(peticion)
+    finally:
+        auditoria.peticion_actual.reset(marca)
+
+
 app.include_router(cursos.router)
 app.include_router(tareas.router)
 app.include_router(mensajes.router)
@@ -212,7 +231,14 @@ app.include_router(finales.router)
 # La gestión docente va después de la mitad del alumno: tiene su propio
 # prefijo (/api/finales/gestion), así que el orden no las pisa.
 app.include_router(gestion_finales.router)
+app.include_router(gestion_modulo.router)
+app.include_router(mi_cursada.router)
+app.include_router(institucion.router)
+app.include_router(usuarios.router)
+app.include_router(rutas_asistencias.router)
 app.include_router(inscripciones.router)
+app.include_router(rutas_auditoria.router)
+app.include_router(rutas_panel.router)
 app.include_router(rutas_salud.router)
 
 

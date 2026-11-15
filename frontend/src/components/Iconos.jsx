@@ -411,3 +411,27 @@ export const IconoUbicacion = (p) => (
     <circle cx="12" cy="9.5" r="2.5" />
   </svg>
 );
+
+// Una papelera: dar de baja algo que se creó
+export const IconoPapelera = (p) => (
+  <svg {...base} width={17} height={17} {...p}>
+    <path d="M4 7h16M10 4h4M9 7v12M15 7v12" />
+    <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+  </svg>
+);
+
+// Seis puntos: el asa universal de "esto se arrastra"
+export const IconoArrastrar = (p) => (
+  <svg {...base} width={15} height={15} strokeWidth={2.4} strokeLinecap="round" {...p}>
+    <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />
+  </svg>
+);
+
+// Una persona con un visto: la asistencia
+export const IconoPresente = (p) => (
+  <svg {...base} {...p}>
+    <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+    <path d="M3 21v-1a6 6 0 0 1 6-6h2" />
+    <path d="m14.5 18 2 2 4-4" />
+  </svg>
+);

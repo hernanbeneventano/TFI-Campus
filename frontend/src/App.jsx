@@ -11,8 +11,11 @@ import Calendario from './pages/Calendario.jsx';
 import Foro from './pages/Foro.jsx';
 import Biblioteca from './pages/Biblioteca.jsx';
 import Finales from './pages/Finales.jsx';
+import Asistencias from './pages/Asistencias.jsx';
 import InscripcionMaterias from './pages/InscripcionMaterias.jsx';
 import Ajustes from './pages/Ajustes.jsx';
+import Auditoria from './pages/Auditoria.jsx';
+import Administracion from './pages/Administracion.jsx';
 import Login from './pages/Login.jsx';
 import EnConstruccion from './pages/EnConstruccion.jsx';
 import { obtenerUsuarioActual, obtenerContadores } from './services/api.js';
@@ -66,11 +69,20 @@ export default function App() {
               del rol que corresponda, que no es la misma para los dos. */}
           <Route path="/finales" element={<Finales usuario={usuario} />} />
           <Route path="/finales/:vista" element={<Finales usuario={usuario} />} />
+          {/* Las dos pantallas de Asistencias. Sin vista, va al panel */}
+          <Route path="/asistencias" element={<Navigate to="/asistencias/panel" replace />} />
+          <Route path="/asistencias/:vista" element={<Asistencias />} />
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/foro" element={<Foro />} />
           <Route path="/mensajes" element={<Mensajes />} />
           <Route path="/biblioteca" element={<Biblioteca />} />
           <Route path="/ajustes" element={<Ajustes />} />
+          <Route path="/auditoria" element={<Auditoria />} />
+          <Route
+            path="/administracion"
+            element={<Navigate to="/administracion/panel" replace />}
+          />
+          <Route path="/administracion/:vista" element={<Administracion />} />
           <Route path="*" element={<EnConstruccion titulo="Página no encontrada" />} />
         </Routes>
       </main>

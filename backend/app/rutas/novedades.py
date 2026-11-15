@@ -20,7 +20,7 @@ YO = d.usuario_actual["id"]
 def _puede_publicar(persona_id: int) -> bool:
     """Solo los docentes publican y editan; los estudiantes leen."""
     persona = d.buscar_persona(persona_id)
-    return bool(persona and persona["rol"] == "Docente")
+    return d.tiene_rol(persona, "Docente", "Supervisor", "Administrador")
 
 
 def _resumir_reacciones(publicacion: dict) -> dict:
@@ -39,7 +39,9 @@ def _con_autor(publicacion: dict) -> dict:
         **sin_quienes,
         **_resumir_reacciones(publicacion),
         "autor": (
-            {"id": autor["id"], "nombre": autor["nombre"], "rol": autor["rol"]} if autor else None
+            {"id": autor["id"], "nombre": autor["nombre"], "rol": d.rol_principal(autor)}
+            if autor
+            else None
         ),
         # Para que el frontend sepa si mostrarle el botón de editar
         "puedeEditar": _puede_publicar(YO) and publicacion["autorId"] == YO,
