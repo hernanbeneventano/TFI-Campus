@@ -8,14 +8,23 @@ import {
   marcarFavoritoBiblioteca,
   aprobarMaterial,
   rechazarMaterial,
+  enlaceDescarga,
 } from '../services/api.js';
+import { avisar } from '../services/avisos.js';
 import Encabezado from '../components/Encabezado.jsx';
 import Desplegable from '../components/Desplegable.jsx';
+import DesplegableVarios from '../components/DesplegableVarios.jsx';
 import TarjetaLibro, { nombreEstado } from '../components/TarjetaLibro.jsx';
 import DetalleLibro from '../components/DetalleLibro.jsx';
 import FormularioAporte from '../components/FormularioAporte.jsx';
 import { hace } from '../services/fechas.js';
-import { IconoBuscar, IconoSubir, IconoAdvertencia, IconoLibro } from '../components/Iconos.jsx';
+import {
+  IconoBuscar,
+  IconoSubir,
+  IconoAdvertencia,
+  IconoLibro,
+  IconoCerrar,
+} from '../components/Iconos.jsx';
 
 const campos = [
   { valor: 'todo', nombre: 'En todo' },
@@ -25,10 +34,11 @@ const campos = [
   { valor: 'tema', nombre: 'Tema' },
 ];
 
+// La biblioteca es la de tus materias. Los catálogos externos son otra cosa
+// —ayudan a encontrar un libro, no viven acá—, así que hay que pedirlos.
 const fuentes = [
-  { valor: 'todo', nombre: 'Campus y catálogos' },
-  { valor: 'campus', nombre: 'Solo el campus' },
-  { valor: 'externos', nombre: 'Solo catálogos externos' },
+  { valor: 'campus', nombre: 'En el campus' },
+  { valor: 'externos', nombre: 'Catálogos externos' },
 ];
 
 const ordenes = [
@@ -52,11 +62,9 @@ const idiomas = { es: 'Español', en: 'Inglés', pt: 'Portugués', fr: 'Francés
 const FILTROS_VACIOS = {
   q: '',
   campo: 'todo',
-  fuente: 'todo',
-  categoria: '',
+  fuente: 'campus',
   tipo: '',
-  carrera: '',
-  materia: '',
+  materiaIds: [],
   idioma: '',
   orden: 'fecha',
 };
@@ -69,6 +77,80 @@ function Esqueletos({ cuantos = 6 }) {
       {Array.from({ length: cuantos }, (_, i) => (
         <div key={i} className="libro-tarjeta esqueleto" />
       ))}
+    </div>
+  );
+}
+
+/** Rechazar pide motivo: sin él, quien aportó no sabe qué corregir. */
+function MotivoDelRechazo({ material, trabajando, onCerrar, onRechazar }) {
+  const [motivo, setMotivo] = useState('');
+
+  useEffect(() => {
+    function alTeclado(e) {
+      if (e.key === 'Escape' && !trabajando) onCerrar();
+    }
+    window.addEventListener('keydown', alTeclado);
+    return () => window.removeEventListener('keydown', alTeclado);
+  }, [onCerrar, trabajando]);
+
+  return (
+    <div
+      className="correccion-fondo"
+      onClick={(e) => e.target === e.currentTarget && !trabajando && onCerrar()}
+      role="presentation"
+    >
+      <form
+        className="correccion"
+        role="dialog"
+        aria-modal="true"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onRechazar(motivo.trim());
+        }}
+      >
+        <button
+          type="button"
+          className="correccion-cerrar"
+          onClick={onCerrar}
+          disabled={trabajando}
+          aria-label="Cerrar"
+        >
+          <IconoCerrar width={18} height={18} />
+        </button>
+
+        <h3>Rechazar el aporte</h3>
+        <p className="correccion-trabajo">
+          {material.titulo} · {material.materia}
+        </p>
+
+        <label>
+          <span>Motivo del rechazo *</span>
+          <textarea
+            rows={4}
+            value={motivo}
+            maxLength={500}
+            autoFocus
+            placeholder="Qué habría que corregir, o por qué no corresponde a la materia"
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+          <small className="texto-suave">
+            {material.subidoPorNombre} va a recibir este motivo en Mensajes.
+          </small>
+        </label>
+
+        <div className="editor-botones">
+          <button type="button" className="boton-suave" onClick={onCerrar} disabled={trabajando}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className="boton-principal peligro"
+            disabled={trabajando || !motivo.trim()}
+          >
+            Rechazar
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -90,7 +172,9 @@ export default function Biblioteca() {
   const [otraLista, setOtraLista] = useState(null);
   const [abierto, setAbierto] = useState(null);
   const [aportando, setAportando] = useState(false);
-  const [aviso, setAviso] = useState(null);
+  // El aporte que se está por rechazar, mientras se escribe el motivo
+  const [rechazando, setRechazando] = useState(null);
+  const [trabajando, setTrabajando] = useState(false);
 
   const listaRef = useRef(null);
 
@@ -153,7 +237,10 @@ export default function Biblioteca() {
   }
 
   const hayFiltros = useMemo(
-    () => Object.keys(FILTROS_VACIOS).some((c) => filtros[c] !== FILTROS_VACIOS[c]),
+    () =>
+      Object.keys(FILTROS_VACIOS).some((c) =>
+        Array.isArray(FILTROS_VACIOS[c]) ? filtros[c].length > 0 : filtros[c] !== FILTROS_VACIOS[c]
+      ),
     [filtros]
   );
 
@@ -174,22 +261,26 @@ export default function Biblioteca() {
       .catch((e) => setError(e.message));
   }
 
-  function moderar(material, accion) {
-    const motivo =
-      accion === 'rechazar'
-        ? window.prompt(`¿Por qué se rechaza "${material.titulo}"?\nQuien lo subió va a ver este motivo.`)
-        : null;
-    if (accion === 'rechazar' && !motivo?.trim()) return;
+  function moderar(material, accion, motivo) {
+    setTrabajando(true);
+    const hacer =
+      accion === 'aprobar'
+        ? aprobarMaterial(material.id)
+        : rechazarMaterial(material.id, motivo);
 
-    const hacer = accion === 'aprobar' ? aprobarMaterial(material.id) : rechazarMaterial(material.id, motivo);
     hacer
       .then(() => {
-        setAviso(accion === 'aprobar' ? 'Material aprobado' : 'Material rechazado');
-        setTimeout(() => setAviso(null), 2500);
+        avisar(
+          accion === 'aprobar'
+            ? `"${material.titulo}" ya está publicado. Quien lo aportó recibió el aviso.`
+            : `Aporte rechazado. Quien lo aportó va a ver el motivo.`
+        );
+        setRechazando(null);
         traerOtra();
         obtenerOpcionesBiblioteca().then(setOpciones).catch(() => {});
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => avisar(e.message, 'error'))
+      .finally(() => setTrabajando(false));
   }
 
   const pestanas = [
@@ -201,6 +292,19 @@ export default function Biblioteca() {
       : []),
   ];
 
+  const misMaterias = opciones?.materias ?? [];
+  // Quien supervisa ve el plan entero: ofrecerle veinte materias vacías es
+  // ruido. Se queda con las que tienen algo, más las que ya haya elegido.
+  // Para el resto, la materia propia se ofrece aunque esté vacía: es la que
+  // va a llenar.
+  const materiasParaElegir = opciones?.superviso
+    ? misMaterias.filter(
+      (m) => m.cuantos > 0 || m.pendientes > 0 || filtros.materiaIds.includes(m.id)
+    )
+    : misMaterias;
+
+  const elegidas = misMaterias.filter((m) => filtros.materiaIds.includes(m.id));
+
   const propios = resultado?.materiales ?? [];
   const externos = resultado?.externos ?? [];
   const sinNada = !cargando && propios.length === 0 && externos.length === 0;
@@ -209,7 +313,7 @@ export default function Biblioteca() {
     <div className="pagina">
       <Encabezado
         titulo="Biblioteca"
-        descripcion="Explorá libros y recursos para aprender, estudiar y compartir conocimientos"
+        descripcion="El material de cada una de tus materias, y lo que aportes a ellas"
       />
 
       <div className="biblioteca-barra">
@@ -234,7 +338,7 @@ export default function Biblioteca() {
         {opciones?.puedeAportar && (
           <button type="button" className="boton-principal" onClick={() => setAportando(true)}>
             <IconoSubir width={18} height={18} />
-            Aportar material
+            {opciones?.publicaDirecto ? 'Subir material' : 'Enviar aporte'}
           </button>
         )}
       </div>
@@ -255,37 +359,37 @@ export default function Biblioteca() {
       </nav>
 
       {error && <p className="error">{error}</p>}
-      {aviso && <p className="biblioteca-aviso">{aviso}</p>}
+
+      {/* Sin materias no hay biblioteca que mostrar: no es un error, es que
+          todavía no está inscripto ni tiene cátedra a cargo. */}
+      {opciones && misMaterias.length === 0 && (
+        <div className="biblioteca-vacio">
+          <IconoLibro width={34} height={34} />
+          <h3>Todavía no tenés materias</h3>
+          <p className="texto-suave">
+            La biblioteca se arma por materia: vas a ver el material de las que curses o dictes.
+          </p>
+        </div>
+      )}
 
       {pestana === 'catalogo' && (
         <>
-          {/* ---------- Categorías ---------- */}
-          <div className="biblioteca-categorias">
-            <button
-              type="button"
-              className={filtros.categoria === '' ? 'chip activo' : 'chip'}
-              onClick={() => cambiarFiltro('categoria', '')}
-            >
-              Todas
-              <small>{opciones?.total ?? 0}</small>
-            </button>
-            {(opciones?.categorias ?? [])
-              .filter((c) => c.cuantos > 0 || c.id === filtros.categoria)
-              .map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={filtros.categoria === c.id ? 'chip activo' : 'chip'}
-                  onClick={() => cambiarFiltro('categoria', filtros.categoria === c.id ? '' : c.id)}
-                >
-                  {c.nombre}
-                  <small>{c.cuantos}</small>
-                </button>
-              ))}
-          </div>
-
           {/* ---------- Filtros ---------- */}
           <div className="biblioteca-filtros">
+            {/* La materia es el filtro que manda: la biblioteca es una por
+                materia, y acá se eligen una, varias o todas. */}
+            <DesplegableVarios
+              valores={filtros.materiaIds}
+              opciones={materiasParaElegir.map((m) => ({
+                valor: m.id,
+                nombre: m.nombre,
+                detalle: m.pendientes > 0 ? `${m.cuantos} · ${m.pendientes} a revisar` : m.cuantos,
+              }))}
+              onCambiar={(v) => cambiarFiltro('materiaIds', v)}
+              etiqueta="Materias"
+              textoTodas={opciones?.superviso ? 'Todas las materias' : 'Todas mis materias'}
+              className="desplegable-materias"
+            />
             <Desplegable
               valor={filtros.fuente}
               opciones={fuentes}
@@ -300,24 +404,6 @@ export default function Biblioteca() {
               ]}
               onCambiar={(v) => cambiarFiltro('tipo', v)}
               etiqueta="Tipo de material"
-            />
-            <Desplegable
-              valor={filtros.carrera}
-              opciones={[
-                { valor: '', nombre: 'Todas las carreras' },
-                ...(opciones?.carreras ?? []).map((c) => ({ valor: c, nombre: c })),
-              ]}
-              onCambiar={(v) => cambiarFiltro('carrera', v)}
-              etiqueta="Carrera"
-            />
-            <Desplegable
-              valor={filtros.materia}
-              opciones={[
-                { valor: '', nombre: 'Todas las materias' },
-                ...(opciones?.materias ?? []).map((m) => ({ valor: m, nombre: m })),
-              ]}
-              onCambiar={(v) => cambiarFiltro('materia', v)}
-              etiqueta="Materia"
             />
             <Desplegable
               valor={filtros.idioma}
@@ -349,7 +435,14 @@ export default function Biblioteca() {
             {propios.length > 0 && (
               <>
                 <h2 className="biblioteca-titulo">
-                  En el campus <small>{resultado.total}</small>
+                  {elegidas.length === 1
+                    ? elegidas[0].nombre
+                    : elegidas.length > 1
+                      ? `${elegidas.length} materias`
+                      : opciones?.superviso
+                        ? 'Todo el material'
+                        : 'El material de tus materias'}{' '}
+                  <small>{resultado.total}</small>
                 </h2>
                 <div className="libros-grilla">
                   {propios.map((m, i) => (
@@ -432,9 +525,11 @@ export default function Biblioteca() {
                 <IconoLibro width={34} height={34} />
                 <h3>No encontramos nada con eso</h3>
                 <p className="texto-suave">
-                  {filtros.fuente === 'campus'
-                    ? 'Probá buscando también en los catálogos externos.'
-                    : 'Probá con otras palabras, o sacá algún filtro.'}
+                  {filtros.fuente === 'externos'
+                    ? 'Probá con otras palabras: se busca en Google Books y Open Library.'
+                    : elegidas.length === 1
+                      ? `Todavía no hay material cargado en ${elegidas[0].nombre}.`
+                      : 'Todavía no hay material, o ningún filtro coincide.'}
                 </p>
                 {hayFiltros && (
                   <button type="button" className="boton-suave" onClick={limpiar}>
@@ -490,12 +585,13 @@ export default function Biblioteca() {
               <IconoSubir width={34} height={34} />
               <h3>Todavía no aportaste material</h3>
               <p className="texto-suave">
-                Lo que subas pasa primero por un docente y después aparece en el catálogo.
+                Lo que subas pasa primero por el docente de la materia y después aparece en su
+                biblioteca.
               </p>
               {opciones?.puedeAportar && (
                 <button type="button" className="boton-principal" onClick={() => setAportando(true)}>
                   <IconoSubir width={18} height={18} />
-                  Aportar material
+                  {opciones?.publicaDirecto ? 'Subir material' : 'Enviar aporte'}
                 </button>
               )}
             </div>
@@ -530,7 +626,9 @@ export default function Biblioteca() {
             <div className="biblioteca-vacio">
               <IconoLibro width={34} height={34} />
               <h3>No hay nada esperando revisión</h3>
-              <p className="texto-suave">Cuando alguien aporte material, aparece acá.</p>
+              <p className="texto-suave">
+              Acá llegan los aportes de las materias que dictás, para aprobarlos o rechazarlos.
+            </p>
             </div>
           )}
           <ul className="aportes-lista">
@@ -538,22 +636,58 @@ export default function Biblioteca() {
               <li key={m.id} className="aporte-fila revision">
                 <button type="button" className="aporte-fila-titulo" onClick={() => setAbierto(m)}>
                   <strong>{m.titulo}</strong>
-                  <small>
-                    {m.subidoPorNombre} · {hace(m.creado)}
-                    {m.tieneArchivo ? ` · ${m.archivo.nombre}` : ''}
-                  </small>
+                  <small>{m.autor ?? 'Sin autor indicado'}</small>
                 </button>
+
+                {/* Lo que hace falta para decidir sin abrir la ficha */}
+                <dl className="aporte-datos">
+                  <div>
+                    <dt>Materia</dt>
+                    <dd>{m.materia}</dd>
+                  </div>
+                  <div>
+                    <dt>Lo aportó</dt>
+                    <dd>{m.subidoPorNombre}</dd>
+                  </div>
+                  <div>
+                    <dt>Enviado</dt>
+                    <dd>{hace(m.creado)}</dd>
+                  </div>
+                  <div>
+                    <dt>Archivo</dt>
+                    <dd>
+                      {m.tieneArchivo ? (
+                        <a href={enlaceDescarga(m.id)}>{m.archivo.nombre}</a>
+                      ) : m.enlace ? (
+                        <a href={m.enlace} target="_blank" rel="noreferrer noopener">
+                          Enlace a la fuente
+                        </a>
+                      ) : (
+                        <span className="texto-suave">Sin archivo</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Estado</dt>
+                    <dd>
+                      <span className={`libro-estado ${m.estado}`}>{nombreEstado[m.estado]}</span>
+                    </dd>
+                  </div>
+                </dl>
+
                 <div className="aporte-fila-acciones">
                   <button
                     type="button"
-                    className="boton-suave"
-                    onClick={() => moderar(m, 'rechazar')}
+                    className="boton-suave peligro"
+                    disabled={trabajando}
+                    onClick={() => setRechazando(m)}
                   >
                     Rechazar
                   </button>
                   <button
                     type="button"
                     className="boton-principal"
+                    disabled={trabajando}
                     onClick={() => moderar(m, 'aprobar')}
                   >
                     Aprobar
@@ -578,19 +712,28 @@ export default function Biblioteca() {
         />
       )}
 
+      {rechazando && (
+        <MotivoDelRechazo
+          material={rechazando}
+          trabajando={trabajando}
+          onCerrar={() => setRechazando(null)}
+          onRechazar={(motivo) => moderar(rechazando, 'rechazar', motivo)}
+        />
+      )}
+
       {aportando && (
         <FormularioAporte
           opciones={opciones}
+          materiaSugerida={filtros.materiaIds.length === 1 ? filtros.materiaIds[0] : undefined}
           onCerrar={() => setAportando(false)}
-          onListo={() => {
+          onListo={(material) => {
             setAportando(false);
-            setAviso(
-              opciones?.puedeModerar
-                ? 'Material publicado'
-                : 'Aporte enviado. Un docente lo va a revisar.'
+            avisar(
+              material?.estado === 'aprobado'
+                ? 'Material publicado en la biblioteca de la materia.'
+                : 'Aporte enviado. El docente de la materia lo va a revisar.'
             );
-            setTimeout(() => setAviso(null), 4000);
-            setPestana('aportes');
+            setPestana(material?.estado === 'aprobado' ? 'catalogo' : 'aportes');
             obtenerOpcionesBiblioteca().then(setOpciones).catch(() => {});
           }}
         />

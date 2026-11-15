@@ -35,14 +35,16 @@ function pesoLegible(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function FormularioAporte({ opciones, onCerrar, onListo }) {
+export default function FormularioAporte({ opciones, materiaSugerida, onCerrar, onListo }) {
+  // Las materias que puede elegir son las suyas: las que cursa o dicta. Si
+  // venía mirando una, ya viene elegida.
+  const materias = opciones?.materias ?? [];
   const [datos, setDatos] = useState({
     titulo: '',
     autor: '',
     descripcion: '',
     tipo: 'apunte',
-    carrera: opciones?.carreras?.[0] ?? '',
-    materia: '',
+    materiaId: materiaSugerida ?? (materias.length === 1 ? materias[0].id : ''),
     anio: '',
     idioma: 'es',
     isbn: '',
@@ -57,6 +59,8 @@ export default function FormularioAporte({ opciones, onCerrar, onListo }) {
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const campoArchivo = useRef(null);
+
+  const elegida = materias.find((m) => m.id === datos.materiaId) ?? null;
 
   useEffect(() => {
     function alTeclado(e) {
@@ -116,6 +120,10 @@ export default function FormularioAporte({ opciones, onCerrar, onListo }) {
       setError('El material necesita un título');
       return;
     }
+    if (!datos.materiaId) {
+      setError('Elegí la materia a la que pertenece el material');
+      return;
+    }
     if (!autorizado) {
       setError('Hay que confirmar que tenés autorización para compartir el material');
       return;
@@ -163,9 +171,11 @@ export default function FormularioAporte({ opciones, onCerrar, onListo }) {
         </button>
 
         <header className="aporte-cabecera">
-          <h2>Aportar material</h2>
+          <h2>{opciones?.publicaDirecto ? 'Subir material' : 'Enviar un aporte'}</h2>
           <p className="texto-suave">
-            Lo que subas queda esperando que un docente lo revise antes de aparecer en el catálogo.
+            {opciones?.publicaDirecto
+              ? 'El material queda en la biblioteca de la materia que elijas.'
+              : 'Lo que envíes lo revisa el docente de la materia antes de publicarse.'}
           </p>
         </header>
 
@@ -212,26 +222,29 @@ export default function FormularioAporte({ opciones, onCerrar, onListo }) {
           </label>
 
           <label>
-            <span>Carrera</span>
+            <span>Materia *</span>
             <Desplegable
-              valor={datos.carrera}
-              opciones={(opciones?.carreras ?? []).map((c) => ({ valor: c, nombre: c }))}
-              onCambiar={cambiar('carrera')}
-              etiqueta="Carrera"
-            />
-          </label>
-
-          <label>
-            <span>Materia</span>
-            <Desplegable
-              valor={datos.materia}
+              valor={datos.materiaId}
               opciones={[
-                { valor: '', nombre: 'Sin materia' },
-                ...(opciones?.materias ?? []).map((m) => ({ valor: m, nombre: m })),
+                { valor: '', nombre: 'Elegí la materia' },
+                ...materias.map((m) => ({
+                  valor: m.id,
+                  nombre: `${m.codigo} · ${m.nombre}`,
+                })),
               ]}
-              onCambiar={cambiar('materia')}
+              onCambiar={(v) => cambiar('materiaId')(v === '' ? '' : Number(v))}
               etiqueta="Materia"
             />
+            {/* Qué va a pasar al enviarlo depende de la materia: en la
+                que dictás se publica solo; en la que cursás, espera. Sin
+                materia elegida todavía no hay nada que decir. */}
+            {elegida && (
+              <small className="texto-suave">
+                {elegida.modero
+                  ? 'Se publica en el acto en la biblioteca de la materia.'
+                  : 'Queda pendiente hasta que lo apruebe el docente de la materia.'}
+              </small>
+            )}
           </label>
 
           <label>

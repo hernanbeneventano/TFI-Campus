@@ -1,12 +1,43 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { obtenerModulo, obtenerUsuarioActual } from '../services/api.js';
+import {
+  obtenerModulo,
+  obtenerUsuarioActual,
+  crearSeccion,
+  editarSeccion,
+  borrarSeccion,
+  moverSeccion,
+  crearElemento,
+  editarElemento,
+  borrarElemento,
+  moverElemento,
+  cambiarEntrega,
+  publicarAnuncio,
+  editarAnuncio,
+  borrarAnuncio,
+  obtenerSeguimiento,
+  obtenerEntregasDeSeccion,
+  obtenerNotas,
+  guardarNota,
+  fijarCierre,
+  obtenerMisNotas,
+} from '../services/api.js';
+import { avisar } from '../services/avisos.js';
+import useArrastre from '../hooks/useArrastre.js';
 import { leerCompletados, guardarCompletados, calcularAvance } from '../services/progreso.js';
 import { hace } from '../services/fechas.js';
 import CarpetaModulo from '../components/CarpetaModulo.jsx';
 import PestanasModulo from '../components/PestanasModulo.jsx';
 import PanelModulo from '../components/PanelModulo.jsx';
 import VisorItem from '../components/VisorItem.jsx';
+import Confirmacion from '../components/Confirmacion.jsx';
+import FormularioSeccion from '../components/modulo/FormularioSeccion.jsx';
+import FormularioElemento from '../components/modulo/FormularioElemento.jsx';
+import PanelNotas from '../components/modulo/PanelNotas.jsx';
+import MisNotas from '../components/modulo/MisNotas.jsx';
+import AsistenciasDelModulo from '../components/asistencias/AsistenciasDelModulo.jsx';
+import EntregasSeccion from '../components/modulo/EntregasSeccion.jsx';
+import Correccion from '../components/modulo/Correccion.jsx';
 import {
   IconoVolver,
   IconoBuscar,
@@ -17,13 +48,72 @@ import {
   IconoUsuario,
   IconoEstudiante,
   IconoMensaje,
+  IconoLapiz,
+  IconoMas,
+  IconoPapelera,
+  IconoCheckCirculo,
+  IconoPresente,
 } from '../components/Iconos.jsx';
 
 function formatearFecha(iso) {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 }
 
-function Anuncios({ anuncios }) {
+// Formulario para publicar o corregir un anuncio del módulo
+function FormularioAnuncio({ anuncio, onGuardar, onCancelar, trabajando }) {
+  const [titulo, setTitulo] = useState(anuncio?.titulo ?? '');
+  const [cuerpo, setCuerpo] = useState(anuncio?.cuerpo ?? '');
+  const primero = useRef(null);
+
+  useEffect(() => {
+    primero.current?.focus();
+  }, []);
+
+  function enviar(e) {
+    e.preventDefault();
+    if (!titulo.trim() || !cuerpo.trim()) return;
+    onGuardar({ titulo: titulo.trim(), cuerpo: cuerpo.trim() });
+  }
+
+  return (
+    <form className="editor-seccion" onSubmit={enviar}>
+      <label>
+        <span>Título</span>
+        <input
+          ref={primero}
+          type="text"
+          value={titulo}
+          maxLength={120}
+          placeholder="Cambio de aula para la clase del jueves"
+          onChange={(e) => setTitulo(e.target.value)}
+        />
+      </label>
+      <label>
+        <span>Anuncio</span>
+        <textarea
+          rows={4}
+          value={cuerpo}
+          onChange={(e) => setCuerpo(e.target.value)}
+          placeholder="Lo que necesitás que sepa el curso."
+        />
+      </label>
+      <div className="editor-botones">
+        <button type="button" className="boton-suave" onClick={onCancelar} disabled={trabajando}>
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="boton-principal"
+          disabled={trabajando || !titulo.trim() || !cuerpo.trim()}
+        >
+          {anuncio ? 'Guardar cambios' : 'Publicar'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Anuncios({ anuncios, gestionando, onEditar, onBorrar }) {
   if (anuncios.length === 0) {
     return <p className="texto-suave">Todavía no hay anuncios en este módulo.</p>;
   }
@@ -34,8 +124,25 @@ function Anuncios({ anuncios }) {
           <h3>{a.titulo}</h3>
           <small className="texto-suave">
             {a.autor} · {formatearFecha(a.fecha)}
+            {a.editado && <> · editado</>}
           </small>
           <p>{a.cuerpo}</p>
+
+          {gestionando && (
+            <span className="acciones-editor">
+              <button type="button" onClick={() => onEditar(a)} title="Editar el anuncio">
+                <IconoLapiz width={14} height={14} />
+              </button>
+              <button
+                type="button"
+                className="peligro"
+                onClick={() => onBorrar(a)}
+                title="Borrar el anuncio"
+              >
+                <IconoPapelera width={14} height={14} />
+              </button>
+            </span>
+          )}
         </li>
       ))}
     </ul>
@@ -98,6 +205,7 @@ export default function Modulo() {
 
   const [pestana, setPestana] = useState('contenido');
   const [busqueda, setBusqueda] = useState('');
+  const buscando = busqueda.trim().length > 0;
 
   // Carpetas abiertas (por id) y elemento que se está viendo en pantalla completa
   const [abiertas, setAbiertas] = useState([]);
@@ -105,6 +213,116 @@ export default function Modulo() {
 
   // Recursos marcados como completados (se guardan en el navegador)
   const [completados, setCompletados] = useState(leerCompletados);
+
+  // --- Administración (solo el docente a cargo) ---
+  // `editando` es el modo editor: se enciende con el botón y es lo único que
+  // hace aparecer los controles. Apagado, el docente ve su módulo como queda.
+  const [editando, setEditando] = useState(false);
+  const [seguimiento, setSeguimiento] = useState(null);
+  const [notas, setNotas] = useState(null);
+  // Las propias, para quien no administra el módulo
+  const [misNotas, setMisNotas] = useState(null);
+  const [trabajando, setTrabajando] = useState(false);
+  // El formulario abierto, si hay alguno: { que, seccion, elemento, anuncio }
+  const [formulario, setFormulario] = useState(null);
+  // Lo que está esperando confirmación antes de borrarse
+  const [aConfirmar, setAConfirmar] = useState(null);
+
+  // El detalle de entregas de una sección, y la corrección abierta desde ahí
+  const [entregas, setEntregas] = useState(null);
+  const [corrigiendo, setCorrigiendo] = useState(null);
+
+  const puedeGestionar = Boolean(datos?.puedeGestionar);
+
+  const traerSeguimiento = useCallback(() => {
+    obtenerSeguimiento(id).then(setSeguimiento).catch(() => setSeguimiento(null));
+  }, [id]);
+
+  useEffect(() => {
+    if (!puedeGestionar) {
+      setSeguimiento(null);
+      setNotas(null);
+      obtenerMisNotas(id).then(setMisNotas).catch(() => setMisNotas(null));
+      return;
+    }
+    traerSeguimiento();
+    obtenerNotas(id).then(setNotas).catch(() => setNotas(null));
+  }, [puedeGestionar, id, traerSeguimiento]);
+
+  // Al salir del módulo se apaga el modo editor: volver y encontrarlo
+  // encendido sin haberlo pedido confunde.
+  useEffect(() => {
+    setEditando(false);
+    setFormulario(null);
+  }, [id]);
+
+  /**
+   * Corre una acción de administración y rearma la pantalla con lo que
+   * devuelve. Todas las rutas de contenido mandan las carpetas enteras, así
+   * que no hace falta volver a pedir el módulo completo.
+   */
+  async function administrar(accion, exito) {
+    setTrabajando(true);
+    try {
+      const respuesta = await accion();
+      setDatos((previo) => ({ ...previo, ...respuesta }));
+      setFormulario(null);
+      setAConfirmar(null);
+      if (exito) avisar(exito);
+      // El avance del curso cambia al agregar o sacar material
+      traerSeguimiento();
+      if (respuesta.carpetas) {
+        obtenerNotas(id).then(setNotas).catch(() => {});
+      }
+    } catch (e) {
+      avisar(e.message, 'error');
+      setAConfirmar(null);
+    } finally {
+      setTrabajando(false);
+    }
+  }
+
+  function pedirBorrado({ titulo, mensaje, detalles, ejecutar }) {
+    setAConfirmar({ titulo, mensaje, detalles, ejecutar });
+  }
+
+  // Reordenar las secciones arrastrando la caja entera. Mientras se busca no
+  // se puede: la lista que se ve está filtrada y las posiciones no son las
+  // reales.
+  const sueltas = useArrastre({
+    activo: editando && !buscando,
+    alSoltar: (desde, hasta) =>
+      administrar(() => moverSeccion(id, datos.carpetas[desde].id, { posicion: hasta })),
+  });
+
+  async function verEntregas(carpeta) {
+    setEntregas({ cargando: true });
+    try {
+      setEntregas(await obtenerEntregasDeSeccion(id, carpeta.id));
+    } catch (e) {
+      avisar(e.message, 'error');
+      setEntregas(null);
+    }
+  }
+
+  async function guardarCorreccion(valores) {
+    setTrabajando(true);
+    try {
+      setNotas(await guardarNota(id, valores));
+      // El panel de entregas quedó viejo: la nota que se acaba de poner
+      // cambia el estado del alumno en esa sección.
+      if (entregas?.seccion) {
+        setEntregas(await obtenerEntregasDeSeccion(id, entregas.seccion.id));
+      }
+      traerSeguimiento();
+      setCorrigiendo(null);
+      avisar('Nota guardada.');
+    } catch (e) {
+      avisar(e.message, 'error');
+    } finally {
+      setTrabajando(false);
+    }
+  }
 
   useEffect(() => {
     obtenerUsuarioActual().then((u) => setYo(u.id)).catch(() => setYo(null));
@@ -204,13 +422,13 @@ export default function Modulo() {
   }
 
   const { curso, anuncios, participantes, cursada, proximas } = datos;
-  const buscando = busqueda.trim().length > 0;
 
   const pestanas = [
     { clave: 'contenido', nombre: 'Contenido', Icono: IconoModulos },
     { clave: 'anuncios', nombre: 'Anuncios', Icono: IconoAnuncio, cantidad: anuncios.length },
     { clave: 'participantes', nombre: 'Participantes', Icono: IconoPersonas },
     { clave: 'notas', nombre: 'Notas', Icono: IconoNotas },
+    { clave: 'asistencias', nombre: 'Asistencias', Icono: IconoPresente },
   ];
 
   return (
@@ -254,13 +472,75 @@ export default function Modulo() {
                     onChange={(e) => setBusqueda(e.target.value)}
                   />
                 </label>
+
+                {puedeGestionar && (
+                  <button
+                    type="button"
+                    className={editando ? 'boton-suave activo' : 'boton-principal'}
+                    onClick={() => {
+                      setEditando((x) => !x);
+                      setFormulario(null);
+                    }}
+                  >
+                    {editando ? (
+                      <>
+                        <IconoCheckCirculo width={16} height={16} />
+                        Listo
+                      </>
+                    ) : (
+                      <>
+                        <IconoLapiz width={16} height={16} />
+                        Agregar contenido
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
+
+              {formulario?.que === 'seccion' && (
+                <FormularioSeccion
+                  seccion={formulario.seccion}
+                  trabajando={trabajando}
+                  onCancelar={() => setFormulario(null)}
+                  onGuardar={(valores) =>
+                    administrar(
+                      () =>
+                        formulario.seccion
+                          ? editarSeccion(id, formulario.seccion.id, valores)
+                          : crearSeccion(id, valores),
+                      formulario.seccion ? 'Sección actualizada.' : 'Sección creada.'
+                    )
+                  }
+                />
+              )}
+
+              {formulario?.que === 'elemento' && (
+                <FormularioElemento
+                  elemento={formulario.elemento}
+                  trabajando={trabajando}
+                  onCancelar={() => setFormulario(null)}
+                  onGuardar={(valores) =>
+                    administrar(
+                      () =>
+                        formulario.elemento
+                          ? editarElemento(
+                              id,
+                              formulario.seccion.id,
+                              formulario.elemento.id,
+                              valores
+                            )
+                          : crearElemento(id, formulario.seccion.id, valores),
+                      formulario.elemento ? 'Elemento actualizado.' : 'Elemento agregado.'
+                    )
+                  }
+                />
+              )}
 
               {carpetasVisibles.length === 0 ? (
                 <p className="texto-suave">No hay nada que coincida con la búsqueda.</p>
               ) : (
-                <div className="carpetas">
-                  {carpetasVisibles.map((carpeta) => (
+                <div className={sueltas.arrastrando ? 'carpetas moviendo' : 'carpetas'}>
+                  {carpetasVisibles.map((carpeta, i) => (
                     <CarpetaModulo
                       key={carpeta.id}
                       carpeta={carpeta}
@@ -270,8 +550,81 @@ export default function Modulo() {
                       onAbrirItem={(c, item) => setViendo({ carpeta: c, item })}
                       completados={completados}
                       onCompletar={alternarCompletado}
+                      gestionando={puedeGestionar}
+                      editando={editando}
+                      seguimiento={seguimiento?.secciones.find((s) => s.id === carpeta.id)}
+                      primera={i === 0}
+                      ultima={i === carpetasVisibles.length - 1}
+                      onEditarSeccion={(s) => setFormulario({ que: 'seccion', seccion: s })}
+                      indice={i}
+                      seMueve={sueltas.esLaMovida(i)}
+                      estiloArrastre={sueltas.estiloDe(i)}
+                      onTomar={sueltas.tomar}
+                      onVerEntregas={verEntregas}
+                      onMoverSeccion={(s, destino) =>
+                        administrar(() => moverSeccion(id, s.id, destino))
+                      }
+                      onBorrarSeccion={(s) =>
+                        pedirBorrado({
+                          titulo: '¿Borrás esta sección?',
+                          mensaje:
+                            s.items.length > 0
+                              ? 'Se va con todo lo que tiene adentro. Los trabajos que contenga se borran junto con sus entregas y sus notas.'
+                              : 'La sección está vacía, así que no se pierde material.',
+                          detalles: [
+                            { etiqueta: 'Sección', valor: s.titulo },
+                            { etiqueta: 'Contiene', valor: `${s.items.length} elementos` },
+                          ],
+                          ejecutar: () =>
+                            administrar(() => borrarSeccion(id, s.id), 'Sección borrada.'),
+                        })
+                      }
+                      onAgregarElemento={(s) => setFormulario({ que: 'elemento', seccion: s })}
+                      onEditarElemento={(s, item) =>
+                        setFormulario({ que: 'elemento', seccion: s, elemento: item })
+                      }
+                      onMoverElemento={(s, item, destino) =>
+                        administrar(() => moverElemento(id, s.id, item.id, destino))
+                      }
+                      onBorrarElemento={(s, item) =>
+                        pedirBorrado({
+                          titulo: '¿Borrás este elemento?',
+                          mensaje:
+                            item.tipo === 'tarea'
+                              ? 'Es un trabajo: se borran también las entregas y las notas que ya hayas cargado.'
+                              : 'El curso deja de verlo en el acto.',
+                          detalles: [
+                            { etiqueta: 'Elemento', valor: item.titulo },
+                            { etiqueta: 'Sección', valor: s.titulo },
+                          ],
+                          ejecutar: () =>
+                            administrar(
+                              () => borrarElemento(id, s.id, item.id),
+                              'Elemento borrado.'
+                            ),
+                        })
+                      }
+                      onAlternarEntrega={(item) =>
+                        administrar(
+                          () => cambiarEntrega(id, item.tareaId, item.cerrada === true),
+                          item.cerrada === true
+                            ? 'Entrega reabierta.'
+                            : 'Entrega cerrada.'
+                        )
+                      }
                     />
                   ))}
+
+                  {editando && !formulario && (
+                    <button
+                      type="button"
+                      className="boton-seccion-nueva"
+                      onClick={() => setFormulario({ que: 'seccion' })}
+                    >
+                      <IconoMas width={18} height={18} />
+                      Agregar una sección
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -281,8 +634,49 @@ export default function Modulo() {
             <>
               <div className="modulo-barra">
                 <h2>Anuncios</h2>
+                {puedeGestionar && !formulario && (
+                  <button
+                    type="button"
+                    className="boton-principal"
+                    onClick={() => setFormulario({ que: 'anuncio' })}
+                  >
+                    <IconoMas width={16} height={16} />
+                    Publicar un anuncio
+                  </button>
+                )}
               </div>
-              <Anuncios anuncios={anuncios} />
+
+              {formulario?.que === 'anuncio' && (
+                <FormularioAnuncio
+                  anuncio={formulario.anuncio}
+                  trabajando={trabajando}
+                  onCancelar={() => setFormulario(null)}
+                  onGuardar={(valores) =>
+                    administrar(
+                      () =>
+                        formulario.anuncio
+                          ? editarAnuncio(id, formulario.anuncio.id, valores)
+                          : publicarAnuncio(id, valores),
+                      formulario.anuncio ? 'Anuncio actualizado.' : 'Anuncio publicado.'
+                    )
+                  }
+                />
+              )}
+
+              <Anuncios
+                anuncios={anuncios}
+                gestionando={puedeGestionar}
+                onEditar={(a) => setFormulario({ que: 'anuncio', anuncio: a })}
+                onBorrar={(a) =>
+                  pedirBorrado({
+                    titulo: '¿Borrás este anuncio?',
+                    mensaje: 'El curso deja de verlo en el acto.',
+                    detalles: [{ etiqueta: 'Anuncio', valor: a.titulo }],
+                    ejecutar: () =>
+                      administrar(() => borrarAnuncio(id, a.id), 'Anuncio borrado.'),
+                  })
+                }
+              />
             </>
           )}
 
@@ -295,14 +689,42 @@ export default function Modulo() {
             </>
           )}
 
+          {pestana === 'asistencias' && (
+            <>
+              <div className="modulo-barra">
+                <h2>Asistencias</h2>
+              </div>
+              <AsistenciasDelModulo cursoId={id} puedeGestionar={puedeGestionar} />
+            </>
+          )}
+
           {pestana === 'notas' && (
             <>
               <div className="modulo-barra">
                 <h2>Notas</h2>
               </div>
-              <p className="texto-suave">
-                Las calificaciones se van a ver acá cuando estén las entregas y la corrección.
-              </p>
+
+              {puedeGestionar ? (
+                <PanelNotas
+                  datos={notas}
+                  trabajando={trabajando}
+                  onFijarCierre={(valores) =>
+                    administrar(async () => {
+                      await fijarCierre(id, valores);
+                      setNotas(await obtenerNotas(id));
+                      return {};
+                    }, 'Condición actualizada.')
+                  }
+                  onGuardar={(valores) =>
+                    administrar(async () => {
+                      setNotas(await guardarNota(id, valores));
+                      return {};
+                    }, 'Nota guardada.')
+                  }
+                />
+              ) : (
+                <MisNotas datos={misNotas} />
+              )}
             </>
           )}
         </section>
@@ -313,8 +735,55 @@ export default function Modulo() {
           cursada={cursada}
           proximas={proximas}
           avance={avance}
+          seguimiento={puedeGestionar ? seguimiento : null}
         />
       </div>
+
+      {entregas && (
+        <EntregasSeccion
+          datos={entregas.cargando ? null : entregas}
+          onCerrar={() => setEntregas(null)}
+          onCorregir={(alumno, trabajo) =>
+            setCorrigiendo({
+              alumno,
+              trabajo: { id: trabajo.tareaId, titulo: trabajo.titulo },
+              nota:
+                trabajo.nota === null && !trabajo.estado
+                  ? null
+                  : {
+                      nota: trabajo.nota,
+                      estado: trabajo.estado,
+                      comentario: trabajo.devolucion,
+                    },
+            })
+          }
+        />
+      )}
+
+      {corrigiendo && (
+        <Correccion
+          alumno={corrigiendo.alumno}
+          trabajo={corrigiendo.trabajo}
+          nota={corrigiendo.nota}
+          estados={notas?.estados ?? ['Aprobado', 'Desaprobado', 'Entregado', 'Sin entregar']}
+          trabajando={trabajando}
+          onGuardar={guardarCorreccion}
+          onCerrar={() => setCorrigiendo(null)}
+        />
+      )}
+
+      {aConfirmar && (
+        <Confirmacion
+          titulo={aConfirmar.titulo}
+          mensaje={aConfirmar.mensaje}
+          detalles={aConfirmar.detalles}
+          textoConfirmar="Sí, borrar"
+          peligro
+          trabajando={trabajando}
+          onConfirmar={aConfirmar.ejecutar}
+          onCancelar={() => setAConfirmar(null)}
+        />
+      )}
     </div>
   );
 }

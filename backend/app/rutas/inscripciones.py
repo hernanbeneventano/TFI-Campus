@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import datos as d
 from ..servicios import academico as ac
+from ..servicios import auditoria
 from ..servicios.autenticacion import IdUsuarioActual
 
 router = APIRouter(prefix="/api/inscripciones", tags=["Inscripciones"])
@@ -44,13 +45,14 @@ def _modulo_para(materia: dict) -> dict:
     if existente:
         return existente
 
-    docente = d.buscar_persona(materia.get("docenteId"))
+    docentes = d.docentes_de_materia(materia["id"])
+    docente = d.buscar_persona(docentes[0]) if docentes else None
     nuevo = {
         "id": max((c["id"] for c in d.cursos), default=0) + 1,
         "codigo": materia["codigo"],
         "nombre": materia["nombre"],
         "docente": docente["nombre"] if docente else "Sin asignar",
-        "docenteId": materia.get("docenteId"),
+        "docenteId": docentes[0] if docentes else None,
         "periodo": _periodo_de(materia),
         "color": COLORES[materia["id"] % len(COLORES)],
         "favorito": False,
@@ -81,10 +83,13 @@ def listar_materias(yo: int = IdUsuarioActual):
             "Todavía no estás inscripto a una carrera. Acercate a la secretaría para el alta.",
         )
 
+    # Por identificador, no por nombre: el nombre de una carrera puede
+    # cambiar y las materias seguirían apuntando a lo mismo.
     del_plan = [
         m
         for m in d.materias_plan
-        if m["carrera"] == carrera["carrera"] and m["plan"] == carrera["plan"]
+        if m.get("carreraId") == carrera.get("carreraId")
+        and m.get("planId") == carrera.get("planId")
     ]
     del_plan.sort(key=lambda m: (m["anio"], m["cuatrimestre"], m["codigo"]))
 
@@ -94,7 +99,7 @@ def listar_materias(yo: int = IdUsuarioActual):
         return sum(1 for m in materias if m["estado"] == estado)
 
     return {
-        "carrera": carrera,
+        "carrera": d.asociacion_completa(carrera),
         "periodo": ac.periodo_materias(),
         "materias": materias,
         "resumen": {
@@ -123,7 +128,10 @@ def inscribirse(id_materia: int, yo: int = IdUsuarioActual):
     materia = d.buscar_materia(id_materia)
     if not materia:
         raise HTTPException(404, "La materia no existe")
-    if materia["carrera"] != carrera["carrera"] or materia["plan"] != carrera["plan"]:
+    if (
+        materia.get("carreraId") != carrera.get("carreraId")
+        or materia.get("planId") != carrera.get("planId")
+    ):
         raise HTTPException(403, "Esa materia no pertenece a tu plan de estudios")
 
     periodo = ac.periodo_materias()
@@ -143,6 +151,22 @@ def inscribirse(id_materia: int, yo: int = IdUsuarioActual):
             "materiaId": id_materia,
             "fecha": d.iso(d.ahora()),
         }
+    )
+
+    auditoria.registrar(
+        yo,
+        "creacion",
+        "academico",
+        elemento=f"Inscripción a {materia['nombre']}",
+        elemento_id=id_materia,
+        elemento_tipo="inscripcionMateria",
+        persona_id=yo,
+        materia_id=id_materia,
+        carrera_id=carrera.get("carreraId"),
+        sede_id=carrera.get("sedeId"),
+        comision_id=carrera.get("comisionId"),
+        despues={"estado": "Inscripto"},
+        detalle="Se inscribió a una materia",
     )
 
     # La materia entra a Módulos en el acto
@@ -185,6 +209,23 @@ def dar_de_baja(id_materia: int, yo: int = IdUsuarioActual):
         raise HTTPException(409, "No estás inscripto a esta materia")
 
     d.inscripciones_materias.remove(inscripcion)
+
+    carrera = d.carrera_de(yo) or {}
+    auditoria.registrar(
+        yo,
+        "baja",
+        "academico",
+        elemento=f"Inscripción a {materia['nombre']}",
+        elemento_id=id_materia,
+        elemento_tipo="inscripcionMateria",
+        persona_id=yo,
+        materia_id=id_materia,
+        carrera_id=carrera.get("carreraId"),
+        sede_id=carrera.get("sedeId"),
+        comision_id=carrera.get("comisionId"),
+        antes={"estado": "Inscripto"},
+        detalle="Se dio de baja de una materia",
+    )
 
     # Si el módulo lo creó esta inscripción, se va con ella. Los que ya venían
     # en los datos no se tocan.

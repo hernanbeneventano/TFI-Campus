@@ -1,11 +1,21 @@
 {
  "usuarioActual": {
-  "id": 1,
-  "nombre": "Santiago",
-  "apellido": "Sosa",
-  "correo": "santiago.sosa@campustfi.edu.ar",
-  "rol": "Estudiante",
-  "accesoHaceMin": 135
+  "id": 18,
+  "nombre": "Secretaría Académica",
+  "roles": [
+   "Administrador"
+  ],
+  "accesoHaceMin": 20,
+  "correo": "secretaria.academica@campustfi.edu.ar",
+  "dni": null,
+  "telefono": null,
+  "fechaNacimiento": null,
+  "foto": null,
+  "estado": "activa",
+  "creada": {
+   "__fecha": "aDias",
+   "n": -400
+  }
  },
  "cursos": [
   {
@@ -82,7 +92,10 @@
     "__fecha": "aDias",
     "n": 1
    },
-   "entregada": false
+   "entregada": false,
+   "modalidad": "virtual",
+   "formato": "entrega",
+   "preguntas": []
   },
   {
    "id": 2,
@@ -96,7 +109,10 @@
     "__fecha": "aDias",
     "n": 4
    },
-   "entregada": false
+   "entregada": false,
+   "modalidad": "virtual",
+   "formato": "entrega",
+   "preguntas": []
   },
   {
    "id": 3,
@@ -110,7 +126,10 @@
     "__fecha": "aDias",
     "n": 9
    },
-   "entregada": false
+   "entregada": false,
+   "modalidad": "virtual",
+   "formato": "entrega",
+   "preguntas": []
   },
   {
    "id": 4,
@@ -124,7 +143,10 @@
     "__fecha": "aDias",
     "n": -2
    },
-   "entregada": false
+   "entregada": false,
+   "modalidad": "virtual",
+   "formato": "entrega",
+   "preguntas": []
   },
   {
    "id": 5,
@@ -138,7 +160,10 @@
     "__fecha": "aDias",
     "n": -5
    },
-   "entregada": false
+   "entregada": false,
+   "modalidad": "virtual",
+   "formato": "entrega",
+   "preguntas": []
   },
   {
    "id": 6,
@@ -152,7 +177,97 @@
     "__fecha": "aDias",
     "n": -3
    },
-   "entregada": true
+   "entregada": true,
+   "modalidad": "virtual",
+   "formato": "entrega",
+   "preguntas": []
+  },
+  {
+   "id": 7,
+   "cursoId": 1,
+   "titulo": "Autoevaluación: complejidad y recursividad",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -6
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": 5
+   },
+   "entregada": false,
+   "cerrada": null,
+   "consigna": "Diez minutos. Se puede rendir una sola vez.",
+   "modalidad": "virtual",
+   "formato": "cuestionario",
+   "preguntas": [
+    {
+     "id": 1,
+     "texto": "¿Cuál es la complejidad de buscar en una lista enlazada sin ordenar?",
+     "opciones": [
+      "O(1)",
+      "O(log n)",
+      "O(n)",
+      "O(n²)"
+     ],
+     "correcta": 2,
+     "puntaje": 1
+    },
+    {
+     "id": 2,
+     "texto": "¿Qué le falta a una función recursiva para no colgarse?",
+     "opciones": [
+      "Un caso base",
+      "Un bucle",
+      "Una variable global",
+      "Un try/except"
+     ],
+     "correcta": 0,
+     "puntaje": 1
+    },
+    {
+     "id": 3,
+     "texto": "En una lista doblemente enlazada, cada nodo guarda…",
+     "opciones": [
+      "Solo el siguiente",
+      "Solo el anterior",
+      "El anterior y el siguiente",
+      "Todos los nodos de la lista"
+     ],
+     "correcta": 2,
+     "puntaje": 1
+    },
+    {
+     "id": 4,
+     "texto": "¿Qué estructura conviene para deshacer acciones en orden inverso?",
+     "opciones": [
+      "Una cola",
+      "Una pila",
+      "Un árbol",
+      "Un diccionario"
+     ],
+     "correcta": 1,
+     "puntaje": 1
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "cursoId": 1,
+   "titulo": "Primer parcial",
+   "publicada": {
+    "__fecha": "aDias",
+    "n": -10
+   },
+   "fechaLimite": {
+    "__fecha": "aDias",
+    "n": 12
+   },
+   "entregada": false,
+   "cerrada": null,
+   "consigna": "Aula Magna. Traer calculadora y documento.",
+   "modalidad": "presencial",
+   "formato": "presencial",
+   "preguntas": []
   }
  ],
  "contenidos": {
@@ -239,6 +354,18 @@
       "tipo": "tarea",
       "titulo": "Trabajo práctico 3: Listas enlazadas",
       "tareaId": 1
+     },
+     {
+      "id": "1-11",
+      "tipo": "tarea",
+      "titulo": "Autoevaluación: complejidad y recursividad",
+      "tareaId": 7
+     },
+     {
+      "id": "1-12",
+      "tipo": "tarea",
+      "titulo": "Primer parcial",
+      "tareaId": 8
      }
     ]
    },
@@ -347,121 +474,345 @@
   {
    "id": 1,
    "nombre": "Santiago Sosa",
-   "rol": "Estudiante",
    "accesoHaceMin": 1,
-   "correo": "santiago.sosa@campustfi.edu.ar"
+   "correo": "santiago.sosa@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 2,
    "nombre": "María Gómez",
-   "rol": "Docente",
    "accesoHaceMin": 3,
-   "correo": "maria.gomez@campustfi.edu.ar"
+   "correo": "maria.gomez@campustfi.edu.ar",
+   "roles": [
+    "Docente"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 3,
    "nombre": "Hernán Beneventano",
-   "rol": "Estudiante",
    "accesoHaceMin": 12,
-   "correo": "hernan.beneventano@campustfi.edu.ar"
+   "correo": "hernan.beneventano@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 4,
    "nombre": "Lucía Acosta",
-   "rol": "Estudiante",
    "accesoHaceMin": 95,
-   "correo": "lucia.acosta@campustfi.edu.ar"
+   "correo": "lucia.acosta@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 5,
    "nombre": "Tomás Herrera",
-   "rol": "Estudiante",
    "accesoHaceMin": 1560,
-   "correo": "tomas.herrera@campustfi.edu.ar"
+   "correo": "tomas.herrera@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 6,
    "nombre": "Camila Duarte",
-   "rol": "Estudiante",
    "accesoHaceMin": 69120,
-   "correo": "camila.duarte@campustfi.edu.ar"
+   "correo": "camila.duarte@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 7,
    "nombre": "Pablo Ruiz",
-   "rol": "Docente",
    "accesoHaceMin": 35,
-   "correo": "pablo.ruiz@campustfi.edu.ar"
+   "correo": "pablo.ruiz@campustfi.edu.ar",
+   "roles": [
+    "Docente"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 8,
    "nombre": "Laura Benítez",
-   "rol": "Docente",
    "accesoHaceMin": 8,
-   "correo": "laura.benitez@campustfi.edu.ar"
+   "correo": "laura.benitez@campustfi.edu.ar",
+   "roles": [
+    "Docente"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 9,
    "nombre": "Diego Fernández",
-   "rol": "Docente",
    "accesoHaceMin": 300,
-   "correo": "diego.fernandez@campustfi.edu.ar"
+   "correo": "diego.fernandez@campustfi.edu.ar",
+   "roles": [
+    "Docente"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 10,
    "nombre": "Ana Martínez",
-   "rol": "Docente",
    "accesoHaceMin": 1800,
-   "correo": "ana.martinez@campustfi.edu.ar"
+   "correo": "ana.martinez@campustfi.edu.ar",
+   "roles": [
+    "Docente"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 11,
    "nombre": "Jorge Romero",
-   "rol": "Docente",
    "accesoHaceMin": 720,
-   "correo": "jorge.romero@campustfi.edu.ar"
+   "correo": "jorge.romero@campustfi.edu.ar",
+   "roles": [
+    "Docente"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 12,
    "nombre": "Valentina Ríos",
-   "rol": "Estudiante",
    "accesoHaceMin": 40,
-   "correo": "valentina.rios@campustfi.edu.ar"
+   "correo": "valentina.rios@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 13,
    "nombre": "Matías Ojeda",
-   "rol": "Estudiante",
    "accesoHaceMin": 260,
-   "correo": "matias.ojeda@campustfi.edu.ar"
+   "correo": "matias.ojeda@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 14,
    "nombre": "Florencia Vera",
-   "rol": "Estudiante",
    "accesoHaceMin": 2900,
-   "correo": "florencia.vera@campustfi.edu.ar"
+   "correo": "florencia.vera@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 15,
    "nombre": "Nicolás Aguirre",
-   "rol": "Estudiante",
    "accesoHaceMin": 15,
-   "correo": "nicolas.aguirre@campustfi.edu.ar"
+   "correo": "nicolas.aguirre@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 16,
    "nombre": "Julieta Medina",
-   "rol": "Estudiante",
    "accesoHaceMin": 600,
-   "correo": "julieta.medina@campustfi.edu.ar"
+   "correo": "julieta.medina@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   },
   {
    "id": 17,
    "nombre": "Ramiro Cabrera",
-   "rol": "Estudiante",
    "accesoHaceMin": 9000,
-   "correo": "ramiro.cabrera@campustfi.edu.ar"
+   "correo": "ramiro.cabrera@campustfi.edu.ar",
+   "roles": [
+    "Estudiante"
+   ],
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
+  },
+  {
+   "id": 18,
+   "nombre": "Secretaría Académica",
+   "roles": [
+    "Administrador"
+   ],
+   "accesoHaceMin": 20,
+   "correo": "secretaria.academica@campustfi.edu.ar",
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
+  },
+  {
+   "id": 19,
+   "nombre": "Claudia Ferreyra",
+   "roles": [
+    "Supervisor",
+    "Docente"
+   ],
+   "accesoHaceMin": 90,
+   "correo": "claudia.ferreyra@campustfi.edu.ar",
+   "dni": null,
+   "telefono": null,
+   "fechaNacimiento": null,
+   "foto": null,
+   "estado": "activa",
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   }
   }
  ],
  "participantes": {
@@ -955,248 +1306,7 @@
    ]
   }
  ],
- "materiales": [
-  {
-   "id": 1,
-   "titulo": "Think Python: How to Think Like a Computer Scientist",
-   "autor": "Allen B. Downey",
-   "descripcion": "Introducción a la programación con Python pensada para quien empieza de cero. Arranca por los tipos y las funciones y llega a objetos y estructuras de datos, con ejercicios al final de cada capítulo.",
-   "editorial": "Green Tea Press",
-   "isbn": "9781491939369",
-   "idioma": "en",
-   "tipo": "libro",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Programación II",
-   "categoria": "programacion",
-   "anio": "1.º año",
-   "portada": null,
-   "enlace": "https://greenteapress.com/wp/think-python-2e/",
-   "licencia": "CC BY-NC 3.0",
-   "archivo": null,
-   "subidoPor": 2,
-   "estado": "aprobado",
-   "moderadoPor": 8,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -40
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -40
-   }
-  },
-  {
-   "id": 2,
-   "titulo": "Eloquent JavaScript (3rd edition)",
-   "autor": "Marijn Haverbeke",
-   "descripcion": "Libro de JavaScript moderno con ejemplos que se pueden correr en el navegador. Útil para la parte de programación web de la carrera.",
-   "editorial": "No Starch Press",
-   "isbn": "9781593279509",
-   "idioma": "en",
-   "tipo": "libro",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Programación II",
-   "categoria": "programacion",
-   "anio": "2.º año",
-   "portada": null,
-   "enlace": "https://eloquentjavascript.net/",
-   "licencia": "CC BY-NC 3.0",
-   "archivo": null,
-   "subidoPor": 2,
-   "estado": "aprobado",
-   "moderadoPor": 2,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -33
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -33
-   }
-  },
-  {
-   "id": 3,
-   "titulo": "Apunte de normalización: de 1FN a forma normal de Boyce-Codd",
-   "autor": "Ing. Pablo Ruiz",
-   "descripcion": "Resumen de las formas normales con los ejemplos que se usaron en clase, incluidas las dependencias funcionales del caso de la biblioteca.",
-   "editorial": "Cátedra de Bases de Datos – CampusTFI",
-   "isbn": null,
-   "idioma": "es",
-   "tipo": "apunte",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Bases de Datos",
-   "categoria": "bases-de-datos",
-   "anio": "2.º año",
-   "portada": null,
-   "enlace": "https://campustfi.edu.ar/",
-   "licencia": "Material de cátedra",
-   "archivo": null,
-   "subidoPor": 7,
-   "estado": "aprobado",
-   "moderadoPor": 7,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -12
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -12
-   }
-  },
-  {
-   "id": 4,
-   "titulo": "Guía de ejercicios: álgebra relacional y SQL",
-   "autor": "Ing. Pablo Ruiz",
-   "descripcion": "Treinta ejercicios resueltos y veinte a resolver, sobre el mismo esquema de ejemplo que se usa en el práctico de la materia.",
-   "editorial": "Cátedra de Bases de Datos – CampusTFI",
-   "isbn": null,
-   "idioma": "es",
-   "tipo": "guia",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Bases de Datos",
-   "categoria": "guias-y-ejercicios",
-   "anio": "2.º año",
-   "portada": null,
-   "enlace": "https://campustfi.edu.ar/",
-   "licencia": "Material de cátedra",
-   "archivo": null,
-   "subidoPor": 7,
-   "estado": "aprobado",
-   "moderadoPor": 7,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -6
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -6
-   }
-  },
-  {
-   "id": 5,
-   "titulo": "The Mythical Man-Month: ensayos sobre ingeniería de software",
-   "autor": "Frederick P. Brooks Jr.",
-   "descripcion": "Clásico sobre por qué agregar gente a un proyecto atrasado lo atrasa más. Se trabaja en la unidad de gestión de proyectos.",
-   "editorial": "Addison-Wesley",
-   "isbn": "9780201835953",
-   "idioma": "en",
-   "tipo": "libro",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Ingeniería de Software",
-   "categoria": "ingenieria-de-software",
-   "anio": "3.º año",
-   "portada": null,
-   "enlace": "https://openlibrary.org/isbn/9780201835953",
-   "licencia": "Con derechos reservados · consultar en biblioteca",
-   "archivo": null,
-   "subidoPor": 8,
-   "estado": "aprobado",
-   "moderadoPor": 8,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -21
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -21
-   }
-  },
-  {
-   "id": 6,
-   "titulo": "Computer Networks: a systems approach",
-   "autor": "Larry Peterson, Bruce Davie",
-   "descripcion": "Libro de redes de acceso abierto, con el modelo de capas trabajado desde los protocolos reales. Cubre casi todo el programa de la materia.",
-   "editorial": "Systems Approach LLC",
-   "isbn": "9780128182000",
-   "idioma": "en",
-   "tipo": "libro",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Redes de Computadoras",
-   "categoria": "redes-y-sistemas",
-   "anio": "3.º año",
-   "portada": null,
-   "enlace": "https://book.systemsapproach.org/",
-   "licencia": "CC BY 4.0",
-   "archivo": null,
-   "subidoPor": 9,
-   "estado": "aprobado",
-   "moderadoPor": 9,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -15
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -15
-   }
-  },
-  {
-   "id": 7,
-   "titulo": "Resumen de probabilidad: variables aleatorias discretas",
-   "autor": "Lucía Acosta",
-   "descripcion": "Resumen armado para el primer parcial, con las distribuciones binomial, Poisson y geométrica y un cuadro comparativo al final.",
-   "editorial": null,
-   "isbn": null,
-   "idioma": "es",
-   "tipo": "resumen",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "materia": "Probabilidad y Estadística",
-   "categoria": "apuntes-y-resumenes",
-   "anio": "1.º año",
-   "portada": null,
-   "enlace": null,
-   "licencia": "Material propio del autor",
-   "archivo": null,
-   "subidoPor": 4,
-   "estado": "pendiente",
-   "moderadoPor": null,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -2
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -2
-   }
-  },
-  {
-   "id": 8,
-   "titulo": "English for Information Technology: vocabulario técnico",
-   "autor": "Cátedra de Inglés",
-   "descripcion": "Listado de vocabulario técnico con ejemplos de uso, agrupado por área: hardware, redes, desarrollo y bases de datos.",
-   "editorial": "Cátedra de Inglés – CampusTFI",
-   "isbn": null,
-   "idioma": "en",
-   "tipo": "manual",
-   "carrera": "Común a todas",
-   "materia": "Inglés Técnico",
-   "categoria": "ingles",
-   "anio": "1.º año",
-   "portada": null,
-   "enlace": "https://campustfi.edu.ar/",
-   "licencia": "Material de cátedra",
-   "archivo": null,
-   "subidoPor": 10,
-   "estado": "aprobado",
-   "moderadoPor": 10,
-   "motivo": null,
-   "creado": {
-    "__fecha": "aDias",
-    "n": -50
-   },
-   "actualizado": {
-    "__fecha": "aDias",
-    "n": -50
-   }
-  }
- ],
+ "materiales": [],
  "categorias": [
   {
    "id": "programacion",
@@ -1244,42 +1354,49 @@
   }
  ],
  "carreras": [
-  "Licenciatura en Sistemas de Información",
-  "Profesorado en Matemática",
-  "Licenciatura en Ciencias Químicas",
-  "Común a todas"
- ],
- "favoritosBiblioteca": [
   {
-   "personaId": 1,
-   "materialId": 1,
-   "creado": {
+   "id": 1,
+   "nombre": "Licenciatura en Sistemas de Información",
+   "codigo": "LSI",
+   "activa": true,
+   "creada": {
     "__fecha": "aDias",
-    "n": -9
+    "n": -400
    }
   },
   {
-   "personaId": 1,
-   "materialId": 6,
-   "creado": {
+   "id": 2,
+   "nombre": "Profesorado en Matemática",
+   "codigo": "PM",
+   "activa": true,
+   "creada": {
     "__fecha": "aDias",
-    "n": -4
+    "n": -400
    }
-  }
- ],
- "moderacionBiblioteca": [
+  },
   {
-   "id": 1,
-   "materialId": 5,
-   "moderadorId": 8,
-   "accion": "aprobado",
-   "motivo": null,
-   "fecha": {
+   "id": 3,
+   "nombre": "Licenciatura en Ciencias Químicas",
+   "codigo": "LCQ",
+   "activa": true,
+   "creada": {
     "__fecha": "aDias",
-    "n": -21
+    "n": -400
+   }
+  },
+  {
+   "id": 4,
+   "nombre": "Común a todas",
+   "codigo": "C",
+   "activa": false,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
    }
   }
  ],
+ "favoritosBiblioteca": [],
+ "moderacionBiblioteca": [],
  "TIPOS_MATERIAL": [
   "libro",
   "apunte",
@@ -1299,53 +1416,42 @@
    "id": 101,
    "codigo": "SIS-101",
    "nombre": "Álgebra y Geometría Analítica",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 1,
    "cuatrimestre": 1,
    "correlativas": [],
    "cupo": 60,
    "cursoId": null,
-   "docenteId": null,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 102,
    "codigo": "SIS-102",
    "nombre": "Análisis Matemático I",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 1,
    "cuatrimestre": 1,
    "correlativas": [],
    "cupo": 60,
    "cursoId": null,
-   "docenteId": null,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 103,
    "codigo": "SIS-103",
    "nombre": "Programación I",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 1,
    "cuatrimestre": 1,
    "correlativas": [],
    "cupo": 50,
    "cursoId": null,
-   "docenteId": null,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 104,
    "codigo": "SIS-104",
    "nombre": "Análisis Matemático II",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 1,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1353,46 +1459,37 @@
    ],
    "cupo": 60,
    "cursoId": null,
-   "docenteId": null,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 105,
    "codigo": "SIS-105",
    "nombre": "Arquitectura de Computadoras",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 1,
    "cuatrimestre": 2,
    "correlativas": [],
    "cupo": 50,
    "cursoId": null,
-   "docenteId": null,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 106,
    "codigo": "SIS-106",
    "nombre": "Inglés Técnico",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 1,
    "cuatrimestre": 2,
    "correlativas": [],
    "cupo": 80,
    "cursoId": null,
-   "docenteId": null,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 107,
    "codigo": "ALG-2",
    "nombre": "Algoritmos y Estructuras de Datos",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 2,
    "cuatrimestre": 1,
    "correlativas": [
@@ -1400,16 +1497,13 @@
    ],
    "cupo": 45,
    "cursoId": 6,
-   "docenteId": 11,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 108,
    "codigo": "MAT-3",
    "nombre": "Probabilidad y Estadística",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 2,
    "cuatrimestre": 1,
    "correlativas": [
@@ -1417,16 +1511,13 @@
    ],
    "cupo": 55,
    "cursoId": 5,
-   "docenteId": 10,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 109,
    "codigo": "PROG-2",
    "nombre": "Programación II",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 2,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1434,16 +1525,13 @@
    ],
    "cupo": 45,
    "cursoId": 1,
-   "docenteId": 2,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 110,
    "codigo": "BD-1",
    "nombre": "Bases de Datos",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 2,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1451,16 +1539,13 @@
    ],
    "cupo": 45,
    "cursoId": 2,
-   "docenteId": 7,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 111,
    "codigo": "IS-1",
    "nombre": "Ingeniería de Software",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 2,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1468,16 +1553,13 @@
    ],
    "cupo": 40,
    "cursoId": 3,
-   "docenteId": 8,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 112,
    "codigo": "RED-1",
    "nombre": "Redes de Computadoras",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 2,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1485,16 +1567,13 @@
    ],
    "cupo": 40,
    "cursoId": 4,
-   "docenteId": 9,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 113,
    "codigo": "SO-1",
    "nombre": "Sistemas Operativos",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 1,
    "correlativas": [
@@ -1502,16 +1581,13 @@
    ],
    "cupo": 40,
    "cursoId": null,
-   "docenteId": 9,
-   "comision": "A",
-   "horario": "Martes y jueves de 18:00 a 21:00"
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 114,
    "codigo": "BD-2",
    "nombre": "Bases de Datos II",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 1,
    "correlativas": [
@@ -1519,16 +1595,13 @@
    ],
    "cupo": 40,
    "cursoId": null,
-   "docenteId": 7,
-   "comision": "A",
-   "horario": "Lunes y miércoles de 18:00 a 21:00"
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 115,
    "codigo": "PROG-3",
    "nombre": "Programación Orientada a Objetos",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 1,
    "correlativas": [
@@ -1536,16 +1609,13 @@
    ],
    "cupo": 45,
    "cursoId": null,
-   "docenteId": 2,
-   "comision": "B",
-   "horario": "Martes y viernes de 14:00 a 17:00"
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 116,
    "codigo": "MAT-4",
    "nombre": "Matemática Discreta",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 1,
    "correlativas": [
@@ -1553,16 +1623,13 @@
    ],
    "cupo": 2,
    "cursoId": null,
-   "docenteId": 10,
-   "comision": "A",
-   "horario": "Miércoles de 08:00 a 12:00"
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 117,
    "codigo": "IS-2",
    "nombre": "Ingeniería de Software II",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1570,16 +1637,13 @@
    ],
    "cupo": 35,
    "cursoId": null,
-   "docenteId": 8,
-   "comision": "A",
-   "horario": "Jueves de 18:00 a 22:00"
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 118,
    "codigo": "RED-2",
    "nombre": "Redes de Computadoras II",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 2,
    "correlativas": [
@@ -1587,24 +1651,20 @@
    ],
    "cupo": 35,
    "cursoId": null,
-   "docenteId": 9,
-   "comision": null,
-   "horario": null
+   "carreraId": 1,
+   "planId": 1
   },
   {
    "id": 119,
    "codigo": "SIS-107",
    "nombre": "Metodología de la Investigación",
-   "carrera": "Licenciatura en Sistemas de Información",
-   "plan": "2023",
    "anio": 3,
    "cuatrimestre": 1,
    "correlativas": [],
    "cupo": 40,
    "cursoId": null,
-   "docenteId": 8,
-   "comision": "Única",
-   "horario": "Viernes de 18:00 a 21:00"
+   "carreraId": 1,
+   "planId": 1
   }
  ],
  "inscripcionCarrera": [
@@ -3078,5 +3138,3223 @@
   "Escrito",
   "Oral",
   "Escrito y oral"
- ]
+ ],
+ "calificaciones": [
+  {
+   "id": 1,
+   "cursoId": 1,
+   "tareaId": 1,
+   "personaId": 1,
+   "nota": 8,
+   "estado": "Aprobado",
+   "comentario": "Buen uso de punteros. Revisá el caso de la lista vacía.",
+   "docenteId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   }
+  },
+  {
+   "id": 2,
+   "cursoId": 1,
+   "tareaId": 1,
+   "personaId": 3,
+   "nota": 9,
+   "estado": "Aprobado",
+   "comentario": "Muy prolijo.",
+   "docenteId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   }
+  },
+  {
+   "id": 3,
+   "cursoId": 1,
+   "tareaId": 1,
+   "personaId": 4,
+   "nota": 4,
+   "estado": "Desaprobado",
+   "comentario": "No contempla el borrado del último nodo. Podés reentregar.",
+   "docenteId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -3
+   }
+  },
+  {
+   "id": 4,
+   "cursoId": 1,
+   "tareaId": 1,
+   "personaId": 5,
+   "nota": 7,
+   "estado": "Aprobado",
+   "comentario": null,
+   "docenteId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -3
+   }
+  },
+  {
+   "id": 5,
+   "cursoId": 1,
+   "tareaId": 5,
+   "personaId": 1,
+   "nota": 6,
+   "estado": "Aprobado",
+   "comentario": "Faltó justificar el caso base del ejercicio 2.",
+   "docenteId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1
+   }
+  },
+  {
+   "id": 6,
+   "cursoId": 1,
+   "tareaId": 5,
+   "personaId": 3,
+   "nota": 10,
+   "estado": "Aprobado",
+   "comentario": "Impecable.",
+   "docenteId": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1
+   }
+  }
+ ],
+ "ESTADOS_CALIFICACION": [
+  "Aprobado",
+  "Desaprobado",
+  "Entregado",
+  "Sin entregar"
+ ],
+ "progresoAlumnos": [
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-1",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-2",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -19
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-3",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -18
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-4",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -17
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-5",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-7",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -15
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-8",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -14
+   }
+  },
+  {
+   "personaId": 1,
+   "cursoId": 1,
+   "itemId": "1-10",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-1",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-2",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -19
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-3",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -18
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-4",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -17
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-5",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-7",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -15
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-8",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -14
+   }
+  },
+  {
+   "personaId": 3,
+   "cursoId": 1,
+   "itemId": "1-10",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "personaId": 4,
+   "cursoId": 1,
+   "itemId": "1-1",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "personaId": 4,
+   "cursoId": 1,
+   "itemId": "1-2",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -19
+   }
+  },
+  {
+   "personaId": 4,
+   "cursoId": 1,
+   "itemId": "1-4",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -18
+   }
+  },
+  {
+   "personaId": 4,
+   "cursoId": 1,
+   "itemId": "1-7",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -17
+   }
+  },
+  {
+   "personaId": 5,
+   "cursoId": 1,
+   "itemId": "1-1",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "personaId": 5,
+   "cursoId": 1,
+   "itemId": "1-2",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -19
+   }
+  },
+  {
+   "personaId": 5,
+   "cursoId": 1,
+   "itemId": "1-3",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -18
+   }
+  },
+  {
+   "personaId": 5,
+   "cursoId": 1,
+   "itemId": "1-4",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -17
+   }
+  },
+  {
+   "personaId": 5,
+   "cursoId": 1,
+   "itemId": "1-5",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "personaId": 5,
+   "cursoId": 1,
+   "itemId": "1-7",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -15
+   }
+  },
+  {
+   "personaId": 6,
+   "cursoId": 1,
+   "itemId": "1-1",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "personaId": 6,
+   "cursoId": 1,
+   "itemId": "1-4",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -19
+   }
+  }
+ ],
+ "entregas": [
+  {
+   "id": 1,
+   "tareaId": 1,
+   "personaId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -5
+   },
+   "archivo": "tp3-sosa.zip",
+   "comentario": "Subo el punto 4 aparte."
+  },
+  {
+   "id": 2,
+   "tareaId": 1,
+   "personaId": 3,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -5
+   },
+   "archivo": "tp3-beneventano.zip",
+   "comentario": null
+  },
+  {
+   "id": 3,
+   "tareaId": 1,
+   "personaId": 4,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "archivo": "tp3-acosta.pdf",
+   "comentario": null
+  },
+  {
+   "id": 4,
+   "tareaId": 1,
+   "personaId": 5,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -4
+   },
+   "archivo": "tp3-herrera.zip",
+   "comentario": null
+  },
+  {
+   "id": 5,
+   "tareaId": 5,
+   "personaId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "archivo": "recursividad-sosa.pdf",
+   "comentario": null
+  },
+  {
+   "id": 6,
+   "tareaId": 5,
+   "personaId": 3,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "archivo": "recursividad-beneventano.pdf",
+   "comentario": null
+  },
+  {
+   "id": 7,
+   "tareaId": 5,
+   "personaId": 4,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1
+   },
+   "archivo": "recursividad-acosta.pdf",
+   "comentario": "Me faltó el último ejercicio."
+  }
+ ],
+ "respuestasCuestionario": [
+  {
+   "id": 1,
+   "tareaId": 7,
+   "personaId": 3,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "respuestas": {
+    "1": 2,
+    "2": 0,
+    "3": 2,
+    "4": 1
+   },
+   "nota": 10
+  },
+  {
+   "id": 2,
+   "tareaId": 7,
+   "personaId": 4,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -1
+   },
+   "respuestas": {
+    "1": 2,
+    "2": 0,
+    "3": 0,
+    "4": 0
+   },
+   "nota": 5
+  }
+ ],
+ "MODALIDADES_TRABAJO": [
+  "virtual",
+  "presencial"
+ ],
+ "FORMATOS_TRABAJO": [
+  "entrega",
+  "cuestionario",
+  "presencial"
+ ],
+ "planificacionAsistencia": [
+  {
+   "cursoId": 1,
+   "clasesPlanificadas": 40,
+   "actualizadoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -80
+   }
+  }
+ ],
+ "CONFIG_ASISTENCIA": {
+  "minimoPorDefecto": 75,
+  "justificadaDescuenta": false
+ },
+ "ESTADOS_ASISTENCIA": [
+  "presente",
+  "ausente",
+  "justificada"
+ ],
+ "ESTADOS_JUSTIFICACION": [
+  "Pendiente",
+  "Aprobada",
+  "Rechazada"
+ ],
+ "clasesAsistencia": [
+  {
+   "id": 1,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -86
+   },
+   "tema": "Presentación y repaso de Programación I",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -86
+   }
+  },
+  {
+   "id": 2,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -83
+   },
+   "tema": "Punteros y memoria dinámica",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -83
+   }
+  },
+  {
+   "id": 3,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -79
+   },
+   "tema": "Arreglos dinámicos",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -79
+   }
+  },
+  {
+   "id": 4,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -76
+   },
+   "tema": "Introducción a la recursividad",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -76
+   }
+  },
+  {
+   "id": 5,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -72
+   },
+   "tema": "Caso base y pila de llamadas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -72
+   }
+  },
+  {
+   "id": 6,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -69
+   },
+   "tema": "Recursividad sobre listas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -69
+   }
+  },
+  {
+   "id": 7,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -65
+   },
+   "tema": "Ejercitación de recursividad",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -65
+   }
+  },
+  {
+   "id": 8,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -62
+   },
+   "tema": "Listas enlazadas simples",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -62
+   }
+  },
+  {
+   "id": 9,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -58
+   },
+   "tema": "Inserción y borrado en listas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -58
+   }
+  },
+  {
+   "id": 10,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -55
+   },
+   "tema": "Recorrido de listas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -55
+   }
+  },
+  {
+   "id": 11,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -51
+   },
+   "tema": "Listas doblemente enlazadas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -51
+   }
+  },
+  {
+   "id": 12,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -48
+   },
+   "tema": "Listas circulares",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -48
+   }
+  },
+  {
+   "id": 13,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -44
+   },
+   "tema": "Ejercitación de listas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -44
+   }
+  },
+  {
+   "id": 14,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -41
+   },
+   "tema": "Pilas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -41
+   }
+  },
+  {
+   "id": 15,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -37
+   },
+   "tema": "Colas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -37
+   }
+  },
+  {
+   "id": 16,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -34
+   },
+   "tema": "Pilas y colas con listas",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -34
+   }
+  },
+  {
+   "id": 17,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   },
+   "tema": "Repaso para el parcial",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -30
+   }
+  },
+  {
+   "id": 18,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -27
+   },
+   "tema": "Consultas antes del parcial",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -27
+   }
+  },
+  {
+   "id": 19,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -23
+   },
+   "tema": "Árboles binarios: definición",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -23
+   }
+  },
+  {
+   "id": 20,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   },
+   "tema": "Recorridos en árboles",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "id": 21,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   },
+   "tema": "Árboles de búsqueda",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "id": 22,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   },
+   "tema": "Inserción en árboles",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "id": 23,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   },
+   "tema": "Borrado en árboles",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "id": 24,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   },
+   "tema": "Balanceo",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": false,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 25,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   },
+   "tema": "Ejercitación de árboles",
+   "estado": "dictada",
+   "docenteId": 2,
+   "cerrada": false,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  },
+  {
+   "id": 26,
+   "cursoId": 1,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   },
+   "tema": "Paro de transporte",
+   "estado": "suspendida",
+   "docenteId": 2,
+   "cerrada": true,
+   "registradaEl": {
+    "__fecha": "aDias",
+    "n": -30
+   },
+   "motivo": "Paro general de transporte."
+  }
+ ],
+ "asistencias": [
+  {
+   "id": 1,
+   "claseId": 1,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -86
+   }
+  },
+  {
+   "id": 2,
+   "claseId": 1,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -86
+   }
+  },
+  {
+   "id": 3,
+   "claseId": 1,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -86
+   }
+  },
+  {
+   "id": 4,
+   "claseId": 1,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -86
+   }
+  },
+  {
+   "id": 5,
+   "claseId": 1,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -86
+   }
+  },
+  {
+   "id": 6,
+   "claseId": 2,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -83
+   }
+  },
+  {
+   "id": 7,
+   "claseId": 2,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -83
+   }
+  },
+  {
+   "id": 8,
+   "claseId": 2,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -83
+   }
+  },
+  {
+   "id": 9,
+   "claseId": 2,
+   "personaId": 5,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -83
+   }
+  },
+  {
+   "id": 10,
+   "claseId": 2,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -83
+   }
+  },
+  {
+   "id": 11,
+   "claseId": 3,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -79
+   }
+  },
+  {
+   "id": 12,
+   "claseId": 3,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -79
+   }
+  },
+  {
+   "id": 13,
+   "claseId": 3,
+   "personaId": 4,
+   "estado": "justificada",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -79
+   }
+  },
+  {
+   "id": 14,
+   "claseId": 3,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -79
+   }
+  },
+  {
+   "id": 15,
+   "claseId": 3,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -79
+   }
+  },
+  {
+   "id": 16,
+   "claseId": 4,
+   "personaId": 1,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -76
+   }
+  },
+  {
+   "id": 17,
+   "claseId": 4,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -76
+   }
+  },
+  {
+   "id": 18,
+   "claseId": 4,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -76
+   }
+  },
+  {
+   "id": 19,
+   "claseId": 4,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -76
+   }
+  },
+  {
+   "id": 20,
+   "claseId": 4,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -76
+   }
+  },
+  {
+   "id": 21,
+   "claseId": 5,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -72
+   }
+  },
+  {
+   "id": 22,
+   "claseId": 5,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -72
+   }
+  },
+  {
+   "id": 23,
+   "claseId": 5,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -72
+   }
+  },
+  {
+   "id": 24,
+   "claseId": 5,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -72
+   }
+  },
+  {
+   "id": 25,
+   "claseId": 5,
+   "personaId": 6,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -72
+   }
+  },
+  {
+   "id": 26,
+   "claseId": 6,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -69
+   }
+  },
+  {
+   "id": 27,
+   "claseId": 6,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -69
+   }
+  },
+  {
+   "id": 28,
+   "claseId": 6,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -69
+   }
+  },
+  {
+   "id": 29,
+   "claseId": 6,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -69
+   }
+  },
+  {
+   "id": 30,
+   "claseId": 6,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -69
+   }
+  },
+  {
+   "id": 31,
+   "claseId": 7,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -65
+   }
+  },
+  {
+   "id": 32,
+   "claseId": 7,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -65
+   }
+  },
+  {
+   "id": 33,
+   "claseId": 7,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -65
+   }
+  },
+  {
+   "id": 34,
+   "claseId": 7,
+   "personaId": 5,
+   "estado": "justificada",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -65
+   }
+  },
+  {
+   "id": 35,
+   "claseId": 7,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -65
+   }
+  },
+  {
+   "id": 36,
+   "claseId": 8,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -62
+   }
+  },
+  {
+   "id": 37,
+   "claseId": 8,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -62
+   }
+  },
+  {
+   "id": 38,
+   "claseId": 8,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -62
+   }
+  },
+  {
+   "id": 39,
+   "claseId": 8,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -62
+   }
+  },
+  {
+   "id": 40,
+   "claseId": 8,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -62
+   }
+  },
+  {
+   "id": 41,
+   "claseId": 9,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -58
+   }
+  },
+  {
+   "id": 42,
+   "claseId": 9,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -58
+   }
+  },
+  {
+   "id": 43,
+   "claseId": 9,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -58
+   }
+  },
+  {
+   "id": 44,
+   "claseId": 9,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -58
+   }
+  },
+  {
+   "id": 45,
+   "claseId": 9,
+   "personaId": 6,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -58
+   }
+  },
+  {
+   "id": 46,
+   "claseId": 10,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -55
+   }
+  },
+  {
+   "id": 47,
+   "claseId": 10,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -55
+   }
+  },
+  {
+   "id": 48,
+   "claseId": 10,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -55
+   }
+  },
+  {
+   "id": 49,
+   "claseId": 10,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -55
+   }
+  },
+  {
+   "id": 50,
+   "claseId": 10,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -55
+   }
+  },
+  {
+   "id": 51,
+   "claseId": 11,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -51
+   }
+  },
+  {
+   "id": 52,
+   "claseId": 11,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -51
+   }
+  },
+  {
+   "id": 53,
+   "claseId": 11,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -51
+   }
+  },
+  {
+   "id": 54,
+   "claseId": 11,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -51
+   }
+  },
+  {
+   "id": 55,
+   "claseId": 11,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -51
+   }
+  },
+  {
+   "id": 56,
+   "claseId": 12,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -48
+   }
+  },
+  {
+   "id": 57,
+   "claseId": 12,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -48
+   }
+  },
+  {
+   "id": 58,
+   "claseId": 12,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -48
+   }
+  },
+  {
+   "id": 59,
+   "claseId": 12,
+   "personaId": 5,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -48
+   }
+  },
+  {
+   "id": 60,
+   "claseId": 12,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -48
+   }
+  },
+  {
+   "id": 61,
+   "claseId": 13,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -44
+   }
+  },
+  {
+   "id": 62,
+   "claseId": 13,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -44
+   }
+  },
+  {
+   "id": 63,
+   "claseId": 13,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -44
+   }
+  },
+  {
+   "id": 64,
+   "claseId": 13,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -44
+   }
+  },
+  {
+   "id": 65,
+   "claseId": 13,
+   "personaId": 6,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -44
+   }
+  },
+  {
+   "id": 66,
+   "claseId": 14,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -41
+   }
+  },
+  {
+   "id": 67,
+   "claseId": 14,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -41
+   }
+  },
+  {
+   "id": 68,
+   "claseId": 14,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -41
+   }
+  },
+  {
+   "id": 69,
+   "claseId": 14,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -41
+   }
+  },
+  {
+   "id": 70,
+   "claseId": 14,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -41
+   }
+  },
+  {
+   "id": 71,
+   "claseId": 15,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -37
+   }
+  },
+  {
+   "id": 72,
+   "claseId": 15,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -37
+   }
+  },
+  {
+   "id": 73,
+   "claseId": 15,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -37
+   }
+  },
+  {
+   "id": 74,
+   "claseId": 15,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -37
+   }
+  },
+  {
+   "id": 75,
+   "claseId": 15,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -37
+   }
+  },
+  {
+   "id": 76,
+   "claseId": 16,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -34
+   }
+  },
+  {
+   "id": 77,
+   "claseId": 16,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -34
+   }
+  },
+  {
+   "id": 78,
+   "claseId": 16,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -34
+   }
+  },
+  {
+   "id": 79,
+   "claseId": 16,
+   "personaId": 5,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -34
+   }
+  },
+  {
+   "id": 80,
+   "claseId": 16,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -34
+   }
+  },
+  {
+   "id": 81,
+   "claseId": 17,
+   "personaId": 1,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   }
+  },
+  {
+   "id": 82,
+   "claseId": 17,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   }
+  },
+  {
+   "id": 83,
+   "claseId": 17,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   }
+  },
+  {
+   "id": 84,
+   "claseId": 17,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   }
+  },
+  {
+   "id": 85,
+   "claseId": 17,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -30
+   }
+  },
+  {
+   "id": 86,
+   "claseId": 18,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -27
+   }
+  },
+  {
+   "id": 87,
+   "claseId": 18,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -27
+   }
+  },
+  {
+   "id": 88,
+   "claseId": 18,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -27
+   }
+  },
+  {
+   "id": 89,
+   "claseId": 18,
+   "personaId": 5,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -27
+   }
+  },
+  {
+   "id": 90,
+   "claseId": 18,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -27
+   }
+  },
+  {
+   "id": 91,
+   "claseId": 19,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -23
+   }
+  },
+  {
+   "id": 92,
+   "claseId": 19,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -23
+   }
+  },
+  {
+   "id": 93,
+   "claseId": 19,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -23
+   }
+  },
+  {
+   "id": 94,
+   "claseId": 19,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -23
+   }
+  },
+  {
+   "id": 95,
+   "claseId": 19,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -23
+   }
+  },
+  {
+   "id": 96,
+   "claseId": 20,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "id": 97,
+   "claseId": 20,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "id": 98,
+   "claseId": 20,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "id": 99,
+   "claseId": 20,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "id": 100,
+   "claseId": 20,
+   "personaId": 6,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -20
+   }
+  },
+  {
+   "id": 101,
+   "claseId": 21,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "id": 102,
+   "claseId": 21,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "id": 103,
+   "claseId": 21,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "id": 104,
+   "claseId": 21,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "id": 105,
+   "claseId": 21,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -16
+   }
+  },
+  {
+   "id": 106,
+   "claseId": 22,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "id": 107,
+   "claseId": 22,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "id": 108,
+   "claseId": 22,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "id": 109,
+   "claseId": 22,
+   "personaId": 5,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "id": 110,
+   "claseId": 22,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -13
+   }
+  },
+  {
+   "id": 111,
+   "claseId": 23,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "id": 112,
+   "claseId": 23,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "id": 113,
+   "claseId": 23,
+   "personaId": 4,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "id": 114,
+   "claseId": 23,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "id": 115,
+   "claseId": 23,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -9
+   }
+  },
+  {
+   "id": 116,
+   "claseId": 24,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 117,
+   "claseId": 24,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 118,
+   "claseId": 24,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 119,
+   "claseId": 24,
+   "personaId": 5,
+   "estado": "ausente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 120,
+   "claseId": 24,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -6
+   }
+  },
+  {
+   "id": 121,
+   "claseId": 25,
+   "personaId": 1,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  },
+  {
+   "id": 122,
+   "claseId": 25,
+   "personaId": 3,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  },
+  {
+   "id": 123,
+   "claseId": 25,
+   "personaId": 4,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  },
+  {
+   "id": 124,
+   "claseId": 25,
+   "personaId": 5,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  },
+  {
+   "id": 125,
+   "claseId": 25,
+   "personaId": 6,
+   "estado": "presente",
+   "observacion": null,
+   "registradoPor": 2,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -2
+   }
+  }
+ ],
+ "justificaciones": [
+  {
+   "id": 1,
+   "personaId": 4,
+   "cursoId": 1,
+   "claseId": 3,
+   "motivo": "Certificado médico por angina.",
+   "archivo": "certificado-acosta.pdf",
+   "estado": "Aprobada",
+   "revisadoPor": 2,
+   "fechaResolucion": {
+    "__fecha": "aDias",
+    "n": -70
+   },
+   "observacion": "Certificado en regla.",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -73
+   }
+  },
+  {
+   "id": 2,
+   "personaId": 5,
+   "cursoId": 1,
+   "claseId": 7,
+   "motivo": "Trámite de documentación obligatorio.",
+   "archivo": null,
+   "estado": "Aprobada",
+   "revisadoPor": 2,
+   "fechaResolucion": {
+    "__fecha": "aDias",
+    "n": -58
+   },
+   "observacion": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -60
+   }
+  },
+  {
+   "id": 3,
+   "personaId": 6,
+   "cursoId": 1,
+   "claseId": 20,
+   "motivo": "Me superpuso con el final de Álgebra.",
+   "archivo": "constancia-final.pdf",
+   "estado": "Pendiente",
+   "revisadoPor": null,
+   "fechaResolucion": null,
+   "observacion": null,
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -8
+   }
+  },
+  {
+   "id": 4,
+   "personaId": 4,
+   "cursoId": 1,
+   "claseId": 19,
+   "motivo": "Me quedé dormida.",
+   "archivo": null,
+   "estado": "Rechazada",
+   "revisadoPor": 2,
+   "fechaResolucion": {
+    "__fecha": "aDias",
+    "n": -11
+   },
+   "observacion": "No es un motivo justificable.",
+   "fecha": {
+    "__fecha": "aDias",
+    "n": -12
+   }
+  }
+ ],
+ "historialAsistencia": [
+  {
+   "id": 1,
+   "claseId": 19,
+   "personaId": 4,
+   "de": "ausente",
+   "a": "ausente",
+   "quien": 2,
+   "cuando": {
+    "__fecha": "aDias",
+    "n": -11
+   },
+   "motivo": "Se rechazó la justificación: queda como ausente."
+  }
+ ],
+ "ROLES": [
+  "Estudiante",
+  "Docente",
+  "Supervisor",
+  "Administrador"
+ ],
+ "sedes": [
+  {
+   "id": 1,
+   "nombre": "Sede Central",
+   "ciudad": "Resistencia",
+   "activa": true
+  },
+  {
+   "id": 2,
+   "nombre": "Delegación Goya",
+   "ciudad": "Goya",
+   "activa": true
+  }
+ ],
+ "carrerasNombres": [
+  "Licenciatura en Sistemas de Información",
+  "Profesorado en Matemática",
+  "Licenciatura en Ciencias Químicas",
+  "Común a todas"
+ ],
+ "planesEstudio": [
+  {
+   "id": 1,
+   "carreraId": 1,
+   "nombre": "Plan 2023",
+   "anio": 2023,
+   "activo": true,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -400
+   }
+  }
+ ],
+ "comisiones": [
+  {
+   "id": 1,
+   "carreraId": 1,
+   "sedeId": 1,
+   "nombre": "1.º año - Comisión A",
+   "anio": 1,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": 1
+  },
+  {
+   "id": 2,
+   "carreraId": 1,
+   "sedeId": 1,
+   "nombre": "1.º año - Comisión B",
+   "anio": 1,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": 1
+  },
+  {
+   "id": 3,
+   "carreraId": 1,
+   "sedeId": 1,
+   "nombre": "2.º año - Comisión A",
+   "anio": 2,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": 1
+  },
+  {
+   "id": 4,
+   "carreraId": 1,
+   "sedeId": 1,
+   "nombre": "2.º año - Comisión B",
+   "anio": 2,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": 1
+  },
+  {
+   "id": 5,
+   "carreraId": 1,
+   "sedeId": 1,
+   "nombre": "3.º año - Comisión A",
+   "anio": 3,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": 1
+  },
+  {
+   "id": 6,
+   "carreraId": 1,
+   "sedeId": 1,
+   "nombre": "3.º año - Comisión B",
+   "anio": 3,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": 1
+  },
+  {
+   "id": 7,
+   "carreraId": 2,
+   "sedeId": 1,
+   "nombre": "1.º año - Comisión A",
+   "anio": 1,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 8,
+   "carreraId": 2,
+   "sedeId": 1,
+   "nombre": "1.º año - Comisión B",
+   "anio": 1,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 9,
+   "carreraId": 2,
+   "sedeId": 1,
+   "nombre": "2.º año - Comisión A",
+   "anio": 2,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 10,
+   "carreraId": 2,
+   "sedeId": 1,
+   "nombre": "2.º año - Comisión B",
+   "anio": 2,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 11,
+   "carreraId": 2,
+   "sedeId": 1,
+   "nombre": "3.º año - Comisión A",
+   "anio": 3,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 12,
+   "carreraId": 2,
+   "sedeId": 1,
+   "nombre": "3.º año - Comisión B",
+   "anio": 3,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 13,
+   "carreraId": 3,
+   "sedeId": 1,
+   "nombre": "1.º año - Comisión A",
+   "anio": 1,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 14,
+   "carreraId": 3,
+   "sedeId": 1,
+   "nombre": "1.º año - Comisión B",
+   "anio": 1,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 15,
+   "carreraId": 3,
+   "sedeId": 1,
+   "nombre": "2.º año - Comisión A",
+   "anio": 2,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 16,
+   "carreraId": 3,
+   "sedeId": 1,
+   "nombre": "2.º año - Comisión B",
+   "anio": 2,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 17,
+   "carreraId": 3,
+   "sedeId": 1,
+   "nombre": "3.º año - Comisión A",
+   "anio": 3,
+   "turno": "Noche",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  },
+  {
+   "id": 18,
+   "carreraId": 3,
+   "sedeId": 1,
+   "nombre": "3.º año - Comisión B",
+   "anio": 3,
+   "turno": "Tarde",
+   "activa": true,
+   "creada": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "planId": null
+  }
+ ],
+ "asociacionesAcademicas": [
+  {
+   "id": 1,
+   "personaId": 1,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "SIS-2024-0187",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2024
+  },
+  {
+   "id": 2,
+   "personaId": 3,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "58.230",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2024
+  },
+  {
+   "id": 3,
+   "personaId": 4,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "57.902",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2023
+  },
+  {
+   "id": 4,
+   "personaId": 5,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "56.118",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2022
+  },
+  {
+   "id": 5,
+   "personaId": 6,
+   "carreraId": 2,
+   "sedeId": 1,
+   "comisionId": 9,
+   "planId": null,
+   "legajo": "58.477",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2024
+  },
+  {
+   "id": 6,
+   "personaId": 12,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "58.501",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2024
+  },
+  {
+   "id": 7,
+   "personaId": 13,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "57.640",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2023
+  },
+  {
+   "id": 8,
+   "personaId": 14,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "56.873",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2022
+  },
+  {
+   "id": 9,
+   "personaId": 15,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "57.315",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2023
+  },
+  {
+   "id": 10,
+   "personaId": 16,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "58.066",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2024
+  },
+  {
+   "id": 11,
+   "personaId": 17,
+   "carreraId": 1,
+   "sedeId": 1,
+   "comisionId": 3,
+   "planId": 1,
+   "legajo": "55.920",
+   "estado": "activa",
+   "desde": {
+    "__fecha": "aDias",
+    "n": -400
+   },
+   "ingreso": 2021
+  }
+ ],
+ "historialUsuarios": [],
+ "ESTADOS_CUENTA": [
+  "activa",
+  "suspendida",
+  "pendiente"
+ ],
+ "ESTADOS_ASOCIACION": [
+  "activa",
+  "suspendida",
+  "egresada"
+ ],
+ "TURNOS": [
+  "Mañana",
+  "Tarde",
+  "Noche"
+ ],
+ "dictados": [
+  {
+   "id": 1,
+   "comisionId": 1,
+   "materiaId": 101,
+   "docentes": [],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 2,
+   "comisionId": 1,
+   "materiaId": 102,
+   "docentes": [],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 3,
+   "comisionId": 1,
+   "materiaId": 103,
+   "docentes": [],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 4,
+   "comisionId": 1,
+   "materiaId": 104,
+   "docentes": [],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 5,
+   "comisionId": 1,
+   "materiaId": 105,
+   "docentes": [],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 6,
+   "comisionId": 1,
+   "materiaId": 106,
+   "docentes": [],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 7,
+   "comisionId": 3,
+   "materiaId": 107,
+   "docentes": [
+    11
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 8,
+   "comisionId": 3,
+   "materiaId": 108,
+   "docentes": [
+    10
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 9,
+   "comisionId": 3,
+   "materiaId": 109,
+   "docentes": [
+    2
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 10,
+   "comisionId": 3,
+   "materiaId": 110,
+   "docentes": [
+    7
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 11,
+   "comisionId": 3,
+   "materiaId": 111,
+   "docentes": [
+    8
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 12,
+   "comisionId": 3,
+   "materiaId": 112,
+   "docentes": [
+    9
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 13,
+   "comisionId": 5,
+   "materiaId": 113,
+   "docentes": [
+    9
+   ],
+   "horario": "Martes y jueves de 18:00 a 21:00",
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 14,
+   "comisionId": 5,
+   "materiaId": 114,
+   "docentes": [
+    7
+   ],
+   "horario": "Lunes y miércoles de 18:00 a 21:00",
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 15,
+   "comisionId": 5,
+   "materiaId": 115,
+   "docentes": [
+    2
+   ],
+   "horario": "Martes y viernes de 14:00 a 17:00",
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 16,
+   "comisionId": 5,
+   "materiaId": 116,
+   "docentes": [
+    10
+   ],
+   "horario": "Miércoles de 08:00 a 12:00",
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 17,
+   "comisionId": 5,
+   "materiaId": 117,
+   "docentes": [
+    8
+   ],
+   "horario": "Jueves de 18:00 a 22:00",
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 18,
+   "comisionId": 5,
+   "materiaId": 118,
+   "docentes": [
+    9
+   ],
+   "horario": null,
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  },
+  {
+   "id": 19,
+   "comisionId": 5,
+   "materiaId": 119,
+   "docentes": [
+    8
+   ],
+   "horario": "Viernes de 18:00 a 21:00",
+   "creado": {
+    "__fecha": "aDias",
+    "n": -390
+   }
+  }
+ ],
+ "auditoria": []
 }

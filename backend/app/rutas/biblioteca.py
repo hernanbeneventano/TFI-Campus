@@ -1,5 +1,31 @@
-"""Biblioteca: catálogo propio, consulta de catálogos externos, aportes,
-moderación y archivos."""
+"""Biblioteca: el material de cada materia, los aportes y su revisión.
+
+La biblioteca **no es un repositorio común a toda la institución**: es el
+material de cada materia, y cada uno ve el de las materias que le tocan.
+
+    materia ──< material >── quien lo subió
+       │
+       └── quién la cursa, quién la dicta  →  quién lo ve
+
+De ahí salen las tres reglas que gobiernan todo el módulo:
+
+- **Cada material pertenece a una materia del plan** (`materiaId`), siempre.
+  Un material sin materia no tendría a quién mostrarse.
+- **Lo que ve cada uno sale de su relación con esa materia**: el estudiante ve
+  las que cursa, el docente las que dicta, y quien supervisa ve todo.
+- **Modera el docente de esa materia**, no cualquier docente: el material de
+  Base de Datos II lo aprueba quien da Base de Datos II. Supervisión y
+  administración también, porque responden por todas.
+
+El docente publica directo; el aporte de un estudiante espera revisión. Es la
+diferencia entre material de cátedra y material aportado, y es lo que hace que
+lo publicado esté revisado.
+
+Los catálogos externos (Google Books, Open Library) siguen estando, pero son
+otra cosa: ayudan a **encontrar** un libro y a completar su ficha, no viven en
+la biblioteca ni dependen de una materia. Por eso solo aparecen cuando se los
+busca a propósito.
+"""
 
 from __future__ import annotations
 
@@ -14,47 +40,106 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Body, HTTPException, Request, Response
 
 from .. import datos as d
+from ..servicios import auditoria
+from ..servicios.autenticacion import UsuarioActual
 from ..servicios.libros_externos import buscar_libros_externos, obtener_libro_externo
 
 router = APIRouter(prefix="/api/biblioteca", tags=["Biblioteca"])
 
-# Mientras no haya login, el que consulta y aporta es siempre el usuario de
-# prueba, igual que en el resto de las rutas.
-YO = d.usuario_actual["id"]
+
+# ===================== El alcance de cada uno =====================
+# Todo lo que sigue se apoya en estas dos preguntas: qué materias puede ver
+# esta persona y cuáles puede moderar. Están juntas a propósito: el día que la
+# facultad delimite el ámbito del supervisor, se cambian acá y nada más.
 
 
-# ===================== Permisos =====================
-def _puede_moderar(persona_id: int) -> bool:
-    """La facultad todavía no tiene un rol de administrador: en `personas`
-    solo hay Estudiante y Docente. Hasta que exista, **modera el docente**,
-    que es quien responde por el material de su cátedra. El día que se agregue
-    el rol, alcanza con cambiar esta función.
+def _supervisa(persona: dict) -> bool:
+    """Quien responde por toda la institución, no por una cátedra."""
+    return d.tiene_rol(persona, "Administrador", "Supervisor")
+
+
+def _materias_visibles(persona: dict) -> list[dict]:
+    """Las materias cuya biblioteca puede abrir esta persona.
+
+    Estudiante: las que cursa. Docente: las que dicta. Las dos cosas si es las
+    dos cosas, que pasa. Quien supervisa las ve todas.
     """
-    persona = d.buscar_persona(persona_id)
-    return bool(persona and persona["rol"] == "Docente")
+    if _supervisa(persona):
+        return list(d.materias_plan)
+
+    ids: set[int] = set()
+
+    if d.tiene_rol(persona, "Docente"):
+        ids |= {m["id"] for m in d.materias_que_dicta(persona["id"])}
+
+    # Inscripto: la inscripción vigente o la cursada en marcha. Una materia ya
+    # aprobada deja de estar "inscripta", así que su biblioteca se cierra: es
+    # lo que pide que el material sea de la cursada y no del campus entero.
+    ids |= {
+        i["materiaId"] for i in d.inscripciones_materias if i["personaId"] == persona["id"]
+    }
+    ids |= {
+        h["materiaId"]
+        for h in d.historial_academico
+        if h["personaId"] == persona["id"] and h.get("condicion") == "En curso"
+    }
+
+    return [m for m in d.materias_plan if m["id"] in ids]
 
 
-def _puede_aportar(persona_id: int) -> bool:
-    """Subir material lo puede hacer cualquiera: los aportes de estudiantes no
-    se publican solos, quedan esperando moderación."""
-    return d.buscar_persona(persona_id) is not None
+def _ids_visibles(persona: dict) -> set[int]:
+    return {m["id"] for m in _materias_visibles(persona)}
 
 
-def _puede_ver(material: dict, persona_id: int) -> bool:
-    """Un material pendiente o rechazado lo ven quien lo subió y los docentes;
-    nadie más. Así un aporte sin revisar no aparece en el catálogo."""
+def _materias_que_modera(persona: dict) -> set[int] | None:
+    """Las materias cuyos aportes puede aprobar. `None` quiere decir todas."""
+    if _supervisa(persona):
+        return None
+    if d.tiene_rol(persona, "Docente"):
+        return {m["id"] for m in d.materias_que_dicta(persona["id"])}
+    return set()
+
+
+def _modera(persona: dict, materia_id: Any) -> bool:
+    """Si puede aprobar —y por lo tanto publicar directo— en esa materia."""
+    cuales = _materias_que_modera(persona)
+    return cuales is None or materia_id in cuales
+
+
+def _modera_algo(persona: dict) -> bool:
+    cuales = _materias_que_modera(persona)
+    return cuales is None or bool(cuales)
+
+
+# ===================== Permisos sobre un material =====================
+def _puede_ver(material: dict, persona: dict) -> bool:
+    """Dos candados, y hay que pasar los dos.
+
+    El primero es la materia: el material de una materia que no cursás ni
+    dictás no existe para vos. El segundo es el estado: un aporte sin revisar
+    lo ven quien lo subió y quien tiene que revisarlo, nadie más.
+    """
+    if material["materiaId"] not in _ids_visibles(persona):
+        return False
     if material["estado"] == "aprobado":
         return True
-    return material["subidoPor"] == persona_id or _puede_moderar(persona_id)
+    return material["subidoPor"] == persona["id"] or _modera(persona, material["materiaId"])
 
 
-def _puede_editar(material: dict, persona_id: int) -> bool:
-    return material["subidoPor"] == persona_id or _puede_moderar(persona_id)
+def _puede_editar(material: dict, persona: dict) -> bool:
+    return material["subidoPor"] == persona["id"] or _modera(persona, material["materiaId"])
+
+
+def _exigir_ver(material: dict, persona: dict) -> None:
+    """Un material fuera de alcance se niega como inexistente: decir "no tenés
+    permiso" ya cuenta que existe y de qué materia es."""
+    if not _puede_ver(material, persona):
+        raise HTTPException(404, "Material no encontrado")
 
 
 # ===================== Límite de pedidos =====================
 # Freno simple contra el abuso de la búsqueda externa y de la subida. En
-# memoria y por persona, que es lo que se puede hacer sin login ni Redis.
+# memoria y por persona, que es lo que se puede hacer sin Redis.
 _golpes: dict[str, list[float]] = {}
 
 
@@ -76,13 +161,20 @@ def _nombre_categoria(id_categoria: str) -> str:
     )
 
 
-def _con_datos(material: dict, persona_id: int = YO) -> dict:
+def _materia_de(material: dict) -> dict | None:
+    return d.buscar_en(d.materias_plan, material.get("materiaId"))
+
+
+def _con_datos(material: dict, persona: dict) -> dict:
     quien = d.buscar_persona(material["subidoPor"])
+    autorizo = d.buscar_persona(material.get("moderadoPor"))
+    materia = _materia_de(material)
+    archivo = material.get("archivo")
+
     es_favorito = any(
-        f["personaId"] == persona_id and str(f["materialId"]) == str(material["id"])
+        f["personaId"] == persona["id"] and str(f["materialId"]) == str(material["id"])
         for f in d.favoritos_biblioteca
     )
-    archivo = material.get("archivo")
 
     return {
         **material,
@@ -98,14 +190,21 @@ def _con_datos(material: dict, persona_id: int = YO) -> dict:
         "fuente": "campus",
         "nombreFuente": material.get("editorial") or "Biblioteca del campus",
         "nombreCategoria": _nombre_categoria(material["categoria"]),
+        "materia": materia["nombre"] if materia else "Materia dada de baja",
+        "codigoMateria": materia["codigo"] if materia else None,
+        "cursoId": materia.get("cursoId") if materia else None,
         "subidoPorNombre": quien["nombre"] if quien else "Alguien del campus",
+        "subidoPorRol": d.rol_principal(quien) if quien else None,
+        # Quién lo autorizó: el pliego pide que quede registrado y a la vista,
+        # no solo en el historial.
+        "autorizadoPorNombre": autorizo["nombre"] if autorizo else None,
         "favorito": es_favorito,
-        "puedeEditar": _puede_editar(material, persona_id),
-        "puedeModerar": _puede_moderar(persona_id),
+        "puedeEditar": _puede_editar(material, persona),
+        "puedeModerar": _modera(persona, material["materiaId"]),
     }
 
 
-# ===================== Búsqueda en la biblioteca propia =====================
+# ===================== Búsqueda dentro de la biblioteca =====================
 def _sin_tildes(texto: Any) -> str:
     sin = unicodedata.normalize("NFD", str(texto or ""))
     return "".join(c for c in sin if unicodedata.category(c) != "Mn").lower()
@@ -115,13 +214,15 @@ def _coincide(material: dict, texto: str, campo: str) -> bool:
     if not texto:
         return True
     buscado = _sin_tildes(texto)
+    materia = _materia_de(material)
+    nombre_materia = materia["nombre"] if materia else ""
 
     donde = {
         "titulo": [material.get("titulo")],
         "autor": [material.get("autor")],
         "isbn": [material.get("isbn")],
         "tema": [
-            material.get("materia"),
+            nombre_materia,
             _nombre_categoria(material["categoria"]),
             material.get("descripcion"),
         ],
@@ -132,8 +233,7 @@ def _coincide(material: dict, texto: str, campo: str) -> bool:
             material.get("autor"),
             material.get("isbn"),
             material.get("descripcion"),
-            material.get("materia"),
-            material.get("carrera"),
+            nombre_materia,
             material.get("editorial"),
             _nombre_categoria(material["categoria"]),
         ],
@@ -151,26 +251,36 @@ def _ordenar(lista: list[dict], orden: str) -> list[dict]:
     return sorted(lista, key=lambda m: d.desde_iso(m["creado"]), reverse=True)
 
 
-def _filtrar_propios(p: dict, persona_id: int) -> list[dict]:
+def _filtrar(p: dict, persona: dict) -> list[dict]:
     estado = p.get("estado") or ""
     texto = (p.get("q") or "").strip()
     campo = p.get("campo") or "todo"
+    visibles = _ids_visibles(persona)
+
+    # Se pueden pedir una, varias o ninguna: sin ninguna, van todas las que
+    # esta persona pueda ver.
+    pedidas: set[int] = set()
+    for trozo in (p.get("materiaIds") or p.get("materiaId") or "").split(","):
+        try:
+            pedidas.add(int(trozo))
+        except (TypeError, ValueError):
+            continue
 
     resultado = []
     for m in d.materiales:
-        if not _puede_ver(m, persona_id):
+        if m["materiaId"] not in visibles:
             continue
-        # Sin filtro de estado, el catálogo muestra solo lo aprobado: los
+        if pedidas and m["materiaId"] not in pedidas:
+            continue
+        if not _puede_ver(m, persona):
+            continue
+        # Sin filtro de estado, la biblioteca muestra solo lo aprobado: los
         # propios pendientes se consultan desde "Mis aportes".
         if (m["estado"] != estado) if estado else (m["estado"] != "aprobado"):
             continue
         if p.get("categoria") and m["categoria"] != p["categoria"]:
             continue
         if p.get("tipo") and m["tipo"] != p["tipo"]:
-            continue
-        if p.get("carrera") and m["carrera"] != p["carrera"]:
-            continue
-        if p.get("materia") and m["materia"] != p["materia"]:
             continue
         if p.get("idioma") and m["idioma"] != p["idioma"]:
             continue
@@ -207,44 +317,66 @@ def _paginar(lista: list[dict], p: dict) -> dict:
 # (mismo cuidado que en mensajes).
 
 
-@router.get("/opciones", summary="Datos para armar los filtros de la pantalla")
-def opciones_biblioteca():
-    visibles = [m for m in d.materiales if m["estado"] == "aprobado"]
+@router.get("/opciones", summary="Las materias y los filtros de la pantalla")
+def opciones_biblioteca(yo: dict = UsuarioActual):
+    materias = _materias_visibles(yo)
+    ids = {m["id"] for m in materias}
+    modera = _materias_que_modera(yo)
 
-    materias = sorted(
-        {c["nombre"] for c in d.cursos} | {m["materia"] for m in d.materiales if m.get("materia")},
-        key=str.lower,
-    )
+    visibles = [
+        m for m in d.materiales if m["materiaId"] in ids and m["estado"] == "aprobado"
+    ]
+    pendientes = [
+        m
+        for m in d.materiales
+        if m["estado"] == "pendiente" and (modera is None or m["materiaId"] in modera)
+    ]
 
     return {
+        # Cada materia con cuánto material tiene y en qué carácter entra la
+        # persona: la pantalla arma la biblioteca de cada una con esto.
+        "materias": [
+            {
+                "id": m["id"],
+                "nombre": m["nombre"],
+                "codigo": m["codigo"],
+                "anio": m.get("anio"),
+                "cursoId": m.get("cursoId"),
+                "cuantos": sum(1 for x in visibles if x["materiaId"] == m["id"]),
+                "pendientes": sum(1 for x in pendientes if x["materiaId"] == m["id"]),
+                "dicto": d.dicta_materia(yo["id"], m["id"]),
+                "modero": _modera(yo, m["id"]),
+            }
+            for m in sorted(materias, key=lambda m: (m.get("anio") or 0, m["nombre"].lower()))
+        ],
         "categorias": [
             {**c, "cuantos": sum(1 for m in visibles if m["categoria"] == c["id"])}
             for c in d.categorias
         ],
-        "carreras": d.carreras,
-        # Las materias salen de los cursos del campus más las que ya tengan
-        # los materiales, para que el filtro no se quede corto.
-        "materias": materias,
         "tipos": d.TIPOS_MATERIAL,
         "idiomas": sorted({m["idioma"] for m in visibles if m.get("idioma")}),
         "total": len(visibles),
-        "puedeAportar": _puede_aportar(YO),
-        "puedeModerar": _puede_moderar(YO),
-        "pendientes": (
-            sum(1 for m in d.materiales if m["estado"] == "pendiente")
-            if _puede_moderar(YO)
-            else 0
-        ),
+        # Aportar puede cualquiera que tenga al menos una materia; lo que
+        # cambia es si se publica solo o espera revisión.
+        # Quien supervisa ve el plan entero; la pantalla usa esto para no
+        # llenarse de materias vacías que no son suyas.
+        "superviso": _supervisa(yo),
+        "puedeAportar": bool(materias),
+        "publicaDirecto": _modera_algo(yo),
+        "puedeModerar": _modera_algo(yo),
+        "pendientes": len(pendientes) if _modera_algo(yo) else 0,
     }
 
 
-@router.get("/mis-aportes", summary="Los aportes propios, con estado e historial")
-def mis_aportes():
-    mios = [m for m in d.materiales if m["subidoPor"] == YO]
+@router.get("/mis-aportes", summary="Los aportes propios, con estado y motivo")
+def mis_aportes(yo: dict = UsuarioActual):
+    # Los propios se ven siempre, incluso si la cursada terminó: el estudiante
+    # tiene que poder leer por qué le rechazaron algo.
+    mios = [m for m in d.materiales if m["subidoPor"] == yo["id"]]
     return {
         "materiales": [
             {
-                **_con_datos(m),
+                **_con_datos(m, yo),
                 "historial": [
                     {
                         **h,
@@ -261,27 +393,38 @@ def mis_aportes():
     }
 
 
-@router.get("/pendientes", summary="La cola de moderación")
-def pendientes():
-    """Solo para quien modera."""
-    if not _puede_moderar(YO):
-        raise HTTPException(403, "Solo los docentes pueden revisar los aportes")
-    cola = [m for m in d.materiales if m["estado"] == "pendiente"]
-    return {"materiales": [_con_datos(m) for m in _ordenar(cola, "fecha")]}
+@router.get("/pendientes", summary="Los aportes a revisar")
+def pendientes(yo: dict = UsuarioActual):
+    """La cola de revisión, recortada a las materias que modera quien pregunta.
+
+    Un docente no revisa el material de una cátedra que no es la suya.
+    """
+    modera = _materias_que_modera(yo)
+    if modera is not None and not modera:
+        raise HTTPException(
+            403, "Solo el docente de la materia o un supervisor revisan los aportes"
+        )
+
+    cola = [
+        m
+        for m in d.materiales
+        if m["estado"] == "pendiente" and (modera is None or m["materiaId"] in modera)
+    ]
+    return {"materiales": [_con_datos(m, yo) for m in _ordenar(cola, "fecha")]}
 
 
 @router.get("/favoritos", summary="Materiales guardados")
-def obtener_favoritos():
-    mios = [f for f in d.favoritos_biblioteca if f["personaId"] == YO]
+def obtener_favoritos(yo: dict = UsuarioActual):
+    mios = [f for f in d.favoritos_biblioteca if f["personaId"] == yo["id"]]
 
     # Los favoritos pueden ser propios o externos: los propios se resuelven
-    # acá y de los externos se devuelve el identificador, que la pantalla usa
-    # para volver a pedirlos si hace falta.
+    # acá —y si la materia ya no está a tu alcance, desaparecen— y de los
+    # externos se devuelve el identificador.
     propios = []
     for f in mios:
         m = next((m for m in d.materiales if str(m["id"]) == str(f["materialId"])), None)
-        if m and _puede_ver(m, YO):
-            propios.append(_con_datos(m))
+        if m and _puede_ver(m, yo):
+            propios.append(_con_datos(m, yo))
 
     externos = [
         {"id": f["materialId"], "creado": f["creado"]}
@@ -292,28 +435,28 @@ def obtener_favoritos():
     return {"materiales": propios, "externos": externos}
 
 
-# ===================== Catálogo =====================
-@router.get("", summary="Buscar en el catálogo propio y en los externos")
-async def listar_materiales(request: Request):
+# ===================== La biblioteca =====================
+@router.get("", summary="El material de tus materias")
+async def listar_materiales(request: Request, yo: dict = UsuarioActual):
     p = dict(request.query_params)
-    fuente = p.get("fuente") or "todo"
+    fuente = p.get("fuente") or "campus"
     texto = (p.get("q") or "").strip()
 
-    propios = [] if fuente == "externos" else _filtrar_propios(p, YO)
+    propios = [] if fuente == "externos" else _filtrar(p, yo)
     paginacion = _paginar(propios, p)
     recortada = paginacion.pop("recortada")
 
     respuesta: dict[str, Any] = {
-        "materiales": [_con_datos(m) for m in recortada],
+        "materiales": [_con_datos(m, yo) for m in recortada],
         **paginacion,
         "externos": [],
         "fuentes": [],
     }
 
-    # Los catálogos externos solo se consultan si hay algo que buscar: no
-    # tiene sentido pedirles "todo", y además cuentan contra el límite.
-    if fuente != "campus" and len(texto) >= 2:
-        if not _dentro_del_limite(f"buscar:{YO}", 30, 60):
+    # Los catálogos externos son una ayuda para encontrar un libro, no parte
+    # de la biblioteca: solo se consultan si se los pide a propósito.
+    if fuente == "externos" and len(texto) >= 2:
+        if not _dentro_del_limite(f"buscar:{yo['id']}", 30, 60):
             respuesta["fuentes"] = [{"estado": "limite", "nombre": "Catálogos externos"}]
             return respuesta
 
@@ -321,12 +464,11 @@ async def listar_materiales(request: Request):
             resultado = await buscar_libros_externos(
                 texto, p.get("campo") or "todo", p.get("idioma") or None
             )
-            # Marcar los que ya están en favoritos, igual que los propios
             respuesta["externos"] = [
                 {
                     **l,
                     "favorito": any(
-                        f["personaId"] == YO and str(f["materialId"]) == str(l["id"])
+                        f["personaId"] == yo["id"] and str(f["materialId"]) == str(l["id"])
                         for f in d.favoritos_biblioteca
                     ),
                 }
@@ -343,21 +485,28 @@ async def listar_materiales(request: Request):
     return respuesta
 
 
-@router.post("", status_code=201, summary="Aportar material")
-def crear_material(cuerpo: dict[str, Any] = Body(default={})):
-    if not _puede_aportar(YO):
-        raise HTTPException(403, "No tenés permiso para aportar material")
-    if not _dentro_del_limite(f"aportar:{YO}", 10, 60 * 60):
+@router.post("", status_code=201, summary="Subir material o enviar un aporte")
+def crear_material(cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+    if not _dentro_del_limite(f"aportar:{yo['id']}", 10, 60 * 60):
         raise HTTPException(429, "Demasiados aportes seguidos. Probá de nuevo en un rato.")
 
     campos = _leer_campos(cuerpo)
-    problema = _validar(campos, cuerpo, exigir_autorizacion=True)
+    problema = _validar(campos, cuerpo, yo, exigir_autorizacion=True)
     if problema:
         raise HTTPException(400, problema)
 
-    # Quien modera publica directo; el resto espera revisión
-    estado = "aprobado" if _puede_moderar(YO) else "pendiente"
-    quien = d.buscar_persona(YO)
+    repetido = _repetido(campos, None)
+    if repetido:
+        raise HTTPException(
+            409,
+            f'"{repetido["titulo"]}" ya está en la biblioteca de esta materia.',
+        )
+
+    # El docente de la materia publica directo; el aporte de un estudiante
+    # queda esperando revisión. Esa es toda la diferencia.
+    publica_directo = _modera(yo, campos["materiaId"])
+    estado = "aprobado" if publica_directo else "pendiente"
+    quien = d.buscar_persona(yo["id"])
     ahora = d.iso(d.ahora())
 
     material = {
@@ -372,40 +521,60 @@ def crear_material(cuerpo: dict[str, Any] = Body(default={})):
         "descripcion": campos["descripcion"] or None,
         "autor": campos["autor"] or (quien["nombre"] if quien else None),
         "archivo": None,
-        "subidoPor": YO,
+        "subidoPor": yo["id"],
         "estado": estado,
-        "moderadoPor": YO if estado == "aprobado" else None,
+        "moderadoPor": yo["id"] if publica_directo else None,
         "motivo": None,
         "creado": ahora,
         "actualizado": ahora,
     }
     d.materiales.append(material)
 
-    if estado == "aprobado":
+    if publica_directo:
         d.moderacion_biblioteca.append(
             {
                 "id": d.nuevo_id_moderacion(),
                 "materialId": material["id"],
-                "moderadorId": YO,
+                "moderadorId": yo["id"],
                 "accion": "aprobado",
-                "motivo": "Publicado por quien modera",
+                "motivo": "Publicado por el docente de la materia",
                 "fecha": ahora,
             }
         )
 
-    return _con_datos(material)
+    auditoria.registrar(
+        yo,
+        "creacion",
+        "biblioteca",
+        elemento=material["titulo"],
+        elemento_id=material["id"],
+        elemento_tipo="material",
+        materia_id=material["materiaId"],
+        despues={"estado": estado, "tipo": material["tipo"]},
+        detalle=(
+            "Publicó material en la materia"
+            if publica_directo
+            else "Envió un aporte, pendiente de revisión"
+        ),
+    )
+    return _con_datos(material, yo)
 
 
 # ===================== Validación de la ficha =====================
 def _leer_campos(cuerpo: dict) -> dict:
     texto = lambda v: str(v if v is not None else "").strip()  # noqa: E731
+
+    try:
+        materia_id = int(cuerpo.get("materiaId"))
+    except (TypeError, ValueError):
+        materia_id = None
+
     return {
         "titulo": texto(cuerpo.get("titulo")),
         "autor": texto(cuerpo.get("autor")),
         "descripcion": texto(cuerpo.get("descripcion")),
         "tipo": texto(cuerpo.get("tipo")) or "otro",
-        "carrera": texto(cuerpo.get("carrera")),
-        "materia": texto(cuerpo.get("materia")),
+        "materiaId": materia_id,
         "anio": texto(cuerpo.get("anio")),
         "idioma": texto(cuerpo.get("idioma")) or "es",
         "isbn": texto(cuerpo.get("isbn")),
@@ -417,11 +586,45 @@ def _leer_campos(cuerpo: dict) -> dict:
     }
 
 
-def _validar(campos: dict, cuerpo: dict, *, exigir_autorizacion: bool) -> str | None:
+def _repetido(campos: dict, excepto: int | None) -> dict | None:
+    """El mismo libro dos veces en la misma materia.
+
+    Se compara por ISBN cuando lo hay —que es el identificador de verdad— y si
+    no por título y autor sin tildes ni mayúsculas. Entre materias distintas no
+    es repetición: cada cátedra arma su biblioteca.
+    """
+    isbn = re.sub(r"[^0-9Xx]", "", campos["isbn"] or "").lower()
+    titulo = _sin_tildes(campos["titulo"])
+    autor = _sin_tildes(campos["autor"])
+
+    for m in d.materiales:
+        if m["id"] == excepto or m["materiaId"] != campos["materiaId"]:
+            continue
+        if m["estado"] == "rechazado":
+            continue
+        suyo = re.sub(r"[^0-9Xx]", "", m.get("isbn") or "").lower()
+        if isbn and suyo and isbn == suyo:
+            return m
+        if _sin_tildes(m["titulo"]) == titulo and _sin_tildes(m.get("autor")) == autor:
+            return m
+    return None
+
+
+def _validar(campos: dict, cuerpo: dict, persona: dict, *, exigir_autorizacion: bool) -> str | None:
     if not campos["titulo"]:
         return "El material necesita un título"
     if len(campos["titulo"]) > 200:
         return "El título es demasiado largo"
+
+    # La materia es obligatoria y tiene que ser una de las suyas: sin materia
+    # no hay a quién mostrarle el material.
+    if campos["materiaId"] is None:
+        return "Elegí la materia a la que pertenece el material"
+    if not d.buscar_en(d.materias_plan, campos["materiaId"]):
+        return "Esa materia no existe"
+    if campos["materiaId"] not in _ids_visibles(persona):
+        return "Solo podés subir material a las materias que cursás o dictás"
+
     if campos["tipo"] not in d.TIPOS_MATERIAL:
         return "Ese tipo de material no existe"
     if not any(c["id"] == campos["categoria"] for c in d.categorias):
@@ -493,11 +696,14 @@ def _buscar_material(id_material: str) -> dict:
 
 
 @router.post("/{id_material:path}/archivo", status_code=201, summary="Subir el archivo")
-def subir_archivo(id_material: str, cuerpo: dict[str, Any] = Body(default={})):
+def subir_archivo(
+    id_material: str, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+):
     material = _buscar_material(id_material)
-    if not _puede_editar(material, YO):
+    _exigir_ver(material, yo)
+    if not _puede_editar(material, yo):
         raise HTTPException(403, "Solo quien lo subió puede cambiar el archivo")
-    if not _dentro_del_limite(f"subir:{YO}", 20, 60 * 60):
+    if not _dentro_del_limite(f"subir:{yo['id']}", 20, 60 * 60):
         raise HTTPException(429, "Demasiadas subidas seguidas. Probá de nuevo en un rato.")
 
     extension = str(cuerpo.get("extension") or "").lower().lstrip(".")
@@ -535,20 +741,30 @@ def subir_archivo(id_material: str, cuerpo: dict[str, Any] = Body(default={})):
     material["enlace"] = None
     material["actualizado"] = d.iso(d.ahora())
 
-    return _con_datos(material)
+    return _con_datos(material, yo)
 
 
 @router.get("/{id_material:path}/archivo", summary="Descargar el archivo")
-def descargar_archivo(id_material: str):
-    """Pasa por el control de acceso: un pendiente no se baja aunque alguien
-    adivine el id."""
+def descargar_archivo(id_material: str, yo: dict = UsuarioActual):
+    """Pasa por el mismo control que la ficha: el archivo de una materia ajena
+    no se baja aunque alguien adivine el id."""
     material = _buscar_material(id_material)
-    if not _puede_ver(material, YO):
-        raise HTTPException(403, "Ese material todavía no está disponible")
+    _exigir_ver(material, yo)
 
     contenido = d.leer_archivo(material["id"])
     if not contenido or not material.get("archivo"):
         raise HTTPException(404, "Este material no tiene un archivo alojado en el campus")
+
+    auditoria.registrar(
+        yo,
+        "descarga",
+        "biblioteca",
+        elemento=material["titulo"],
+        elemento_id=material["id"],
+        elemento_tipo="material",
+        materia_id=material["materiaId"],
+        detalle=f"Descargó {material['archivo']['nombre']}",
+    )
 
     return Response(
         content=contenido,
@@ -562,12 +778,18 @@ def descargar_archivo(id_material: str):
     )
 
 
-# ===================== Moderación =====================
-def _moderar(id_material: str, accion: str, motivo: str) -> dict:
-    if not _puede_moderar(YO):
-        raise HTTPException(403, "Solo los docentes pueden moderar la biblioteca")
-
+# ===================== Revisión de los aportes =====================
+def _revisar(id_material: str, accion: str, motivo: str, yo: dict) -> dict:
     material = _buscar_material(id_material)
+
+    # Quien modera la materia, no cualquier docente. Si no la modera, el
+    # material se niega como inexistente, igual que en el resto.
+    if not _modera(yo, material["materiaId"]):
+        if material["materiaId"] not in _ids_visibles(yo):
+            raise HTTPException(404, "Material no encontrado")
+        raise HTTPException(
+            403, "Solo el docente de la materia o un supervisor revisan los aportes"
+        )
 
     # Rechazar sin decir por qué no le sirve a nadie: quien aportó no sabe qué
     # corregir.
@@ -575,8 +797,9 @@ def _moderar(id_material: str, accion: str, motivo: str) -> dict:
         raise HTTPException(400, "Hay que indicar el motivo del rechazo")
 
     ahora = d.iso(d.ahora())
+    estado_antes = material["estado"]
     material["estado"] = accion
-    material["moderadoPor"] = YO
+    material["moderadoPor"] = yo["id"]
     material["motivo"] = motivo or None
     material["actualizado"] = ahora
 
@@ -584,55 +807,80 @@ def _moderar(id_material: str, accion: str, motivo: str) -> dict:
         {
             "id": d.nuevo_id_moderacion(),
             "materialId": material["id"],
-            "moderadorId": YO,
+            "moderadorId": yo["id"],
             "accion": accion,
             "motivo": motivo or None,
             "fecha": ahora,
         }
     )
 
-    return _con_datos(material)
+    # Que le llegue: no hay mails, así que el aviso es un mensaje, como en
+    # Finales. Es lo que hace que el estudiante se entere del motivo.
+    materia = _materia_de(material)
+    donde = materia["nombre"] if materia else "la biblioteca"
+    if accion == "aprobado":
+        texto = f'Tu aporte "{material["titulo"]}" ya está publicado en la biblioteca de {donde}.'
+    else:
+        texto = f'Tu aporte "{material["titulo"]}" para {donde} no se publicó. Motivo: {motivo}'
+    if material["subidoPor"] != yo["id"]:
+        d.avisar_por_mensaje(yo["id"], material["subidoPor"], texto)
+
+    auditoria.registrar(
+        yo,
+        "aprobacion" if accion == "aprobado" else "rechazo",
+        "biblioteca",
+        elemento=material["titulo"],
+        elemento_id=material["id"],
+        elemento_tipo="material",
+        persona_id=material["subidoPor"],
+        materia_id=material["materiaId"],
+        antes={"estado": estado_antes},
+        despues={"estado": accion, "motivo": motivo or None},
+        detalle=f"Revisó un aporte de {donde}",
+    )
+    return _con_datos(material, yo)
 
 
 @router.post("/{id_material:path}/aprobar", summary="Aprobar un aporte")
-def aprobar_material(id_material: str):
-    return _moderar(id_material, "aprobado", "")
+def aprobar_material(id_material: str, yo: dict = UsuarioActual):
+    return _revisar(id_material, "aprobado", "", yo)
 
 
 @router.post("/{id_material:path}/rechazar", summary="Rechazar un aporte")
-def rechazar_material(id_material: str, cuerpo: dict[str, Any] = Body(default={})):
-    return _moderar(id_material, "rechazado", str(cuerpo.get("motivo") or "").strip())
+def rechazar_material(
+    id_material: str, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+):
+    return _revisar(id_material, "rechazado", str(cuerpo.get("motivo") or "").strip(), yo)
 
 
 # ===================== Favoritos =====================
 @router.post("/{id_material:path}/favorito", status_code=201, summary="Guardar en favoritos")
-def agregar_favorito(id_material: str):
-    """Vale tanto para un material propio como para un libro externo: el id
-    externo ("google:xxx") es estable y se guarda tal cual."""
+def agregar_favorito(id_material: str, yo: dict = UsuarioActual):
+    """Vale tanto para un material de una materia como para un libro externo:
+    el id externo ("google:xxx") es estable y se guarda tal cual."""
     es_externo = ":" in id_material
 
     if not es_externo:
         material = _buscar_material(id_material)
-        if not _puede_ver(material, YO):
-            raise HTTPException(403, "Ese material todavía no está disponible")
+        _exigir_ver(material, yo)
 
     clave: Any = id_material if es_externo else int(id_material)
     ya_esta = any(
-        f["personaId"] == YO and str(f["materialId"]) == str(clave)
+        f["personaId"] == yo["id"] and str(f["materialId"]) == str(clave)
         for f in d.favoritos_biblioteca
     )
     if not ya_esta:
         d.favoritos_biblioteca.append(
-            {"personaId": YO, "materialId": clave, "creado": d.iso(d.ahora())}
+            {"personaId": yo["id"], "materialId": clave, "creado": d.iso(d.ahora())}
         )
 
     return {"id": clave, "favorito": True}
 
 
 @router.delete("/{id_material:path}/favorito", summary="Quitar de favoritos")
-def quitar_favorito(id_material: str):
+def quitar_favorito(id_material: str, yo: dict = UsuarioActual):
     for i, f in enumerate(d.favoritos_biblioteca):
-        if f["personaId"] == YO and str(f["materialId"]) == str(id_material):
+        if f["personaId"] == yo["id"] and str(f["materialId"]) == str(id_material):
             d.favoritos_biblioteca.pop(i)
             break
     return {"id": id_material, "favorito": False}
@@ -641,7 +889,7 @@ def quitar_favorito(id_material: str):
 # ===================== Ficha, edición y baja =====================
 # Van al final: su patrón admite barras y se comería a las rutas de arriba.
 @router.get("/{id_material:path}", summary="Ficha de un material")
-async def obtener_material(id_material: str):
+async def obtener_material(id_material: str, yo: dict = UsuarioActual):
     # Un id con dos puntos es de un catálogo externo ("google:xxx")
     if ":" in id_material:
         try:
@@ -653,27 +901,26 @@ async def obtener_material(id_material: str):
         return {
             **libro,
             "favorito": any(
-                f["personaId"] == YO and str(f["materialId"]) == str(id_material)
+                f["personaId"] == yo["id"] and str(f["materialId"]) == str(id_material)
                 for f in d.favoritos_biblioteca
             ),
             "relacionados": [],
         }
 
     material = _buscar_material(id_material)
-    if not _puede_ver(material, YO):
-        raise HTTPException(403, "Ese material todavía no está disponible")
+    _exigir_ver(material, yo)
 
-    # Material relacionado: de la misma materia o categoría, sin repetirse
+    # Material relacionado: de la misma materia, que es donde tiene sentido
     relacionados = [
-        _con_datos(m)
+        _con_datos(m, yo)
         for m in d.materiales
         if m["id"] != material["id"]
         and m["estado"] == "aprobado"
-        and (m["materia"] == material["materia"] or m["categoria"] == material["categoria"])
+        and m["materiaId"] == material["materiaId"]
     ][:4]
 
     return {
-        **_con_datos(material),
+        **_con_datos(material, yo),
         "relacionados": relacionados,
         "historial": [
             {**h, "moderador": (p["nombre"] if (p := d.buscar_persona(h["moderadorId"])) else None)}
@@ -684,15 +931,30 @@ async def obtener_material(id_material: str):
 
 
 @router.patch("/{id_material:path}", summary="Editar un material")
-def editar_material(id_material: str, cuerpo: dict[str, Any] = Body(default={})):
+def editar_material(
+    id_material: str, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+):
     material = _buscar_material(id_material)
-    if not _puede_editar(material, YO):
-        raise HTTPException(403, "Solo quien lo subió o un docente puede editarlo")
+    _exigir_ver(material, yo)
+    if not _puede_editar(material, yo):
+        raise HTTPException(403, "Solo quien lo subió o el docente de la materia puede editarlo")
+
+    # Lo que había antes, para que el registro diga qué cambió
+    antes_de_editar = {
+        k: material.get(k)
+        for k in ("titulo", "autor", "tipo", "materiaId", "categoria", "enlace", "estado")
+    }
 
     campos = _leer_campos({**material, **cuerpo})
-    problema = _validar(campos, cuerpo, exigir_autorizacion=False)
+    problema = _validar(campos, cuerpo, yo, exigir_autorizacion=False)
     if problema:
         raise HTTPException(400, problema)
+
+    repetido = _repetido(campos, material["id"])
+    if repetido:
+        raise HTTPException(
+            409, f'"{repetido["titulo"]}" ya está en la biblioteca de esta materia.'
+        )
 
     material.update(
         {
@@ -708,20 +970,46 @@ def editar_material(id_material: str, cuerpo: dict[str, Any] = Body(default={}))
         }
     )
 
-    # Si lo edita quien lo subió y no modera, vuelve a la cola: el texto que se
-    # aprobó ya no es el que está.
-    if not _puede_moderar(YO) and material["estado"] == "aprobado":
+    # Si lo edita quien lo subió y no modera esa materia, vuelve a la cola: el
+    # texto que se aprobó ya no es el que está.
+    if not _modera(yo, material["materiaId"]) and material["estado"] == "aprobado":
         material["estado"] = "pendiente"
         material["moderadoPor"] = None
 
-    return _con_datos(material)
+    auditoria.registrar(
+        yo,
+        "edicion",
+        "biblioteca",
+        elemento=material["titulo"],
+        elemento_id=material["id"],
+        elemento_tipo="material",
+        materia_id=material["materiaId"],
+        antes=antes_de_editar,
+        despues={k: material.get(k) for k in antes_de_editar},
+        detalle="Modificó la ficha del material",
+    )
+    return _con_datos(material, yo)
 
 
 @router.delete("/{id_material:path}", summary="Retirar un material")
-def borrar_material(id_material: str):
+def borrar_material(id_material: str, yo: dict = UsuarioActual):
     material = _buscar_material(id_material)
-    if not _puede_editar(material, YO):
-        raise HTTPException(403, "Solo quien lo subió o un docente puede retirarlo")
+    _exigir_ver(material, yo)
+    if not _puede_editar(material, yo):
+        raise HTTPException(403, "Solo quien lo subió o el docente de la materia puede retirarlo")
+
+    auditoria.registrar(
+        yo,
+        "baja",
+        "biblioteca",
+        elemento=material["titulo"],
+        elemento_id=material["id"],
+        elemento_tipo="material",
+        persona_id=material["subidoPor"],
+        materia_id=material["materiaId"],
+        antes={"estado": material["estado"], "autor": material.get("autor")},
+        detalle="Retiró el material de la biblioteca",
+    )
 
     d.materiales.remove(material)
     d.borrar_archivo(material["id"])

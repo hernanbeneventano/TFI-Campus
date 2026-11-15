@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { IconoCerrar, IconoDescargar, IconoVideo, IconoArchivo, IconoReloj } from './Iconos.jsx';
+import Cuestionario from './modulo/Cuestionario.jsx';
 
 function formatearFecha(iso) {
   return new Date(iso).toLocaleString('es-AR', {
@@ -47,34 +48,66 @@ function Archivo({ item }) {
   );
 }
 
+// Un trabajo. Cómo se resuelve depende de cómo lo tomó la cátedra:
+//
+// - **virtual · entrega**     se sube un archivo
+// - **virtual · cuestionario** se responde acá mismo y se corrige solo
+// - **presencial**            no hay nada que subir: se rinde en el aula
 function Tarea({ item }) {
-  const atrasada = !item.entregada && new Date(item.fechaLimite) < new Date();
+  const cerrada = item.cerrada === true;
+  const reabierta = item.cerrada === false;
+  const atrasada = !item.entregada && !reabierta && new Date(item.fechaLimite) < new Date();
+  const presencial = item.modalidad === 'presencial';
 
   return (
     <div className="visor-tarea">
-      <div className={atrasada ? 'visor-plazo atrasado' : 'visor-plazo'}>
+      <div className={atrasada || cerrada ? 'visor-plazo atrasado' : 'visor-plazo'}>
         <IconoReloj />
         <div>
-          <strong>Fecha de entrega</strong>
+          <strong>{presencial ? 'Fecha del examen' : 'Fecha de entrega'}</strong>
           <span>{formatearFecha(item.fechaLimite)}</span>
         </div>
         {item.entregada && <span className="etiqueta entregada">Entregada</span>}
-        {atrasada && <span className="etiqueta atrasada">Atrasada</span>}
+        {/* El cierre a mano pesa más que la fecha, así que se dice primero */}
+        {cerrada && <span className="etiqueta atrasada">Entrega cerrada</span>}
+        {reabierta && <span className="etiqueta">Entrega reabierta</span>}
+        {atrasada && !cerrada && <span className="etiqueta atrasada">Atrasada</span>}
       </div>
 
-      <article className="visor-texto">
-        <p>
-          Subí tu resolución en un único archivo. Se toma en cuenta la última entrega hecha antes de la
-          fecha límite.
-        </p>
-      </article>
+      {item.consigna && (
+        <article className="visor-texto">
+          <p>{item.consigna}</p>
+        </article>
+      )}
 
-      <div className="visor-entrega">
-        <p className="texto-suave">La entrega de archivos se va a habilitar en la próxima etapa.</p>
-        <button type="button" className="boton-principal" disabled>
-          Subir entrega
-        </button>
-      </div>
+      {item.formato === 'cuestionario' ? (
+        <Cuestionario tareaId={item.tareaId} />
+      ) : presencial ? (
+        <div className="visor-entrega">
+          <p className="texto-suave">
+            Este examen es presencial: no hay nada que subir. La nota la carga el docente y la vas
+            a ver en la pestaña Notas.
+          </p>
+        </div>
+      ) : (
+        <>
+          <article className="visor-texto">
+            <p>
+              Subí tu resolución en un único archivo. Se toma en cuenta la última entrega hecha
+              antes de la fecha límite.
+            </p>
+          </article>
+
+          <div className="visor-entrega">
+            <p className="texto-suave">
+              La entrega de archivos se va a habilitar en la próxima etapa.
+            </p>
+            <button type="button" className="boton-principal" disabled>
+              Subir entrega
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

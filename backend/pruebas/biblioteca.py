@@ -1,27 +1,62 @@
 """Pruebas de la Biblioteca.
 
-Se ejecutan contra el servidor en marcha, porque lo que interesa comprobar no
-es una función aislada sino el camino completo: la ruta, los permisos, la
-validación y la respuesta. Un archivo que el controlador rechaza pero que la
-ruta nunca le entrega no prueba nada sobre el comportamiento real.
+Corren **dentro del proceso**, con el cliente de pruebas de FastAPI, por el
+mismo motivo que las de Finales: lo que hay que comprobar es quién ve qué, y
+para eso hay que poder ser el docente de una materia, el de otra, un alumno
+inscripto, uno que no y el supervisor. Contra el servidor en marcha, sin
+login, todos serían la misma persona.
 
-Uso:
-    1. En una terminal:  python -m app.main
-    2. En otra:          python -m pruebas.biblioteca
+Recorren el camino completo igual —la ruta, los permisos, la validación y la
+respuesta— y modifican los datos en memoria de este proceso, no los del
+servidor.
+
+El reparto sale de los datos de prueba:
+
+    Santiago (1)  estudiante, cursa Programación II (109) y Bases de Datos (110)
+    Hernán (3)    estudiante, NO cursa ninguna de esas dos
+    María (2)     dicta Programación II (109)
+    Pablo (7)     dicta Bases de Datos (110)
+    Secretaría (18)  administradora: ve todo
+
+Uso (desde backend/):
+    python -m pruebas.biblioteca
 """
 
 from __future__ import annotations
 
 import base64
-import os
 import sys
 
-import httpx
+from fastapi.testclient import TestClient
 
-BASE = os.environ.get("API_URL") or "http://127.0.0.1:3000/api/biblioteca"
+from app import datos as d
+from app.main import app
+from app.servicios.autenticacion import identificar
+
+BASE = "/api/biblioteca"
+
+# Personas
+SANTIAGO = 1
+MARIA = 2
+HERNAN = 3
+PABLO = 7
+SECRETARIA = 18
+
+# Materias del plan
+PROG2 = 109  # la dicta María, la cursa Santiago
+BASES = 110  # la dicta Pablo, la cursa Santiago
+DISCRETA = 116  # la cursa Hernán, no Santiago
 
 pasadas = 0
 fallas: list[str] = []
+
+_quien = {"id": SANTIAGO}
+app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
+cliente = TestClient(app)
+
+
+def como(persona_id: int) -> None:
+    _quien["id"] = persona_id
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:
@@ -39,35 +74,27 @@ def grupo(titulo: str) -> None:
     print(f"\n== {titulo} ==")
 
 
-class Respuesta:
-    """Lo que devuelve cada pedido: el código, el cuerpo y las cabeceras."""
-
-    def __init__(self, r: httpx.Response):
-        self.estado = r.status_code
-        self.cabeceras = r.headers
-        tipo = r.headers.get("content-type", "")
-        if "application/json" in tipo:
-            self.cuerpo = r.json()
-            self.bytes = None
-        else:
-            # La descarga devuelve bytes, no JSON
-            self.cuerpo = None
-            self.bytes = r.content
+def ficha(materia_id: int, titulo: str, **extra) -> dict:
+    return {
+        "titulo": titulo,
+        "autor": "Autor de prueba",
+        "materiaId": materia_id,
+        "tipo": "apunte",
+        "categoria": "otros",
+        "enlace": "https://example.org/material",
+        "autorizado": True,
+        **extra,
+    }
 
 
-def pedir(metodo: str, ruta: str, cuerpo=None) -> Respuesta:
-    with httpx.Client(timeout=60) as cliente:
-        return Respuesta(cliente.request(metodo, BASE + ruta, json=cuerpo))
+def error_de(r) -> str:
+    try:
+        return r.json().get("error", "")
+    except ValueError:
+        return ""
 
 
-# Un PDF mínimo pero válido. Alcanza para que la comprobación de los primeros
-# bytes lo reconozca, que es lo que se quiere probar.
-PDF = (
-    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-    b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-    b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n"
-    b"trailer<</Root 1 0 R>>\n%%EOF\n"
-)
+PDF = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 
 
 def en_base64(datos: bytes) -> str:
@@ -75,282 +102,237 @@ def en_base64(datos: bytes) -> str:
 
 
 def correr() -> None:
-    print(f"Pruebas de la Biblioteca contra {BASE}\n")
+    print("Pruebas de la Biblioteca (en proceso)\n")
 
     # ------------------------------------------------------------------
-    grupo("Permisos del usuario de prueba (estudiante)")
-
-    r = pedir("GET", "/opciones")
-    comprobar("puede aportar material", r.cuerpo.get("puedeAportar") is True, r.cuerpo)
-    comprobar("no puede moderar", r.cuerpo.get("puedeModerar") is False, r.cuerpo)
-
-    r = pedir("GET", "/pendientes")
-    comprobar("la cola de revisión le responde 403", r.estado == 403, r.estado)
+    grupo("La biblioteca arranca vacía")
+    como(SECRETARIA)
+    r = cliente.get(f"{BASE}/opciones")
+    comprobar("no hay ningún material cargado", r.json()["total"] == 0, r.json()["total"])
 
     # ------------------------------------------------------------------
-    # El servidor limita los aportes a diez por hora y los cuenta en memoria.
-    # Correr esta batería varias veces seguidas agota el cupo y todas las
-    # comprobaciones de alta empiezan a responder 429. No es un fallo del
-    # servidor: conviene avisarlo en vez de dar siete falsos negativos.
-    sonda = pedir("POST", "", {"titulo": ""})
-    if sonda.estado == 429:
-        print()
-        print("El servidor alcanzó el límite de aportes por hora.")
-        print("Reinicialo (el contador vive en memoria) y volvé a correr las pruebas.")
-        sys.exit(2)
+    grupo("Cada uno ve las materias que le tocan")
+    como(SANTIAGO)
+    mias = {m["id"] for m in cliente.get(f"{BASE}/opciones").json()["materias"]}
+    comprobar("el estudiante ve las que cursa", PROG2 in mias and BASES in mias, sorted(mias))
+    comprobar("y no las que no cursa", DISCRETA not in mias, sorted(mias))
 
-    grupo("Validación al aportar")
+    como(MARIA)
+    suyas = {m["id"] for m in cliente.get(f"{BASE}/opciones").json()["materias"]}
+    comprobar("la docente ve la que dicta", PROG2 in suyas, sorted(suyas))
+    comprobar("y no la de otra cátedra", BASES not in suyas, sorted(suyas))
 
-    r = pedir("POST", "", {"titulo": "", "autorizado": True})
-    comprobar("sin título responde 400", r.estado == 400, r.cuerpo)
-
-    r = pedir("POST", "", {"titulo": "Prueba sin autorizar"})
-    comprobar("sin confirmar la autorización responde 400", r.estado == 400, r.cuerpo)
-
-    r = pedir("POST", "", {"titulo": "Prueba", "autorizado": True, "enlace": "javascript:alert(1)"})
-    comprobar("un enlace que no es http responde 400", r.estado == 400, r.cuerpo)
-
-    r = pedir("POST", "", {"titulo": "Prueba", "autorizado": True, "categoria": "inventada"})
-    comprobar("una categoría inexistente responde 400", r.estado == 400, r.cuerpo)
-
-    r = pedir("POST", "", {"titulo": "Prueba", "autorizado": True, "isbn": "no-es-un-isbn"})
-    comprobar("un ISBN mal formado responde 400", r.estado == 400, r.cuerpo)
-
-    # ------------------------------------------------------------------
-    grupo("Alta de un aporte")
-
-    r = pedir(
-        "POST",
-        "",
-        {
-            "titulo": "Apunte de prueba automática",
-            "descripcion": "Creado por el conjunto de pruebas",
-            "tipo": "apunte",
-            "categoria": "programacion",
-            "materia": "Programación II",
-            "idioma": "es",
-            "autorizado": True,
-            "enlace": "https://campustfi.edu.ar/",
-        },
-    )
-    comprobar("se crea y responde 201", r.estado == 201, r.cuerpo)
-    identificador = (r.cuerpo or {}).get("id")
+    como(SECRETARIA)
+    todas = cliente.get(f"{BASE}/opciones").json()["materias"]
     comprobar(
-        "queda pendiente de moderación",
-        (r.cuerpo or {}).get("estado") == "pendiente",
-        (r.cuerpo or {}).get("estado"),
-    )
-
-    if identificador is None:
-        print("\nNo se pudo crear el material de prueba. Se interrumpe acá.")
-        return resumir()
-
-    # ------------------------------------------------------------------
-    grupo("Validación del archivo")
-
-    r = pedir(
-        "POST",
-        f"/{identificador}/archivo",
-        {
-            "nombre": "trucho.pdf",
-            "extension": "pdf",
-            "tipo": "application/pdf",
-            "contenido": en_base64(b"esto es texto plano, no un PDF"),
-        },
-    )
-    comprobar("un .pdf que no es un PDF responde 415", r.estado == 415, r.cuerpo)
-
-    r = pedir(
-        "POST",
-        f"/{identificador}/archivo",
-        {
-            "nombre": "programa.exe",
-            "extension": "exe",
-            "tipo": "application/octet-stream",
-            "contenido": en_base64(b"MZ\x90\x00"),
-        },
-    )
-    comprobar("un ejecutable responde 415", r.estado == 415, r.cuerpo)
-
-    r = pedir(
-        "POST",
-        f"/{identificador}/archivo",
-        {
-            "nombre": "pagina.html",
-            "extension": "html",
-            "tipo": "text/html",
-            "contenido": en_base64(b"<script>alert(1)</script>"),
-        },
-    )
-    comprobar("un documento HTML responde 415", r.estado == 415, r.cuerpo)
-
-    r = pedir(
-        "POST",
-        f"/{identificador}/archivo",
-        {"nombre": "vacio.pdf", "extension": "pdf", "tipo": "application/pdf", "contenido": ""},
-    )
-    comprobar("un archivo vacío responde 400", r.estado == 400, r.cuerpo)
-
-    r = pedir(
-        "POST",
-        f"/{identificador}/archivo",
-        {
-            "nombre": "../../../etc/passwd",
-            "extension": "pdf",
-            "tipo": "application/pdf",
-            "contenido": en_base64(PDF),
-        },
-    )
-    comprobar("un PDF válido responde 201", r.estado == 201, r.cuerpo)
-    comprobar(
-        "el nombre con rutas se depura",
-        ((r.cuerpo or {}).get("archivo") or {}).get("nombre") == "passwd.pdf",
-        (r.cuerpo or {}).get("archivo"),
-    )
-    comprobar(
-        "al alojar el archivo se descarta el enlace",
-        (r.cuerpo or {}).get("enlace") is None,
-        (r.cuerpo or {}).get("enlace"),
+        "quien administra las ve todas", len(todas) == len(d.materias_plan), len(todas)
     )
 
     # ------------------------------------------------------------------
-    grupo("Descarga")
+    grupo("La materia es obligatoria y tiene que ser una de las suyas")
+    como(MARIA)
+    r = cliente.post(BASE, json={"titulo": "Sin materia", "autorizado": True})
+    comprobar("sin materia responde 400", r.status_code == 400, error_de(r))
 
-    r = pedir("GET", f"/{identificador}/archivo")
-    comprobar("la descarga responde 200", r.estado == 200, r.estado)
-    comprobar("devuelve los mismos bytes", r.bytes == PDF, len(r.bytes or b""))
-    comprobar(
-        "se entrega como archivo adjunto",
-        "attachment" in r.cabeceras.get("content-disposition", ""),
-        r.cabeceras.get("content-disposition"),
-    )
-    comprobar(
-        "indica no inferir el tipo",
-        r.cabeceras.get("x-content-type-options") == "nosniff",
-        r.cabeceras.get("x-content-type-options"),
-    )
-    comprobar(
-        "declara el tipo application/pdf",
-        r.cabeceras.get("content-type", "").startswith("application/pdf"),
-        r.cabeceras.get("content-type"),
-    )
+    r = cliente.post(BASE, json=ficha(BASES, "En cátedra ajena"))
+    comprobar("en una materia que no dicta responde 400", r.status_code == 400, error_de(r))
+
+    r = cliente.post(BASE, json=ficha(PROG2, "Sin confirmar", autorizado=False))
+    comprobar("sin confirmar la autorización responde 400", r.status_code == 400, error_de(r))
+
+    r = cliente.post(BASE, json=ficha(PROG2, "Mal enlace", enlace="javascript:alert(1)"))
+    comprobar("un enlace que no es http responde 400", r.status_code == 400, error_de(r))
 
     # ------------------------------------------------------------------
-    grupo("Visibilidad de lo pendiente")
+    grupo("El docente publica directo en su materia")
+    r = cliente.post(BASE, json=ficha(PROG2, "Apunte de punteros"))
+    comprobar("se crea y responde 201", r.status_code == 201, r.json())
+    del_docente = r.json()
+    comprobar("queda aprobado sin revisión", del_docente["estado"] == "aprobado", del_docente["estado"])
+    comprobar("queda registrado quién lo autorizó", del_docente["autorizadoPorNombre"] is not None)
 
-    r = pedir("GET", "?porPagina=50")
-    ids = [m["id"] for m in r.cuerpo["materiales"]]
-    comprobar("un material pendiente no aparece en el catálogo", identificador not in ids, ids)
-
-    r = pedir("GET", "/mis-aportes")
-    comprobar(
-        "pero sí aparece entre los aportes propios",
-        any(m["id"] == identificador for m in r.cuerpo["materiales"]),
-    )
+    r = cliente.post(BASE, json=ficha(PROG2, "Apunte de punteros"))
+    comprobar("el mismo libro dos veces responde 409", r.status_code == 409, error_de(r))
 
     # ------------------------------------------------------------------
-    grupo("Acceso a material de otra persona")
+    grupo("Solo lo ve quien cursa esa materia")
+    como(SANTIAGO)
+    ids = [m["id"] for m in cliente.get(BASE).json()["materiales"]]
+    comprobar("el alumno que la cursa lo ve", del_docente["id"] in ids, ids)
 
-    # El material 7 lo aportó otra persona y está pendiente de moderación
-    r = pedir("GET", "/7")
-    comprobar("consultar un pendiente ajeno responde 403", r.estado == 403, r.cuerpo)
+    como(HERNAN)
+    ids = [m["id"] for m in cliente.get(BASE).json()["materiales"]]
+    comprobar("el que no la cursa no lo ve en el listado", del_docente["id"] not in ids, ids)
 
-    r = pedir("GET", "/7/archivo")
-    comprobar("descargar un pendiente ajeno responde 403", r.estado == 403, r.cuerpo)
+    r = cliente.get(f"{BASE}/{del_docente['id']}")
+    comprobar("y la ficha le responde 404, no 403", r.status_code == 404, r.status_code)
 
-    r = pedir("DELETE", "/3")
-    comprobar("retirar material ajeno responde 403", r.estado == 403, r.cuerpo)
+    como(PABLO)
+    r = cliente.get(f"{BASE}/{del_docente['id']}")
+    comprobar("el docente de otra cátedra tampoco lo ve", r.status_code == 404, r.status_code)
 
-    r = pedir("POST", "/7/aprobar", {})
-    comprobar("aprobar sin ser docente responde 403", r.estado == 403, r.cuerpo)
+    # ------------------------------------------------------------------
+    grupo("El archivo pasa por el mismo control")
+    como(MARIA)
+    r = cliente.post(
+        f"{BASE}/{del_docente['id']}/archivo",
+        json={"contenido": en_base64(b"MZ\x90esto es un ejecutable"), "extension": "pdf"},
+    )
+    comprobar("un .pdf que no es un PDF responde 415", r.status_code == 415, error_de(r))
+
+    r = cliente.post(
+        f"{BASE}/{del_docente['id']}/archivo",
+        json={"contenido": en_base64(b""), "extension": "pdf"},
+    )
+    comprobar("un archivo vacío responde 400", r.status_code == 400, error_de(r))
+
+    r = cliente.post(
+        f"{BASE}/{del_docente['id']}/archivo",
+        json={"contenido": en_base64(b"<html>hola</html>"), "extension": "html"},
+    )
+    comprobar("un documento HTML responde 415", r.status_code == 415, error_de(r))
+
+    r = cliente.post(
+        f"{BASE}/{del_docente['id']}/archivo",
+        json={"contenido": en_base64(PDF), "extension": "pdf", "nombre": "../../etc/passwd.pdf"},
+    )
+    comprobar("un PDF válido responde 201", r.status_code == 201, error_de(r))
+    comprobar(
+        "el nombre se limpia", r.json()["archivo"]["nombre"] == "passwd.pdf", r.json()["archivo"]
+    )
+
+    como(SANTIAGO)
+    r = cliente.get(f"{BASE}/{del_docente['id']}/archivo")
+    comprobar("quien cursa lo descarga", r.status_code == 200 and r.content == PDF, r.status_code)
+
+    como(HERNAN)
+    r = cliente.get(f"{BASE}/{del_docente['id']}/archivo")
+    comprobar("quien no cursa no lo descarga", r.status_code == 404, r.status_code)
+
+    # ------------------------------------------------------------------
+    grupo("El aporte de un estudiante espera revisión")
+    como(SANTIAGO)
+    r = cliente.post(BASE, json=ficha(PROG2, "Resumen de la unidad 3"))
+    comprobar("se envía y responde 201", r.status_code == 201, r.json())
+    aporte = r.json()
+    comprobar("queda pendiente", aporte["estado"] == "pendiente", aporte["estado"])
+
+    ids = [m["id"] for m in cliente.get(BASE).json()["materiales"]]
+    comprobar("un pendiente no sale en la biblioteca", aporte["id"] not in ids, ids)
+
+    mios = [m["id"] for m in cliente.get(f"{BASE}/mis-aportes").json()["materiales"]]
+    comprobar("pero sí en sus aportes", aporte["id"] in mios, mios)
+
+    r = cliente.get(f"{BASE}/pendientes")
+    comprobar("un estudiante no abre la cola de revisión", r.status_code == 403, r.status_code)
+
+    # ------------------------------------------------------------------
+    grupo("Lo revisa el docente de esa materia, no cualquiera")
+    como(PABLO)
+    cola = [m["id"] for m in cliente.get(f"{BASE}/pendientes").json()["materiales"]]
+    comprobar("el de otra cátedra no lo tiene en su cola", aporte["id"] not in cola, cola)
+
+    r = cliente.post(f"{BASE}/{aporte['id']}/aprobar")
+    comprobar("y aprobarlo le responde 404", r.status_code == 404, r.status_code)
+
+    como(MARIA)
+    cola = cliente.get(f"{BASE}/pendientes").json()["materiales"]
+    comprobar("la docente de la materia sí lo tiene", any(m["id"] == aporte["id"] for m in cola))
+    suyo = next(m for m in cola if m["id"] == aporte["id"])
+    comprobar(
+        "con todo lo que hace falta para decidir",
+        all(suyo.get(c) for c in ("titulo", "autor", "materia", "subidoPorNombre", "creado"))
+        and suyo["estado"] == "pendiente",
+        suyo,
+    )
+
+    r = cliente.post(f"{BASE}/{aporte['id']}/rechazar", json={})
+    comprobar("rechazar sin motivo responde 400", r.status_code == 400, error_de(r))
+
+    antes = sum(len(c["mensajes"]) for c in d.conversaciones)
+    r = cliente.post(f"{BASE}/{aporte['id']}/aprobar")
+    comprobar("aprobar responde 200", r.status_code == 200, error_de(r))
+    comprobar("queda aprobado", r.json()["estado"] == "aprobado", r.json()["estado"])
+    despues = sum(len(c["mensajes"]) for c in d.conversaciones)
+    comprobar("y le llega el aviso a quien aportó", despues == antes + 1, (antes, despues))
+
+    como(SANTIAGO)
+    ids = [m["id"] for m in cliente.get(BASE).json()["materiales"]]
+    comprobar("ya aparece en la biblioteca de la materia", aporte["id"] in ids, ids)
+
+    # ------------------------------------------------------------------
+    grupo("El rechazo le dice al estudiante qué pasó")
+    r = cliente.post(BASE, json=ficha(PROG2, "Libro sin permiso"))
+    otro = r.json()
+
+    como(MARIA)
+    r = cliente.post(
+        f"{BASE}/{otro['id']}/rechazar", json={"motivo": "No corresponde a la materia"}
+    )
+    comprobar("se rechaza con motivo", r.status_code == 200, error_de(r))
+
+    como(SANTIAGO)
+    mio = next(
+        m for m in cliente.get(f"{BASE}/mis-aportes").json()["materiales"] if m["id"] == otro["id"]
+    )
+    comprobar("el estudiante ve el estado", mio["estado"] == "rechazado", mio["estado"])
+    comprobar("y el motivo", mio["motivo"] == "No corresponde a la materia", mio["motivo"])
+    comprobar("con el historial de quién lo revisó", len(mio["historial"]) >= 1, mio["historial"])
+
+    ids = [m["id"] for m in cliente.get(BASE).json()["materiales"]]
+    comprobar("un rechazado no se publica", otro["id"] not in ids, ids)
+
+    # ------------------------------------------------------------------
+    grupo("Editar lo aprobado lo manda de nuevo a la cola")
+    r = cliente.patch(f"{BASE}/{aporte['id']}", json={"titulo": "Resumen corregido"})
+    comprobar("el autor puede editarlo", r.status_code == 200, error_de(r))
+    comprobar("y vuelve a pendiente", r.json()["estado"] == "pendiente", r.json()["estado"])
+
+    r = cliente.patch(f"{BASE}/{del_docente['id']}", json={"titulo": "No es mío"})
+    comprobar("no puede editar el de la cátedra", r.status_code == 403, r.status_code)
+
+    r = cliente.delete(f"{BASE}/{del_docente['id']}")
+    comprobar("ni retirarlo", r.status_code == 403, r.status_code)
 
     # ------------------------------------------------------------------
     grupo("Favoritos")
+    r = cliente.post(f"{BASE}/{aporte['id']}/favorito")
+    comprobar("se guarda el propio", r.status_code == 201, r.json())
 
-    r = pedir("POST", f"/{identificador}/favorito", {})
-    comprobar("marcar un favorito responde 201", r.estado == 201, r.cuerpo)
+    guardados = [m["id"] for m in cliente.get(f"{BASE}/favoritos").json()["materiales"]]
+    comprobar("aparece en guardados", aporte["id"] in guardados, guardados)
 
-    r = pedir("GET", "/favoritos")
-    comprobar(
-        "aparece entre los guardados",
-        any(m["id"] == identificador for m in r.cuerpo["materiales"]),
-    )
-
-    r = pedir("DELETE", f"/{identificador}/favorito")
-    comprobar("quitarlo responde 200", r.estado == 200, r.cuerpo)
-
-    r = pedir("GET", "/favoritos")
-    comprobar(
-        "ya no aparece", not any(m["id"] == identificador for m in r.cuerpo["materiales"])
-    )
-
-    r = pedir("POST", "/google:zyTCAlFPjgYC/favorito", {})
-    comprobar("se puede guardar un libro de un catálogo externo", r.estado == 201, r.cuerpo)
-    pedir("DELETE", "/google:zyTCAlFPjgYC/favorito")
+    como(HERNAN)
+    r = cliente.post(f"{BASE}/{del_docente['id']}/favorito")
+    comprobar("no se guarda el de una materia ajena", r.status_code == 404, r.status_code)
 
     # ------------------------------------------------------------------
-    grupo("Búsqueda y filtros")
-
-    r = pedir("GET", "?q=normalizacion&fuente=campus")
-    comprobar("la búsqueda ignora las tildes", r.cuerpo["total"] >= 1, r.cuerpo["total"])
-
-    r = pedir("GET", "?q=Ruiz&campo=autor&fuente=campus")
-    comprobar("busca por autor", r.cuerpo["total"] >= 2, r.cuerpo["total"])
-
-    r = pedir("GET", "?categoria=programacion&fuente=campus")
+    grupo("Quien supervisa ve y revisa todo")
+    como(SECRETARIA)
+    r = cliente.get(f"{BASE}/pendientes")
+    comprobar("abre la cola de revisión", r.status_code == 200, r.status_code)
     comprobar(
-        "filtra por categoría",
-        all(m["categoria"] == "programacion" for m in r.cuerpo["materiales"]),
-        r.cuerpo["total"],
+        "con el aporte reeditado adentro",
+        any(m["id"] == aporte["id"] for m in r.json()["materiales"]),
+        [m["id"] for m in r.json()["materiales"]],
     )
 
-    r = pedir("GET", "?fuente=campus&porPagina=2&pagina=2")
-    comprobar(
-        "pagina los resultados",
-        r.cuerpo["pagina"] == 2 and len(r.cuerpo["materiales"]) <= 2,
-        {"pagina": r.cuerpo["pagina"], "paginas": r.cuerpo["paginas"]},
-    )
-
-    r = pedir("GET", "?q=python&fuente=externos")
-    fuentes = r.cuerpo["fuentes"]
-    comprobar("consulta los dos catálogos externos", len(fuentes) == 2, fuentes)
-    print(
-        "         estado de las fuentes: "
-        + ", ".join(f"{f.get('fuente')}={f.get('estado')}" for f in fuentes)
-    )
-    comprobar(
-        "si una fuente falla, responde igual con la otra",
-        any(f.get("estado") == "ok" for f in fuentes) or len(r.cuerpo["externos"]) == 0,
-        fuentes,
-    )
-
-    # ------------------------------------------------------------------
-    grupo("Limpieza")
-
-    r = pedir("DELETE", f"/{identificador}")
-    comprobar("se retira el material de prueba", r.estado == 200, r.cuerpo)
-
-    r = pedir("GET", f"/{identificador}")
-    comprobar("ya no existe", r.estado == 404, r.estado)
-
-    resumir()
+    r = cliente.delete(f"{BASE}/{del_docente['id']}")
+    comprobar("y puede retirar material", r.status_code == 200, error_de(r))
 
 
 def resumir() -> None:
     total = pasadas + len(fallas)
-    print("\n" + "=" * 58)
-    print(f"{pasadas} de {total} comprobaciones correctas")
+    print(f"\n{'-' * 52}")
+    print(f"{pasadas}/{total} comprobaciones pasaron")
     if fallas:
         print("\nFallaron:")
         for f in fallas:
             print(f"  - {f}")
         sys.exit(1)
+    print("Todo en orden.")
 
 
 if __name__ == "__main__":
-    try:
-        correr()
-    except httpx.ConnectError:
-        print("\nNo se pudo conectar con el servidor.")
-        print('¿Está levantado? Probá con "python -m app.main" en otra terminal.')
-        sys.exit(1)
+    correr()
+    resumir()

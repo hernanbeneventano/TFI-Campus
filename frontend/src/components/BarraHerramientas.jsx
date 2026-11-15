@@ -13,6 +13,8 @@ export default function BarraHerramientas({
   onPeriodo,
   apartado,
   onApartado,
+  // Un docente no se inscribe a materias: la acción no va en su barra
+  esAlumno = true,
 }) {
   return (
     <div className="barra">
@@ -70,11 +72,14 @@ export default function BarraHerramientas({
       />
 
       {/* La única acción de la barra, al final: lo de la izquierda filtra lo
-          que ya tenés, esto te lleva a sumar una materia nueva. */}
-      <Link className="barra-accion" to="/modulos/inscripciones">
-        <IconoInscribirse width={16} height={16} />
-        Inscribirse a materias
-      </Link>
+          que ya tenés, esto te lleva a sumar una materia nueva. Solo para el
+          alumno: el docente no se inscribe a materias, las dicta. */}
+      {esAlumno && (
+        <Link className="barra-accion" to="/modulos/inscripciones">
+          <IconoInscribirse width={16} height={16} />
+          Inscribirse a materias
+        </Link>
+      )}
     </div>
   );
 }

@@ -1,7 +1,14 @@
 import { Link } from 'react-router-dom';
 import BarraProgreso from './BarraProgreso.jsx';
 import { hace } from '../services/fechas.js';
-import { IconoUsuario, IconoCalendario, IconoTarea, IconoNotas, IconoAvance } from './Iconos.jsx';
+import {
+  IconoUsuario,
+  IconoCalendario,
+  IconoTarea,
+  IconoNotas,
+  IconoAvance,
+  IconoPersonas,
+} from './Iconos.jsx';
 
 const DIA = 24 * 60 * 60 * 1000;
 
@@ -19,7 +26,16 @@ function fechaCorta(iso) {
 // Panel derecho de un módulo. A propósito no repite lo que ya está en las
 // pestañas de arriba (participantes, anuncios, notas): muestra el horario de
 // cursada y lo que se viene, que de otro modo habría que ir a buscar.
-export default function PanelModulo({ curso, participantes, cursada = [], proximas = [], avance }) {
+export default function PanelModulo({
+  curso,
+  participantes,
+  cursada = [],
+  proximas = [],
+  avance,
+  // Al docente no le sirve su propio avance: el material lo subió él. En su
+  // lugar va cómo viene el curso con ese material.
+  seguimiento = null,
+}) {
   const docente = participantes.find((p) => p.rol === 'Docente');
   const estudiantes = participantes.filter((p) => p.rol === 'Estudiante').length;
 
@@ -104,7 +120,34 @@ export default function PanelModulo({ curso, participantes, cursada = [], proxim
         )}
       </section>
 
-      {avance.total > 0 && (
+      {seguimiento && (
+        <section>
+          <h2 className="panel-titulo">Avance del curso</h2>
+          <div className="avance">
+            <span className="accion-icono">
+              <IconoPersonas />
+            </span>
+            <div className="avance-curso">
+              <strong>{seguimiento.resumen.porcentaje}%</strong>
+              <div className="barra-avance">
+                <span style={{ width: `${seguimiento.resumen.porcentaje}%` }} />
+              </div>
+            </div>
+          </div>
+          <p className="panel-vacio">
+            {seguimiento.resumen.completaronTodo} de {seguimiento.resumen.alumnos} alumnos
+            completaron todo el material.
+          </p>
+          {seguimiento.resumen.sinCorregir > 0 && (
+            <p className="panel-vacio destacado">
+              Tenés {seguimiento.resumen.sinCorregir}{' '}
+              {seguimiento.resumen.sinCorregir === 1 ? 'entrega' : 'entregas'} sin corregir.
+            </p>
+          )}
+        </section>
+      )}
+
+      {!seguimiento && avance.total > 0 && (
         <section>
           <h2 className="panel-titulo">Tu avance</h2>
           <div className="avance">

@@ -29,8 +29,10 @@ import {
   IconoFlecha,
   IconoEstrella,
   IconoBiblioteca,
+  IconoActividad,
   IconoFinales,
   IconoInscribirse,
+  IconoPresente,
 } from './Iconos.jsx';
 
 const textoEstado = {
@@ -66,10 +68,30 @@ const secciones = [
   { ruta: '/novedades', nombre: 'Novedades', Icono: IconoAnuncio, aviso: 'novedades' },
   { ruta: '/modulos', nombre: 'Módulos', Icono: IconoModulos, aviso: 'modulos', conHijos: true },
   { ruta: '/finales', nombre: 'Finales', Icono: IconoFinales, conFinales: true },
+  { ruta: '/asistencias', nombre: 'Asistencias', Icono: IconoPresente },
   { ruta: '/calendario', nombre: 'Calendario', Icono: IconoCalendario },
   { ruta: '/foro', nombre: 'Foro', Icono: IconoForo },
   { ruta: '/mensajes', nombre: 'Mensajes', Icono: IconoMensajes, aviso: 'mensajes' },
   { ruta: '/biblioteca', nombre: 'Biblioteca', Icono: IconoBiblioteca },
+  // Lo de la institución va junto: estructura, estudiantes, cuentas y el
+  // registro de actividad. Esconder la opción no es el control de acceso:
+  // el servidor responde 403 igual.
+  {
+    ruta: '/administracion',
+    nombre: 'Administración',
+    Icono: IconoAjustes,
+    roles: ['Administrador', 'Supervisor'],
+  },
+  // El docente no administra nada, pero sí mira la actividad de sus
+  // materias. Si además supervisa, la encuentra dentro de Administración y
+  // esta opción sobra.
+  {
+    ruta: '/auditoria',
+    nombre: 'Actividad',
+    Icono: IconoActividad,
+    roles: ['Docente'],
+    salvoRoles: ['Administrador', 'Supervisor'],
+  },
 ];
 
 const textoAviso = {
@@ -103,6 +125,17 @@ export default function MenuLateral({ usuario, contadores }) {
   // El menú es el mismo para todos salvo en dos lugares: qué cuelga de
   // Finales y que inscribirse a materias es cosa del estudiante.
   const esDocente = usuario?.rol === 'Docente';
+  // Solo el estudiante se inscribe a materias; el resto no tiene carrera.
+  const esAlumno = (usuario?.roles ?? [usuario?.rol]).includes('Estudiante');
+
+  // Una opción con `roles` solo se muestra a quien tenga alguno de ellos. El
+  // servidor comprueba lo mismo: esto es para no ofrecer una puerta cerrada.
+  const mios = usuario?.roles ?? (usuario?.rol ? [usuario.rol] : []);
+  const visibles = secciones.filter(
+    (s) =>
+      (!s.roles || s.roles.some((r) => mios.includes(r))) &&
+      (!s.salvoRoles || !s.salvoRoles.some((r) => mios.includes(r)))
+  );
   const submenuFinales = esDocente ? SUBMENU_FINALES_DOCENTE : SUBMENU_FINALES;
   const estado = usePresencia();
 
@@ -219,7 +252,7 @@ export default function MenuLateral({ usuario, contadores }) {
 
       <nav>
         <ul className="menu-lista">
-          {secciones.map(({ ruta: destino, nombre, Icono, aviso, conHijos, conFinales }) => {
+          {visibles.map(({ ruta: destino, nombre, Icono, aviso, conHijos, conFinales }) => {
             const cuantas = aviso ? (contadores?.[aviso] ?? 0) : 0;
             const ayuda = cuantas > 0 ? `${nombre} · ${textoAviso[aviso](cuantas)}` : nombre;
             const hijos = conFinales || (conHijos && modulos.length > 0);
@@ -316,7 +349,7 @@ export default function MenuLateral({ usuario, contadores }) {
                             Al docente no se le muestra: no se inscribe a
                             materias, y el servidor le contesta que no está
                             inscripto a ninguna carrera. */}
-                        {!esDocente && (
+                        {esAlumno && (
                           <li>
                             <button
                               type="button"

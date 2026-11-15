@@ -45,6 +45,7 @@ from fastapi import APIRouter, Body, HTTPException, Query
 
 from .. import datos as d
 from ..servicios import academico as ac
+from ..servicios import auditoria
 from ..servicios.autenticacion import UsuarioActual
 
 router = APIRouter(prefix="/api/finales/gestion", tags=["Finales (gestión)"])
@@ -71,17 +72,17 @@ _MESES = [
 # ===================== Permisos =====================
 def _es_supervisor(persona: dict) -> bool:
     """Todavía no hay rol de administrador. Cuando exista, va acá."""
-    return persona.get("rol") in ("Administrador", "Supervisor")
+    return d.tiene_rol(persona, "Administrador", "Supervisor")
 
 
 def _exigir_gestion(yo: dict) -> None:
-    if yo.get("rol") != "Docente" and not _es_supervisor(yo):
+    if not d.tiene_rol(yo, "Docente") and not _es_supervisor(yo):
         raise HTTPException(403, "La gestión de finales es para docentes")
 
 
 def _es_titular(yo: dict, mesa: dict) -> bool:
     materia = d.buscar_materia(mesa["materiaId"])
-    return bool(materia and materia.get("docenteId") == yo["id"])
+    return bool(materia and d.dicta_materia(yo["id"], materia["id"]))
 
 
 def _puede_ver(yo: dict, mesa: dict) -> bool:
@@ -105,7 +106,7 @@ def _materias_que_administra(yo: dict) -> list[dict]:
     """
     if _es_supervisor(yo):
         return list(d.materias_plan)
-    return [m for m in d.materias_plan if m.get("docenteId") == yo["id"]]
+    return d.materias_que_dicta(yo["id"])
 
 
 # ===================== Fechas =====================
@@ -159,14 +160,15 @@ def _materia_de(mesa: dict) -> dict:
     """
     materia = d.buscar_materia(mesa["materiaId"]) or {}
     curso = d.buscar_curso(materia.get("cursoId")) if materia.get("cursoId") else None
-    docente = d.buscar_persona(materia.get("docenteId")) if materia.get("docenteId") else None
+    docentes = d.docentes_de_materia(materia["id"])
+    docente = d.buscar_persona(docentes[0]) if docentes else None
     return {
         "id": materia.get("id"),
         "codigo": materia.get("codigo"),
         "nombre": materia.get("nombre"),
         "color": (curso or {}).get("color"),
         "cursoId": materia.get("cursoId"),
-        "docenteId": materia.get("docenteId"),
+        "docenteId": docentes[0] if docentes else None,
         "docente": (docente or {}).get("nombre"),
     }
 
@@ -250,9 +252,38 @@ def _con_alumno(inscripcion: dict, mesa: dict) -> dict:
     }
 
 
+# De lo que hace la cátedra a la acción del vocabulario de auditoría
+_ACCIONES_MESA = {
+    "Creó la mesa": "creacion",
+    "Reprogramó la mesa": "edicion",
+    "Modificó la mesa": "edicion",
+    "Canceló la mesa": "baja",
+    "Cargó notas": "edicion",
+    "Cerró el acta": "publicacion",
+}
+
+
 def _registrar(mesa: dict, yo: dict, accion: str, detalle: str = "") -> None:
+    """El historial propio de la mesa y, además, el registro central.
+
+    El de la mesa es dato del apartado: se ve al abrirla, junto a la planilla.
+    El central es el del campus entero, que es donde se pregunta "¿quién
+    cambió esta fecha?" sin saber de antemano en qué mesa pasó.
+    """
     mesa.setdefault("historial", []).append(
         {"fecha": d.iso(d.ahora()), "accion": accion, "detalle": detalle, "por": yo["nombre"]}
+    )
+
+    materia = d.buscar_materia(mesa["materiaId"])
+    auditoria.registrar(
+        yo,
+        _ACCIONES_MESA.get(accion, "edicion"),
+        "finales",
+        elemento=f"Mesa de {materia['nombre'] if materia else '—'} ({mesa.get('llamado')})",
+        elemento_id=mesa["id"],
+        elemento_tipo="mesa",
+        materia_id=mesa["materiaId"],
+        detalle=f"{accion}. {detalle}".strip().rstrip("."),
     )
 
 
@@ -268,12 +299,14 @@ def opciones(yo: dict = UsuarioActual):
                 "nombre": m["nombre"],
                 "color": (d.buscar_curso(m["cursoId"]) or {}).get("color") if m.get("cursoId") else None,
                 # Integra siempre el tribunal: el formulario lo muestra fijo
-                "docenteId": m.get("docenteId"),
+                "docenteId": next(iter(d.docentes_de_materia(m["id"])), None),
             }
             for m in _materias_que_administra(yo)
         ],
         "docentes": [
-            {"id": p["id"], "nombre": p["nombre"]} for p in d.personas if p["rol"] == "Docente"
+            {"id": p["id"], "nombre": p["nombre"]}
+            for p in d.personas
+            if d.tiene_rol(p, "Docente")
         ],
         "modalidades": d.MODALIDADES_FINAL,
         "instancias": d.INSTANCIAS_FINAL,
@@ -429,13 +462,13 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
             )
 
     # El docente a cargo integra siempre el tribunal
-    tribunal = [materia["docenteId"]] if materia.get("docenteId") else []
+    tribunal = d.docentes_de_materia(materia["id"])[:1]
     for bruto in cuerpo.get("tribunal") or []:
         try:
             persona = d.buscar_persona(int(bruto))
         except (TypeError, ValueError):
             persona = None
-        if not persona or persona["rol"] != "Docente":
+        if not persona or not d.tiene_rol(persona, "Docente"):
             raise HTTPException(400, "En el tribunal solo puede haber docentes")
         if persona["id"] not in tribunal:
             tribunal.append(persona["id"])
@@ -517,8 +550,20 @@ def editar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dic
 
     if reprogramada:
         ahora_es = _como_se_toma(mesa)
-        _registrar(mesa, yo, "Reprogramó la mesa", f"Antes: {antes}. Ahora: {ahora_es}.")
         materia = d.buscar_materia(mesa["materiaId"])
+        _registrar(mesa, yo, "Reprogramó la mesa", f"Antes: {antes}. Ahora: {ahora_es}.")
+        auditoria.registrar(
+            yo,
+            "edicion",
+            "finales",
+            elemento=f"Mesa de {materia['nombre'] if materia else '—'} ({mesa.get('llamado')})",
+            elemento_id=mesa["id"],
+            elemento_tipo="mesa",
+            materia_id=mesa["materiaId"],
+            antes={"cuando": antes},
+            despues={"cuando": ahora_es},
+            detalle="Reprogramó la mesa y avisó a los inscriptos",
+        )
         for inscripcion in _activas(mesa):
             d.avisar_por_mensaje(
                 yo["id"],
