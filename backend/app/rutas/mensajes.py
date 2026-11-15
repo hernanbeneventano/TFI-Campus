@@ -1,4 +1,11 @@
-"""Mensajería interna: conversaciones de a dos."""
+"""Mensajería interna: conversaciones de a dos.
+
+Quién escribe sale de la **sesión**, no de una constante de módulo: cada ruta
+recibe `yo` del token de Firebase que verifica `servicios/autenticacion.py`.
+Antes había una constante con el usuario de prueba, de cuando no había login;
+con sesiones de verdad eso hacía que todos los mensajes salieran a nombre de
+la misma persona por más que hubiera iniciado sesión otra.
+"""
 
 from __future__ import annotations
 
@@ -7,49 +14,49 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import datos as d
+from ..servicios.autenticacion import IdUsuarioActual
 
 router = APIRouter(prefix="/api/mensajes", tags=["Mensajes"])
 
-# Mientras no haya login, el que escribe es siempre el usuario de prueba.
-YO = d.usuario_actual["id"]
+
+def _es_mia(conversacion: dict, yo: int) -> bool:
+    return yo in conversacion["entre"]
 
 
-def _es_mia(conversacion: dict) -> bool:
-    return YO in conversacion["entre"]
-
-
-def _el_otro(conversacion: dict) -> dict | None:
+def _el_otro(conversacion: dict, yo: int) -> dict | None:
     """La otra persona de la conversación, con su estado de presencia."""
-    otro_id = next((i for i in conversacion["entre"] if i != YO), None)
+    otro_id = next((i for i in conversacion["entre"] if i != yo), None)
     persona = d.buscar_persona(otro_id)
     return d.con_presencia(persona) if persona else None
 
 
-def _sin_leer(conversacion: dict) -> int:
-    return sum(1 for m in conversacion["mensajes"] if m["deId"] != YO and not m["leido"])
+def _sin_leer(conversacion: dict, yo: int) -> int:
+    return sum(1 for m in conversacion["mensajes"] if m["deId"] != yo and not m["leido"])
 
 
-def _resumir(conversacion: dict) -> dict:
+def _resumir(conversacion: dict, yo: int) -> dict:
     mensajes = conversacion["mensajes"]
     return {
         "id": conversacion["id"],
-        "con": _el_otro(conversacion),
+        "con": _el_otro(conversacion, yo),
         "ultimo": mensajes[-1] if mensajes else None,
-        "sinLeer": _sin_leer(conversacion),
+        "sinLeer": _sin_leer(conversacion, yo),
     }
 
 
-def _buscar(id_conversacion: int) -> dict:
+def _buscar(id_conversacion: int, yo: int) -> dict:
     conversacion = next((c for c in d.conversaciones if c["id"] == id_conversacion), None)
-    if not conversacion or not _es_mia(conversacion):
+    # Una conversación ajena no existe para quien pregunta: un 403 confirmaría
+    # que está y con quién
+    if not conversacion or not _es_mia(conversacion, yo):
         raise HTTPException(404, "Conversación no encontrada")
     return conversacion
 
 
 @router.get("", summary="Las conversaciones del usuario y el total sin leer")
-def listar_conversaciones():
+def listar_conversaciones(yo: int = IdUsuarioActual):
     lista = sorted(
-        (_resumir(c) for c in d.conversaciones if _es_mia(c)),
+        (_resumir(c, yo) for c in d.conversaciones if _es_mia(c, yo)),
         key=lambda c: d.desde_iso(c["ultimo"]["fecha"]) if c["ultimo"] else d.desde_iso("1970-01-01T00:00:00.000Z"),
         reverse=True,
     )
@@ -57,30 +64,34 @@ def listar_conversaciones():
 
 
 @router.get("/contactos", summary="Gente de tus módulos con la que podés hablar")
-def listar_contactos():
+def listar_contactos(yo: int = IdUsuarioActual):
     """Va declarada antes que /{id}: si no, "contactos" se tomaría como un
     identificador."""
-    return [{**d.con_presencia(c), "modulos": c["modulos"]} for c in d.contactos_de(YO)]
+    return [{**d.con_presencia(c), "modulos": c["modulos"]} for c in d.contactos_de(yo)]
 
 
 @router.get("/{id_conversacion}", summary="Abrir una conversación y darla por leída")
-def obtener_conversacion(id_conversacion: int):
-    conversacion = _buscar(id_conversacion)
+def obtener_conversacion(id_conversacion: int, yo: int = IdUsuarioActual):
+    conversacion = _buscar(id_conversacion, yo)
 
     for mensaje in conversacion["mensajes"]:
-        if mensaje["deId"] != YO:
+        if mensaje["deId"] != yo:
             mensaje["leido"] = True
 
     return {
         "id": conversacion["id"],
-        "con": _el_otro(conversacion),
+        "con": _el_otro(conversacion, yo),
         "mensajes": conversacion["mensajes"],
     }
 
 
 @router.post("/{id_conversacion}", status_code=201, summary="Enviar un mensaje")
-def enviar_mensaje(id_conversacion: int, cuerpo: dict[str, Any] = Body(default={})):
-    conversacion = _buscar(id_conversacion)
+def enviar_mensaje(
+    id_conversacion: int,
+    cuerpo: dict[str, Any] = Body(default={}),
+    yo: int = IdUsuarioActual,
+):
+    conversacion = _buscar(id_conversacion, yo)
 
     texto = str(cuerpo.get("texto") or "").strip()
 
@@ -104,7 +115,7 @@ def enviar_mensaje(id_conversacion: int, cuerpo: dict[str, Any] = Body(default={
 
     mensaje = {
         "id": d.nuevo_id_mensaje(),
-        "deId": YO,
+        "deId": yo,
         "texto": texto,
         "adjuntos": adjuntos,
         "fecha": d.iso(d.ahora()),
@@ -116,25 +127,25 @@ def enviar_mensaje(id_conversacion: int, cuerpo: dict[str, Any] = Body(default={
 
 
 @router.post("", summary="Abrir la conversación con alguien, o crearla")
-def abrir_conversacion(cuerpo: dict[str, Any] = Body(default={})):
+def abrir_conversacion(cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUsuarioActual):
     try:
         para_id = int(cuerpo.get("paraId"))
     except (TypeError, ValueError):
         raise HTTPException(400, "No se puede abrir una conversación con esa persona")
 
     persona = d.buscar_persona(para_id)
-    if not persona or para_id == YO:
+    if not persona or para_id == yo:
         raise HTTPException(400, "No se puede abrir una conversación con esa persona")
 
     conversacion = next(
-        (c for c in d.conversaciones if _es_mia(c) and para_id in c["entre"]), None
+        (c for c in d.conversaciones if _es_mia(c, yo) and para_id in c["entre"]), None
     )
     if not conversacion:
-        conversacion = {"id": d.nuevo_id_conversacion(), "entre": [YO, para_id], "mensajes": []}
+        conversacion = {"id": d.nuevo_id_conversacion(), "entre": [yo, para_id], "mensajes": []}
         d.conversaciones.append(conversacion)
 
     return {
         "id": conversacion["id"],
-        "con": _el_otro(conversacion),
+        "con": _el_otro(conversacion, yo),
         "mensajes": conversacion["mensajes"],
     }

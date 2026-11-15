@@ -113,36 +113,16 @@ def obtener_usuario(persona: dict = Depends(identificar)):
     )
 
 
-@app.put("/api/me", tags=["General"], summary="Editar el perfil propio")
-def editar_usuario(cuerpo: dict[str, Any] = Body(default={})):
-    """El rol no se toca desde acá: lo define la facultad, no la persona."""
-    nombre = str(cuerpo.get("nombre") or "").strip()
-    apellido = str(cuerpo.get("apellido") or "").strip()
-    correo = str(cuerpo.get("correo") or "").strip()
-
-    if not nombre or not apellido:
-        return JSONResponse(
-            status_code=400, content={"error": "El nombre y el apellido no pueden estar vacíos"}
-        )
-    if correo and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", correo):
-        return JSONResponse(status_code=400, content={"error": "Ese correo no parece válido"})
-
-    d.usuario_actual["nombre"] = nombre
-    d.usuario_actual["apellido"] = apellido
-    d.usuario_actual["correo"] = correo
-
-    # La lista de personas tiene el nombre completo: hay que mantenerla igual
-    persona = d.buscar_persona(d.usuario_actual["id"])
-    if persona:
-        persona["nombre"] = f"{nombre} {apellido}"
-
-    return d.con_presencia(d.usuario_actual)
+# El perfil propio se edita en PUT /api/usuarios/yo, que trabaja sobre la
+# persona de la sesión. Antes había acá un PUT /api/me que escribía sobre el
+# usuario de prueba: con login, editar el perfil le cambiaba el nombre a otra
+# persona. Ninguna pantalla lo usaba ya.
 
 
 @app.get("/api/contadores", tags=["General"], summary="Las campanitas del menú")
-def contadores():
-    """Cuántas cosas nuevas hay en cada apartado."""
-    return d.resumen_de_novedades(d.usuario_actual["id"])
+def contadores(persona: dict = Depends(identificar)):
+    """Cuántas cosas nuevas hay en cada apartado, para quien está mirando."""
+    return d.resumen_de_novedades(persona["id"])
 
 
 @app.get("/api/informacion", tags=["General"], summary="Avisos institucionales")

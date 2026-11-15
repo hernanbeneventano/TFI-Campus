@@ -1,4 +1,11 @@
-"""Foro de consultas por asignatura."""
+"""Foro de consultas por asignatura.
+
+Quién publica sale de la **sesión**: cada ruta recibe `yo` del token de
+Firebase que verifica `servicios/autenticacion.py`. Antes había una constante
+de módulo con el usuario de prueba, de cuando no había login; con sesiones de
+verdad, eso hacía que cada consulta y cada respuesta salieran a nombre de la
+misma persona.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +14,9 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import datos as d
+from ..servicios.autenticacion import IdUsuarioActual
 
 router = APIRouter(prefix="/api/foro", tags=["Foro"])
-
-# Mientras no haya login, el que publica es siempre el usuario de prueba.
-YO = d.usuario_actual["id"]
 
 
 def _autor_de(id_persona: int) -> dict | None:
@@ -37,12 +42,12 @@ def _curso_de(id_curso: Any) -> dict | None:
     )
 
 
-def _con_votos(mensaje: dict) -> dict:
+def _con_votos(mensaje: dict, yo: int) -> dict:
     """Los votos salen contados, nunca con la lista de quiénes fueron: igual
     que las reacciones de Novedades."""
     votos = mensaje.get("votos") or []
     resto = {k: v for k, v in mensaje.items() if k != "votos"}
-    return {**resto, "utiles": len(votos), "loVote": YO in votos}
+    return {**resto, "utiles": len(votos), "loVote": yo in votos}
 
 
 def _resumir(tema: dict) -> dict:
@@ -62,7 +67,7 @@ def _resumir(tema: dict) -> dict:
     }
 
 
-def _detalle_de(tema: dict) -> dict:
+def _detalle_de(tema: dict, yo: int) -> dict:
     siguen = tema.get("siguen") or []
     return {
         "id": tema["id"],
@@ -70,9 +75,11 @@ def _detalle_de(tema: dict) -> dict:
         "curso": _curso_de(tema["cursoId"]),
         "autor": _autor_de(tema["autorId"]),
         "fecha": tema["fecha"],
-        "siguiendo": YO in siguen,
+        "siguiendo": yo in siguen,
         "seguidores": len(siguen),
-        "mensajes": [{**_con_votos(m), "autor": _autor_de(m["autorId"])} for m in tema["mensajes"]],
+        "mensajes": [
+            {**_con_votos(m, yo), "autor": _autor_de(m["autorId"])} for m in tema["mensajes"]
+        ],
     }
 
 
@@ -101,7 +108,7 @@ def listar_temas():
 
 
 @router.post("", status_code=201, summary="Abrir un tema")
-def crear_tema(cuerpo: dict[str, Any] = Body(default={})):
+def crear_tema(cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUsuarioActual):
     curso = _curso_de(cuerpo.get("cursoId"))
     titulo = str(cuerpo.get("titulo") or "").strip()
     texto = str(cuerpo.get("texto") or "").strip()
@@ -116,13 +123,13 @@ def crear_tema(cuerpo: dict[str, Any] = Body(default={})):
         "id": d.nuevo_id_tema(),
         "cursoId": curso["id"],
         "titulo": titulo,
-        "autorId": YO,
+        "autorId": yo,
         "fecha": ahora,
-        "siguen": [YO],
+        "siguen": [yo],
         "mensajes": [
             {
                 "id": d.nuevo_id_mensaje_foro(),
-                "autorId": YO,
+                "autorId": yo,
                 "texto": texto,
                 "fecha": ahora,
                 "votos": [],
@@ -135,12 +142,14 @@ def crear_tema(cuerpo: dict[str, Any] = Body(default={})):
 
 
 @router.get("/{id_tema}", summary="Abrir un tema con sus respuestas")
-def obtener_tema(id_tema: int):
-    return _detalle_de(_buscar_tema(id_tema))
+def obtener_tema(id_tema: int, yo: int = IdUsuarioActual):
+    return _detalle_de(_buscar_tema(id_tema), yo)
 
 
 @router.post("/{id_tema}", status_code=201, summary="Responder un tema")
-def responder(id_tema: int, cuerpo: dict[str, Any] = Body(default={})):
+def responder(
+    id_tema: int, cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUsuarioActual
+):
     tema = _buscar_tema(id_tema)
 
     texto = str(cuerpo.get("texto") or "").strip()
@@ -149,30 +158,30 @@ def responder(id_tema: int, cuerpo: dict[str, Any] = Body(default={})):
 
     mensaje = {
         "id": d.nuevo_id_mensaje_foro(),
-        "autorId": YO,
+        "autorId": yo,
         "texto": texto,
         "fecha": d.iso(d.ahora()),
         "votos": [],
     }
     tema["mensajes"].append(mensaje)
 
-    return {**_con_votos(mensaje), "autor": _autor_de(YO)}
+    return {**_con_votos(mensaje, yo), "autor": _autor_de(yo)}
 
 
 @router.post("/{id_tema}/seguir", summary="Seguir el tema, o dejar de seguirlo")
-def seguir(id_tema: int):
+def seguir(id_tema: int, yo: int = IdUsuarioActual):
     """Por ahora solo se guarda: los avisos van a llegar cuando haya
     notificaciones de verdad."""
     tema = _buscar_tema(id_tema)
 
     siguen = tema.setdefault("siguen", [])
-    tema["siguen"] = [i for i in siguen if i != YO] if YO in siguen else [*siguen, YO]
+    tema["siguen"] = [i for i in siguen if i != yo] if yo in siguen else [*siguen, yo]
 
-    return _detalle_de(tema)
+    return _detalle_de(tema, yo)
 
 
 @router.post("/{id_tema}/mensajes/{id_mensaje}/voto", summary="Marcar una respuesta como útil")
-def votar(id_tema: int, id_mensaje: int):
+def votar(id_tema: int, id_mensaje: int, yo: int = IdUsuarioActual):
     """O sacar el voto, si ya estaba puesto."""
     tema = next((t for t in d.temas_foro if t["id"] == id_tema), None)
     mensaje = (
@@ -182,6 +191,6 @@ def votar(id_tema: int, id_mensaje: int):
         raise HTTPException(404, "Mensaje no encontrado")
 
     votos = mensaje.setdefault("votos", [])
-    mensaje["votos"] = [i for i in votos if i != YO] if YO in votos else [*votos, YO]
+    mensaje["votos"] = [i for i in votos if i != yo] if yo in votos else [*votos, yo]
 
-    return {**_con_votos(mensaje), "autor": _autor_de(mensaje["autorId"])}
+    return {**_con_votos(mensaje, yo), "autor": _autor_de(mensaje["autorId"])}

@@ -74,14 +74,19 @@ def _anotar_fallo(motivo: str, correo: str | None = None) -> None:
         detalle=motivo,
     )
 
-# Mientras el campus se desarrolla conviene poder usarlo sin iniciar sesión.
-# Si no llega token, se responde como el usuario de prueba.
+# Mientras el campus se desarrolla conviene poder usarlo sin iniciar sesión: si
+# no llega token, se responde como el usuario de prueba de `datos.py`.
 #
-# En producción esto tiene que estar apagado: sin él, cualquiera que llegue sin
-# token entra como esa persona. Por eso la variable se llama como se llama y no
-# algo como "modo_desarrollo": que quede claro qué se está permitiendo.
+# **Viene apagado.** Hay que pedirlo a propósito con
+# PERMITIR_USUARIO_SIN_TOKEN=si en `backend/.env`, porque encendido cualquiera
+# que llegue sin token entra como esa persona. Antes venía encendido por
+# defecto, de cuando no había login; ahora que hay, lo que corresponde es que
+# la única forma de entrar sea una cuenta de Firebase.
+#
+# Por eso la variable se llama como se llama y no algo como "modo_desarrollo":
+# que quede claro qué se está permitiendo.
 def _permite_usuario_de_prueba() -> bool:
-    return (os.environ.get("PERMITIR_USUARIO_SIN_TOKEN") or "si").lower() in ("si", "1", "true")
+    return (os.environ.get("PERMITIR_USUARIO_SIN_TOKEN") or "no").lower() in ("si", "1", "true")
 
 
 def _persona_por_correo(correo: str | None) -> dict | None:
@@ -89,6 +94,29 @@ def _persona_por_correo(correo: str | None) -> dict | None:
         return None
     buscado = correo.strip().lower()
     return next((p for p in d.personas if (p.get("correo") or "").lower() == buscado), None)
+
+
+# ===================== Cuentas que no pueden entrar =====================
+# El estado de la cuenta lo administra la secretaría (`rutas/usuarios.py`), y
+# tiene que cortar el acceso acá: deshabilitarla en Firebase evita que pida un
+# token nuevo, pero el que ya tenga en el navegador le sirve hasta que venza.
+# Esta comprobación es inmediata y no cuesta una consulta a Firebase, que es
+# lo que costaría verificar la revocación en cada pedido.
+_CUENTA_NO_ACTIVA = {
+    "suspendida": "Tu cuenta está suspendida. Hablá con la secretaría.",
+    "pendiente": "Tu cuenta todavía no fue activada. Hablá con la secretaría.",
+}
+
+
+def _exigir_cuenta_activa(persona: dict) -> None:
+    estado = persona.get("estado", "activa")
+    if estado == "activa":
+        return
+    _anotar_fallo(f"La cuenta está {estado}", persona.get("correo"))
+    raise HTTPException(
+        403,
+        _CUENTA_NO_ACTIVA.get(estado, "Tu cuenta no está activa. Hablá con la secretaría."),
+    )
 
 
 def _token_de(peticion: Request) -> str | None:
@@ -112,6 +140,7 @@ def identificar(peticion: Request) -> dict:
         if _permite_usuario_de_prueba():
             persona = d.buscar_persona(d.usuario_actual["id"])
             if persona:
+                _exigir_cuenta_activa(persona)
                 return persona
         raise HTTPException(401, "Hay que iniciar sesión")
 
@@ -142,13 +171,23 @@ def identificar(peticion: Request) -> dict:
             "Tu cuenta no está dada de alta en el campus. Pedí el alta en la secretaría.",
         )
 
+    # El token es válido y la persona existe, pero su cuenta puede estar
+    # suspendida o todavía sin activar
+    _exigir_cuenta_activa(persona)
+
     _anotar_ingreso(persona)
     return persona
 
 
-def identificar_id(peticion: Request) -> int:
-    """El identificador de quien consulta, para las rutas que solo necesitan eso."""
-    return identificar(peticion)["id"]
+def identificar_id(persona: dict = Depends(identificar)) -> int:
+    """El identificador de quien consulta, para las rutas que solo necesitan eso.
+
+    Depende de `identificar` por el sistema de dependencias y no llamándola a
+    mano: así FastAPI la resuelve una sola vez por pedido aunque la ruta pida
+    las dos cosas, y un reemplazo de `identificar` —como el de las pruebas—
+    vale también para esta.
+    """
+    return persona["id"]
 
 
 # Atajos para leer en las rutas

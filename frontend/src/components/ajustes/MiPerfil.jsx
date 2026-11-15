@@ -151,14 +151,16 @@ export default function MiPerfil({ datos, onGuardado }) {
               onChange={(e) => cambio({ nombre: e.target.value })}
             />
           </label>
+          {/* El correo no se edita: es con el que se entra al campus. Si se
+              cambiara acá, la cuenta de Firebase seguiría con el viejo y el
+              campus dejaría de reconocer a la persona. Lo cambia la
+              secretaría, y el servidor rechaza el intento igual. */}
           <label>
             <span>Correo electrónico</span>
-            <input
-              type="email"
-              value={campos.correo}
-              maxLength={150}
-              onChange={(e) => cambio({ correo: e.target.value })}
-            />
+            <input type="email" value={campos.correo} readOnly disabled />
+            <small className="texto-suave">
+              Es con el que iniciás sesión. Si está mal, avisale a la secretaría.
+            </small>
           </label>
         </div>
 

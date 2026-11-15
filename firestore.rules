@@ -1,0 +1,95 @@
+// Reglas de seguridad de Cloud Firestore para CampusTFI.
+//
+// Se pegan en la consola de Firebase (Firestore Database → Reglas) o se
+// publican con la CLI. Están en el repositorio a propósito: son parte del
+// control de acceso del campus, igual que los permisos del backend, y tienen
+// que poder revisarse y versionarse como cualquier otro código.
+//
+// ---------------------------------------------------------------------------
+// Por qué hoy niegan todo, y por qué eso es lo correcto
+// ---------------------------------------------------------------------------
+// Estas reglas solo se aplican a quien entra a Firestore **directo desde el
+// navegador**. El backend del campus usa la clave de la cuenta de servicio,
+// que se saltea las reglas por diseño, y hoy el navegador nunca habla con
+// Firestore: todo pasa por la API de FastAPI, que verifica el token y aplica
+// los permisos de cada rol en cada ruta.
+//
+// Mientras siga así, lo correcto es la regla más cerrada posible. Una regla
+// permisiva "por si acaso" abriría la base entera a cualquiera que tenga la
+// clave web, que viaja en el navegador de todo el mundo y no es secreta.
+//
+// ---------------------------------------------------------------------------
+// Qué hacer el día que una pantalla lea Firestore sin el backend
+// ---------------------------------------------------------------------------
+// Descomentar el bloque de abajo y escribir una regla por colección. Los
+// roles llegan en el token: `servicios/cuentas.sincronizar_roles` los copia
+// como *custom claims* cada vez que cambian, así que las reglas pueden leer
+// `request.auth.token.roles` sin consultar otro documento.
+//
+// Ojo con una cosa: un rol recién cambiado **no aparece en el token hasta que
+// se renueva**, lo que puede tardar hasta una hora. Para verlo en el momento
+// hay que forzarlo en el navegador con `getIdToken(true)`.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Nadie entra directo desde el navegador: todo pasa por el backend, que
+    // usa la cuenta de servicio y decide con los roles de `personas`.
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // Para cuando haga falta. Los cuatro roles del campus son:
+    // Estudiante · Docente · Supervisor · Administrador
+    // ---------------------------------------------------------------------
+    //
+    // function tieneRol(rol) {
+    //   return request.auth != null
+    //       && request.auth.token.roles != null
+    //       && rol in request.auth.token.roles;
+    // }
+    //
+    // function esAdministrador() { return tieneRol('Administrador'); }
+    //
+    // // Quien controla sin ser cátedra: ve lo académico, no toca cuentas
+    // function esSupervision() { return esAdministrador() || tieneRol('Supervisor'); }
+    //
+    // function esDocente() { return tieneRol('Docente'); }
+    //
+    // function soyYo(personaId) {
+    //   return request.auth != null && request.auth.uid == personaId;
+    // }
+    //
+    // // El padrón: cualquiera que entró puede ver quién es quién —hace falta
+    // // para mostrar nombres y avatares—, pero los roles y el estado de una
+    // // cuenta los cambia únicamente el administrador.
+    // match /personas/{personaId} {
+    //   allow read: if request.auth != null;
+    //   allow create, delete: if esAdministrador();
+    //   allow update: if esAdministrador()
+    //                 || (soyYo(personaId)
+    //                     && !request.resource.data.diff(resource.data)
+    //                          .affectedKeys()
+    //                          .hasAny(['roles', 'estado', 'legajo']));
+    // }
+    //
+    // // Las mesas de examen las ve cualquiera que entró; crearlas,
+    // // reprogramarlas y cargar las actas sigue pasando por el backend, que
+    // // es el que sabe quién es titular de cada materia.
+    // match /mesasExamen/{mesaId} {
+    //   allow read: if request.auth != null;
+    //   allow write: if false;
+    // }
+    //
+    // // El registro de auditoría se lee y no se escribe nunca desde afuera:
+    // // lo escribe el backend. Que la regla lo prohíba es más fuerte que
+    // // confiar en que nadie lo intente.
+    // match /auditoria/{eventoId} {
+    //   allow read: if esSupervision();
+    //   allow write: if false;
+    // }
+  }
+}

@@ -71,7 +71,11 @@ _MESES = [
 
 # ===================== Permisos =====================
 def _es_supervisor(persona: dict) -> bool:
-    """Todavía no hay rol de administrador. Cuando exista, va acá."""
+    """Quien controla sin ser cátedra: la administración y la supervisión.
+
+    Ven todas las mesas, todos los inscriptos y todas las actas. No crean
+    mesas, no las mueven y no califican: eso es de la cátedra.
+    """
     return d.tiene_rol(persona, "Administrador", "Supervisor")
 
 
@@ -90,7 +94,15 @@ def _puede_ver(yo: dict, mesa: dict) -> bool:
 
 
 def _puede_administrar(yo: dict, mesa: dict) -> bool:
-    return _es_supervisor(yo) or _es_titular(yo, mesa)
+    """Crear, modificar y cancelar una mesa es de la cátedra.
+
+    La supervisión y la administración la ven entera, con sus inscriptos y su
+    acta, pero no la mueven: la mesa es de quien la toma, y si hay que
+    reprogramarla lo hace la cátedra y queda su nombre en el historial. Antes
+    acá entraba también la supervisión, que contradecía tanto el mensaje de
+    error de las rutas como el resto de la documentación.
+    """
+    return _es_titular(yo, mesa)
 
 
 def _puede_calificar(yo: dict, mesa: dict) -> bool:
@@ -98,14 +110,15 @@ def _puede_calificar(yo: dict, mesa: dict) -> bool:
 
 
 def _materias_que_administra(yo: dict) -> list[dict]:
-    """Las materias del plan que el docente tiene a cargo.
+    """Las materias del plan en las que puede crear una mesa.
+
+    Son las que dicta, y nada más: la supervisión ve las mesas de todos pero
+    no le pone fecha de examen a una materia que no dicta.
 
     Las mesas son de una materia del plan, no de un módulo: la cursada de este
     cuatrimestre es un módulo, pero el final lo rinde quien quedó regular en
     cualquier cursada anterior.
     """
-    if _es_supervisor(yo):
-        return list(d.materias_plan)
     return d.materias_que_dicta(yo["id"])
 
 

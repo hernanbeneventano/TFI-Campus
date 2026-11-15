@@ -17,6 +17,65 @@ const ESTADO = {
   pendiente: 'en-riesgo',
 };
 
+// Lo que hay que pasarle a la persona para que entre la primera vez. Se
+// muestra una sola vez, al crearla: la contraseña no queda guardada en ningún
+// lado, así que si se cierra este cartel sin copiarla hay que cambiarla.
+function DatosDeAcceso({ cuenta, onCerrar }) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar() {
+    const texto = `Campus: ${location.origin}/login
+Correo: ${cuenta.correo}
+Contraseña: ${cuenta.contrasena}`;
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+    } catch {
+      // Algunos navegadores lo niegan; el texto está a la vista para copiarlo a mano
+      avisar('No se pudo copiar. Seleccionalo a mano.', 'error');
+    }
+  }
+
+  return (
+    <div className="correccion-fondo" role="presentation">
+      <div className="correccion" role="dialog" aria-modal="true" aria-labelledby="acceso-titulo">
+        <h3 id="acceso-titulo">Cuenta creada</h3>
+        <p className="correccion-trabajo">
+          Pasale estos datos a {cuenta.nombre}. Con eso entra la próxima vez, y después
+          puede cambiar la contraseña desde «¿Olvidaste tu contraseña?».
+        </p>
+
+        <dl className="datos-acceso">
+          <div>
+            <dt>Correo</dt>
+            <dd>{cuenta.correo}</dd>
+          </div>
+          <div>
+            <dt>Contraseña</dt>
+            <dd>
+              <strong>{cuenta.contrasena}</strong>
+            </dd>
+          </div>
+        </dl>
+
+        <p className="texto-suave">
+          No se guarda en ninguna parte: si cerrás esto sin copiarla, hay que ponerle
+          una nueva.
+        </p>
+
+        <div className="editor-botones">
+          <button type="button" className="boton-suave" onClick={copiar}>
+            {copiado ? 'Copiado' : 'Copiar los datos'}
+          </button>
+          <button type="button" className="boton-principal" onClick={onCerrar}>
+            Listo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Editor({ usuario, roles, estados, yo, onGuardar, onCerrar, trabajando }) {
   const [elegidos, setElegidos] = useState(usuario.roles ?? []);
   const [estado, setEstado] = useState(usuario.estadoCuenta ?? 'activa');
@@ -117,6 +176,7 @@ function Editor({ usuario, roles, estados, yo, onGuardar, onCerrar, trabajando }
 function Alta({ roles, onGuardar, onCerrar, trabajando }) {
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
+  const [contrasena, setContrasena] = useState('');
   const [elegidos, setElegidos] = useState(['Estudiante']);
 
   return (
@@ -131,7 +191,13 @@ function Alta({ roles, onGuardar, onCerrar, trabajando }) {
         aria-modal="true"
         onSubmit={(e) => {
           e.preventDefault();
-          onGuardar({ nombre: nombre.trim(), correo: correo.trim(), roles: elegidos });
+          onGuardar({
+            nombre: nombre.trim(),
+            correo: correo.trim(),
+            roles: elegidos,
+            // Vacía, el servidor genera una al azar y la devuelve una vez
+            contrasena: contrasena.trim() || undefined,
+          });
         }}
       >
         <button
@@ -146,7 +212,9 @@ function Alta({ roles, onGuardar, onCerrar, trabajando }) {
 
         <h3>Dar de alta una cuenta</h3>
         <p className="correccion-trabajo">
-          Queda pendiente hasta que se le cree el acceso en Firebase Authentication.
+          La cuenta queda lista para usar: con estos datos, la persona ya puede entrar
+          la próxima vez que lo intente. Es el único modo de tener cuenta en el campus:
+          nadie se registra por su cuenta.
         </p>
 
         <label>
@@ -169,6 +237,23 @@ function Alta({ roles, onGuardar, onCerrar, trabajando }) {
             placeholder="nombre.apellido@campustfi.edu.ar"
             onChange={(e) => setCorreo(e.target.value)}
           />
+        </label>
+
+        <label>
+          <span>Contraseña</span>
+          <input
+            type="text"
+            value={contrasena}
+            minLength={6}
+            maxLength={72}
+            placeholder="Al menos 6 caracteres. Vacía, se genera una."
+            onChange={(e) => setContrasena(e.target.value)}
+          />
+          <small className="texto-suave">
+            Es la que hay que darle a la persona para que entre la primera vez. Se
+            muestra una sola vez al crear la cuenta y no queda guardada: después cada
+            uno pone la suya desde «¿Olvidaste tu contraseña?».
+          </small>
         </label>
 
         <fieldset className="editor-tipos compacto">
@@ -214,6 +299,8 @@ export default function Cuentas({ yo }) {
   const [rol, setRol] = useState('');
   const [editando, setEditando] = useState(null);
   const [creando, setCreando] = useState(false);
+  // La cuenta que se acaba de crear, mientras se muestran sus datos de acceso
+  const [recienCreada, setRecienCreada] = useState(null);
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState(null);
 
@@ -232,11 +319,17 @@ export default function Cuentas({ yo }) {
   async function accionar(accion, exito) {
     setTrabajando(true);
     try {
-      await accion();
+      const resultado = await accion();
       setEditando(null);
       setCreando(false);
       traer();
       avisar(exito);
+
+      // El campus hizo lo suyo, pero el acceso en Firebase puede haber
+      // fallado: la cuenta queda sin poder entrar y hay que decirlo.
+      if (resultado?.acceso && resultado.acceso.hecho === false) {
+        avisar(resultado.acceso.motivo ?? 'El acceso quedó pendiente.', 'error');
+      }
     } catch (e) {
       avisar(e.message, 'error');
     } finally {
@@ -351,8 +444,25 @@ export default function Cuentas({ yo }) {
           roles={datos.roles}
           trabajando={trabajando}
           onCerrar={() => setCreando(false)}
-          onGuardar={(valores) => accionar(() => crearUsuario(valores), 'Cuenta creada.')}
+          onGuardar={(valores) =>
+            accionar(async () => {
+              const respuesta = await crearUsuario(valores);
+              // La contraseña viene una sola vez, acá: se muestra enseguida
+              if (respuesta?.acceso?.contrasena) {
+                setRecienCreada({
+                  nombre: valores.nombre,
+                  correo: valores.correo,
+                  contrasena: respuesta.acceso.contrasena,
+                });
+              }
+              return respuesta;
+            }, 'Cuenta creada.')
+          }
         />
+      )}
+
+      {recienCreada && (
+        <DatosDeAcceso cuenta={recienCreada} onCerrar={() => setRecienCreada(null)} />
       )}
     </>
   );

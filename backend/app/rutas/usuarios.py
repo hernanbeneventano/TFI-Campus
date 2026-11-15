@@ -12,18 +12,26 @@ Los campos sensibles —roles, estado, legajo— están separados de los que uno
 edita de sí mismo. No es una cuestión de esconder botones: son dos rutas
 distintas con dos permisos distintos.
 
-**Contraseña y sesiones** no están acá. Las maneja Firebase Authentication,
-que todavía no está habilitado: ver `servicios/autenticacion.py`.
+**Contraseña y sesiones** no están acá: las maneja Firebase Authentication.
+El campus nunca ve una contraseña. Lo que sí hace esta ruta es mantener los
+dos lados de acuerdo —el padrón de `personas` y el acceso en Firebase— a
+través de `servicios/cuentas.py`: al dar de alta crea el acceso, al cambiar
+los roles los copia al token y al suspender una cuenta la deshabilita.
+
+Si Firebase no responde, la operación del campus **no falla**: la cuenta
+queda `pendiente` y la respuesta trae el motivo en `acceso`, para que la
+secretaría sepa que esa persona todavía no puede entrar.
 """
 
 from __future__ import annotations
 
 import re
+import secrets
 
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import datos as d
-from ..servicios import auditoria
+from ..servicios import auditoria, cuentas
 from ..servicios.autenticacion import UsuarioActual
 from .institucion import es_administrador
 
@@ -90,6 +98,50 @@ def _anotar(
     )
 
 
+def _informe(*resultados: cuentas.Resultado) -> dict:
+    """Lo que hay que contarle a la secretaría sobre el acceso en Firebase.
+
+    Se queda con la primera falla, que es la que hay que resolver; si no hubo
+    ninguna, con lo que salió bien. El enlace sirve para que la persona elija
+    su contraseña la primera vez.
+    """
+    fallada = next((r for r in resultados if not r.hecho), None)
+    elegida = fallada or (resultados[0] if resultados else cuentas.Resultado(True))
+    return {
+        "hecho": elegida.hecho,
+        "motivo": elegida.motivo,
+        "enlace": elegida.enlace,
+        # Se muestra una sola vez, al dar el alta: no queda guardada
+        "contrasena": elegida.contrasena,
+    }
+
+
+# Firebase pide seis caracteres como mínimo
+MINIMO_CONTRASENA = 6
+
+
+def _contrasena_provisoria(cuerpo: dict) -> str:
+    """La que elija quien da el alta, o una al azar si no puso ninguna.
+
+    Al azar es mejor que una fija: una contraseña inicial igual para todos
+    sería, en la práctica, no tener contraseña. Se muestra una vez en la
+    pantalla del alta y no se guarda; después la cambia cada uno.
+    """
+    elegida = cuerpo.get("contrasena")
+    if elegida in (None, ""):
+        return secrets.token_urlsafe(6)
+
+    if not isinstance(elegida, str):
+        raise HTTPException(400, "La contraseña tiene que ser texto")
+    if len(elegida) < MINIMO_CONTRASENA:
+        raise HTTPException(
+            400, f"La contraseña tiene que tener al menos {MINIMO_CONTRASENA} caracteres"
+        )
+    if len(elegida) > 72:
+        raise HTTPException(400, "La contraseña es demasiado larga")
+    return elegida
+
+
 def _perfil(persona: dict, completo: bool = False) -> dict:
     """La ficha de una persona, con sus asociaciones académicas."""
     salida = {
@@ -145,16 +197,18 @@ def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     if "nombre" in cuerpo:
         yo["nombre"] = _texto(cuerpo["nombre"], "el nombre", 120, obligatorio=True)
 
-    if "correo" in cuerpo:
-        correo = _texto(cuerpo["correo"], "el correo", 150, obligatorio=True)
-        if not CORREO.match(correo):
-            raise HTTPException(400, "Ese correo no tiene un formato válido")
-        if any(
-            p.get("correo", "").lower() == correo.lower() and p["id"] != yo["id"]
-            for p in d.personas
-        ):
-            raise HTTPException(409, "Ya hay una cuenta con ese correo")
-        yo["correo"] = correo
+    if "correo" in cuerpo and (cuerpo["correo"] or "").strip().lower() != (
+        yo.get("correo") or ""
+    ).lower():
+        # El correo es la identidad de la cuenta: es con lo que el servidor
+        # reconoce a la persona detrás del token de Firebase. Si se lo
+        # cambiara acá, su cuenta de Firebase seguiría con el viejo y el
+        # campus dejaría de reconocerla: se quedaría afuera ella misma.
+        raise HTTPException(
+            403,
+            "El correo no se cambia desde acá: es con el que entrás. "
+            "Pedíselo a la secretaría.",
+        )
 
     if "dni" in cuerpo:
         dni = _texto(cuerpo["dni"], "el DNI", 10)
@@ -261,6 +315,9 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
             "No podés cambiarte los roles a vos mismo. Pedíselo a otro administrador.",
         )
 
+    # Lo que haya que hacer en Firebase según lo que se cambie acá
+    hechos: list[cuentas.Resultado] = []
+
     if "roles" in cuerpo:
         roles = cuerpo["roles"]
         if not isinstance(roles, list) or not roles:
@@ -284,6 +341,10 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
 
         antes = d.roles_de(persona)
         persona["roles"] = list(dict.fromkeys(roles))
+        # Los roles también viajan en el token, para las reglas de Firestore.
+        # Los permisos de la API no dependen de esto: los decide el servidor
+        # leyendo `personas`.
+        hechos.append(cuentas.sincronizar_roles(persona.get("correo", ""), persona["roles"]))
         _anotar(
             yo,
             "roles cambiados",
@@ -298,6 +359,9 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
             raise HTTPException(400, "Ese estado de cuenta no existe")
         antes_estado = persona.get("estado", "activa")
         persona["estado"] = cuerpo["estado"]
+        # Suspender en el campus tiene que cortar el acceso de verdad: si no,
+        # la persona no entra a la API pero sigue pudiendo iniciar sesión.
+        hechos.append(cuentas.cambiar_estado(persona.get("correo", ""), persona["estado"]))
         _anotar(
             yo,
             "estado de cuenta cambiada",
@@ -307,15 +371,27 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
             despues={"estado": persona["estado"]},
         )
 
-    return {"usuario": _perfil(persona, completo=True)}
+    return {"usuario": _perfil(persona, completo=True), "acceso": _informe(*hechos)}
 
 
 @router.post("", status_code=201, summary="Dar de alta una cuenta")
 def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
-    """Alta de una persona en el campus.
+    """Alta de una persona en el campus, con su acceso.
 
-    La cuenta queda **pendiente**: existe en el padrón, pero el acceso real
-    llega cuando se le cree el usuario en Firebase Authentication.
+    Es el único camino para que exista una cuenta: **nadie se registra solo**.
+    La secretaría carga los datos, y con eso la persona ya puede entrar la
+    próxima vez que lo intente.
+
+    Se la agrega al padrón, se le crea la cuenta en Firebase Authentication y
+    se le deja una **contraseña provisoria**: la que haya puesto quien da el
+    alta, o una al azar. Viaja en la respuesta para mostrarla una vez —es lo
+    que hay que pasarle a la persona— y no se guarda en ninguna parte: el
+    campus no puede volver a mostrarla, solo cambiarla. Después cada uno pone
+    la suya desde «¿Olvidaste tu contraseña?».
+
+    Si el acceso no se pudo crear, la cuenta queda **pendiente**: figura en el
+    padrón pero no entra, y el servidor se lo dice con todas las letras
+    cuando lo intente.
     """
     if not es_administrador(yo):
         raise HTTPException(403, "Solo el administrador puede dar de alta cuentas")
@@ -345,5 +421,18 @@ def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
         "creada": d.iso(d.ahora()),
     }
     d.personas.append(persona)
-    _anotar(yo, "cuenta creada", f"{nombre} ({', '.join(persona['roles'])})", persona["id"])
-    return {"usuario": _perfil(persona, completo=True)}
+
+    acceso = cuentas.crear(correo, nombre, _contrasena_provisoria(cuerpo))
+    if acceso.hecho:
+        # Ya puede entrar, con la contraseña provisoria
+        persona["estado"] = "activa"
+        cuentas.sincronizar_roles(correo, persona["roles"])
+
+    _anotar(
+        yo,
+        "cuenta creada",
+        f"{nombre} ({', '.join(persona['roles'])})",
+        persona["id"],
+        despues={"roles": persona["roles"], "acceso": "creado" if acceso.hecho else "pendiente"},
+    )
+    return {"usuario": _perfil(persona, completo=True), "acceso": _informe(acceso)}

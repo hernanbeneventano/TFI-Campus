@@ -60,13 +60,6 @@ async function borrar(ruta) {
 }
 
 export const obtenerUsuarioActual = () => pedir('/me');
-// Al guardar el perfil se avisa: el menú lateral tiene el nombre y lo pidió
-// una sola vez, al arrancar.
-export const guardarPerfil = (datos) =>
-  actualizar('/me', datos).then((usuario) => {
-    window.dispatchEvent(new CustomEvent('campustfi:perfil'));
-    return usuario;
-  });
 export const obtenerCursos = () => pedir('/cursos');
 
 // Al cambiar un favorito se avisa: el menú lateral tiene su propia copia de

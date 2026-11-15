@@ -11,6 +11,8 @@ import {
   guardarFinalesDesplegados,
 } from '../services/preferencias.js';
 import { obtenerCursos } from '../services/api.js';
+import { salir } from '../services/sesion.js';
+import { avisar } from '../services/avisos.js';
 import usePresencia from '../hooks/usePresencia.js';
 import usePreferencia from '../hooks/usePreferencia.js';
 import {
@@ -220,6 +222,17 @@ export default function MenuLateral({ usuario, contadores }) {
   useEffect(() => {
     setCerrado(enModulo ? true : leerMenuCerrado());
   }, [enModulo]);
+
+  async function cerrarSesion() {
+    try {
+      await salir();
+    } catch {
+      // Si falla el cierre la sesión sigue abierta, y hay que decirlo: dejar
+      // la pantalla como si hubiera salido sería mentirle a quien está en una
+      // computadora compartida.
+      avisar('No se pudo cerrar la sesión. Probá de nuevo.', 'error');
+    }
+  }
 
   // Los alumnos llevan la silueta con birrete; los docentes, la genérica
   const Avatar = usuario?.rol === 'Estudiante' ? IconoEstudiante : IconoUsuario;
@@ -461,8 +474,7 @@ export default function MenuLateral({ usuario, contadores }) {
       </nav>
 
       {/* Al pasar el mouse (o al llegar con el teclado) el nombre y el rol se
-          desvanecen y en su lugar aparecen Ajustes y Cerrar sesión. Todavía
-          no hacen nada: faltan esas pantallas y el login. */}
+          desvanecen y en su lugar aparecen Ajustes y Cerrar sesión. */}
       <div className="menu-usuario-caja">
         <div className="menu-usuario" title={`${nombreCompleto} · ${textoEstado[estado]}`}>
           <span className={`menu-avatar avatar-estado ${estado}`}>
@@ -478,10 +490,12 @@ export default function MenuLateral({ usuario, contadores }) {
             <Link to="/ajustes" title="Ajustes" aria-label="Ajustes">
               <IconoAjustes />
             </Link>
-            {/* Todavía no hace nada: llega con el login */}
+            {/* No hace falta navegar: al cerrar la sesión, Firebase avisa y
+                `App.jsx` manda solo a la pantalla de inicio de sesión. */}
             <button
               type="button"
-              title="Cerrar sesión (disponible cuando esté el login)"
+              onClick={cerrarSesion}
+              title="Cerrar sesión"
               aria-label="Cerrar sesión"
             >
               <IconoSalir />
