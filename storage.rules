@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// Firebase Storage **no se usa**: los archivos del campus van a Cloudflare R2.
+// Estas reglas están para que el bucket, si alguna vez se habilita por error
+// o por otro producto de Firebase, no quede abierto.
+//
+// Ver `backend/app/servicios/almacenamiento.py` para el almacenamiento real.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{todo=**} {
+      allow read, write: if false;
+    }
+  }
+}

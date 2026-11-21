@@ -7,20 +7,21 @@ interactiva se genera sola y queda en /docs.
 from __future__ import annotations
 
 import os
-import re
+import secrets
 from contextlib import asynccontextmanager
-from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import Body, Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import datos as d
 from .rutas import biblioteca, calendario, cursos, finales, foro, gestion_finales
 from .rutas import gestion_modulo
+from .rutas import archivos as rutas_archivos
 from .rutas import asistencias as rutas_asistencias
 from .rutas import auditoria as rutas_auditoria
 from .rutas import panel as rutas_panel
@@ -32,6 +33,7 @@ from .rutas import salud as rutas_salud
 from .servicios import certificados
 from .servicios.autenticacion import identificar
 from .servicios.firestore import inicializar_firestore
+from .servicios import almacenamiento, frenos, legajos, persistencia
 
 load_dotenv()
 
@@ -42,8 +44,32 @@ certificados.configurar()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    inicializar_firestore()
+    """Al arrancar: conectar con Firestore y traer el campus.
+
+    Si no hay credenciales o Firestore no responde, el servidor **levanta
+    igual** y trabaja en memoria: que la base no esté disponible no tiene por
+    qué dejar a la facultad sin campus. Lo que no puede pasar es que no se
+    note, así que se dice en el arranque.
+    """
+    try:
+        inicializar_firestore()
+    except Exception as error:  # noqa: BLE001
+        print(f"[firestore] sin conexión: {error}")
+    print(f"[datos] {persistencia.iniciar()}")
+
+    # Al personal que todavía no tiene legajo del campus se le asigna uno.
+    # Pasa con las cuentas creadas antes de que existieran los legajos, y con
+    # cualquiera que cambie de rol: un docente nuevo necesita su número para
+    # firmar un acta, y no hay dónde pedirlo a mano.
+    sin_legajo = [p for p in d.personas if not p.get("legajo")]
+    nuevos = [p for p in sin_legajo if legajos.asegurar_institucional(p)]
+    if nuevos:
+        print(f"[legajos] asignados a {len(nuevos)} personas del personal")
+
+    print(f"[archivos] {almacenamiento.iniciar()}")
     yield
+    # Lo último que se haya hecho, antes de cerrar
+    persistencia.guardar_cambios()
 
 
 app = FastAPI(
@@ -90,9 +116,20 @@ async def manejar_error(request: Request, exc: Exception):
 
 
 # ===================== Rutas generales =====================
+# Cambia en cada arranque del servidor. El navegador lo compara con el que
+# tenía guardado y, si no coincide, cierra la sesión y manda al login.
+#
+# Hace falta porque la sesión de Firebase vive en el navegador: reiniciar el
+# backend no la toca, y se seguía entrando como quien hubiera quedado logueado
+# la última vez. Para probar los roles eso es un estorbo —uno quiere arrancar
+# siempre desde el login— y, con el campus en desarrollo, también evita quedar
+# con media pantalla de datos viejos de antes del reinicio.
+ARRANQUE = secrets.token_hex(8)
+
+
 @app.get("/api/salud", tags=["General"], summary="Comprobar que el servidor responde")
 def salud():
-    return {"estado": "ok", "app": "CampusTFI"}
+    return {"estado": "ok", "app": "CampusTFI", "instancia": ARRANQUE}
 
 
 @app.get("/api/me", tags=["General"], summary="El usuario que inició sesión")
@@ -109,101 +146,39 @@ def obtener_usuario(persona: dict = Depends(identificar)):
             # El menú lateral muestra el nombre partido
             "nombre": primero,
             "apellido": resto,
+            # La foto la pone `con_presencia`, que la firma a partir de la
+            # clave del archivo. Ponerla también acá la firmaba sobre el
+            # diccionario ya modificado —es decir, sobre la dirección— y la
+            # firma no validaba.
         }
     )
 
 
-@app.put("/api/me", tags=["General"], summary="Editar el perfil propio")
-def editar_usuario(cuerpo: dict[str, Any] = Body(default={})):
-    """El rol no se toca desde acá: lo define la facultad, no la persona."""
-    nombre = str(cuerpo.get("nombre") or "").strip()
-    apellido = str(cuerpo.get("apellido") or "").strip()
-    correo = str(cuerpo.get("correo") or "").strip()
-
-    if not nombre or not apellido:
-        return JSONResponse(
-            status_code=400, content={"error": "El nombre y el apellido no pueden estar vacíos"}
-        )
-    if correo and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", correo):
-        return JSONResponse(status_code=400, content={"error": "Ese correo no parece válido"})
-
-    d.usuario_actual["nombre"] = nombre
-    d.usuario_actual["apellido"] = apellido
-    d.usuario_actual["correo"] = correo
-
-    # La lista de personas tiene el nombre completo: hay que mantenerla igual
-    persona = d.buscar_persona(d.usuario_actual["id"])
-    if persona:
-        persona["nombre"] = f"{nombre} {apellido}"
-
-    return d.con_presencia(d.usuario_actual)
+# `PUT /api/me` **se eliminó**. No pedía sesión y escribía sobre
+# `d.usuario_actual` —el usuario de prueba— en vez de sobre quien llamaba, así
+# que ni editaba el perfil de nadie ni tenía por qué dejar escribir a
+# cualquiera. El perfil propio se edita en `PUT /api/usuarios/yo`, que sí
+# comprueba la sesión y guarda donde corresponde.
 
 
 @app.get("/api/contadores", tags=["General"], summary="Las campanitas del menú")
-def contadores():
-    """Cuántas cosas nuevas hay en cada apartado."""
-    return d.resumen_de_novedades(d.usuario_actual["id"])
+def contadores(persona: dict = Depends(identificar)):
+    """Cuántas cosas nuevas hay en cada apartado, **para quien pregunta**.
+
+    Contaba siempre sobre `d.usuario_actual`, el usuario de prueba: todos
+    veían los mismos números y no eran los suyos. Es de lo poco que se mira
+    en cada pantalla, así que equivocarse ahí se nota en todo el campus.
+    """
+    return d.resumen_de_novedades(persona["id"])
 
 
-@app.get("/api/informacion", tags=["General"], summary="Avisos institucionales")
-def obtener_informacion():
-    avisos = [
-        {
-            "id": publicacion["id"],
-            "categoria": publicacion["categoria"],
-            "titulo": publicacion["titulo"],
-            "cuerpo": publicacion["cuerpo"],
-            "fecha": publicacion["fecha"],
-        }
-        for publicacion in d.publicaciones
-        if publicacion.get("ambito") == "Institucional"
-    ]
-    return sorted(avisos, key=lambda aviso: d.desde_iso(aviso["fecha"]), reverse=True)
+# `GET /api/informacion` y `GET /api/actividad` **se eliminaron**. Ninguna
+# pantalla las usaba: la primera repetía las novedades institucionales, que ya
+# salen de `/api/novedades` con el control de alcance puesto, y la segunda
+# quedó de la pantalla «Actividad» que reemplazó el Calendario —leía
+# `tarea["entregada"]`, un campo que dejó de existir cuando la entrega pasó a
+# ser de cada alumno—. Las dos respondían sin pedir sesión.
 
-
-@app.get("/api/actividad", tags=["General"], summary="Actividad agrupada para la interfaz actual")
-def obtener_actividad():
-    grupos = {"importante": [], "proximo": [], "hoy": [], "reciente": []}
-    ahora = d.ahora()
-
-    for tarea in d.tareas:
-        if tarea.get("entregada"):
-            continue
-
-        fecha = d.desde_iso(tarea["fechaLimite"])
-        grupo = (
-            "importante"
-            if fecha < ahora
-            else "hoy"
-            if fecha.astimezone().date() == ahora.date()
-            else "proximo"
-        )
-        curso = d.buscar_curso(tarea["cursoId"])
-        grupos[grupo].append(
-            {
-                "id": f"tarea-{tarea['id']}",
-                "tipo": "entrega",
-                "titulo": tarea["titulo"],
-                "curso": curso["nombre"] if curso else "Campus",
-                "fecha": tarea["fechaLimite"],
-            }
-        )
-
-    for publicacion in d.publicaciones:
-        curso = d.buscar_curso(publicacion.get("cursoId"))
-        grupos["reciente"].append(
-            {
-                "id": f"novedad-{publicacion['id']}",
-                "tipo": "anuncio",
-                "titulo": publicacion["titulo"],
-                "curso": curso["nombre"] if curso else publicacion.get("ambito", "Campus"),
-                "fecha": publicacion["fecha"],
-            }
-        )
-
-    for elementos in grupos.values():
-        elementos.sort(key=lambda elemento: d.desde_iso(elemento["fecha"]), reverse=True)
-    return grupos
 
 
 # ===================== Routers =====================
@@ -220,6 +195,46 @@ async def recordar_peticion(peticion, seguir):
         auditoria.peticion_actual.reset(marca)
 
 
+# ===================== Guardar lo que cambió =====================
+# Después de cada petición se compara la memoria con lo último que se escribió
+# y se manda a Firestore la diferencia. Ver `servicios/persistencia.py`: se
+# hace acá, en un solo lugar, para que ninguna ruta tenga que acordarse de
+# guardar y un módulo nuevo quede persistido por usar `datos.py` y nada más.
+#
+# Va también en las consultas, no solo en las que escriben: varias de lectura
+# dejan rastro —la auditoría anota los ingresos, y abrir Módulos crea los
+# módulos que falten—, así que mirar el método daría por no guardado algo que
+# sí cambió.
+@app.middleware("http")
+async def guardar_lo_que_cambio(peticion, seguir):
+    respuesta = await seguir(peticion)
+    if persistencia.activo():
+        await run_in_threadpool(persistencia.guardar_cambios)
+    return respuesta
+
+
+# ===================== Los frenos =====================
+# Van declarados al final de los middlewares a propósito: Starlette los corre
+# en orden inverso al que se agregan, así que este es el **primero** que ve la
+# petición. Tiene que serlo: frenar después de identificar, auditar y leer el
+# cuerpo es hacer todo el trabajo que se quería evitar.
+@app.middleware("http")
+async def frenar_lo_que_sobra(peticion, seguir):
+    if frenos.demasiado_grande(peticion):
+        return JSONResponse(
+            status_code=413,
+            content={"error": f"El envío supera los {frenos.MAXIMO_MB} MB."},
+        )
+    if frenos.excede(peticion):
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Demasiadas peticiones seguidas. Esperá un momento."},
+            headers={"Retry-After": str(frenos.VENTANA_SEGUNDOS)},
+        )
+    return await seguir(peticion)
+
+
+app.include_router(rutas_archivos.router)
 app.include_router(cursos.router)
 app.include_router(tareas.router)
 app.include_router(mensajes.router)
@@ -242,15 +257,48 @@ app.include_router(rutas_panel.router)
 app.include_router(rutas_salud.router)
 
 
+# ===================== Arranque =====================
+# **Un solo proceso, siempre.** La memoria del servidor es la copia de
+# trabajo del campus y lo que cambia se guarda por diferencia después de cada
+# petición (ver `servicios/persistencia.py`). Con dos procesos cada uno
+# tendría su propio campus en memoria y el último que respondiera pisaría en
+# Firestore lo que hubiera hecho el otro, **sin que se note**: es la peor
+# forma de perder datos.
+#
+# Por eso acá no hay `workers`, y si alguien lo pide por la variable de
+# entorno que usan los servidores de siempre, se avisa y se ignora. El día
+# que haga falta escalar, lo que hay que cambiar es la persistencia —escribir
+# en el momento, no por diferencia—, no la cantidad de procesos.
+def _un_solo_proceso() -> None:
+    pedidos = os.environ.get("WEB_CONCURRENCY") or os.environ.get("UVICORN_WORKERS")
+    if pedidos and pedidos.strip() not in ("", "1"):
+        print(f"[arranque] Se pidieron {pedidos} procesos y se va a levantar UNO.")
+        print("           El campus vive en la memoria de un proceso y se guarda por")
+        print("           diferencia: con varios, cada uno pisa lo del otro en silencio.")
+
+
 def arrancar() -> None:
     """Punto de entrada para `python -m app.main`."""
     import uvicorn
 
+    _un_solo_proceso()
+
+    # `reload` levanta un vigilante que reinicia el servidor al guardar un
+    # archivo: comodísimo mientras se desarrolla y nada que deba correr en la
+    # facultad. Se apaga solo si no se pide.
+    recarga = (os.environ.get("RECARGA_AUTOMATICA") or "si").strip().lower() in (
+        "si", "1", "true",
+    )
+    # Por defecto solo escucha desde esta máquina. Para publicarlo hay que
+    # decirlo a propósito, no que pase por olvido.
+    host = (os.environ.get("HOST") or "127.0.0.1").strip()
+
     uvicorn.run(
         "app.main:app",
-        host="127.0.0.1",
+        host=host,
         port=int(os.environ.get("PORT") or 3000),
-        reload=True,
+        reload=recarga,
+        workers=1,
     )
 
 

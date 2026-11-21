@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { entrar, recuperarContrasena, hayConfiguracion } from '../services/sesion.js';
+import { cuentasRecordadas, olvidarCuenta, recordarCuenta } from '../services/cuentasRecordadas.js';
+import { obtenerUsuarioActual } from '../services/api.js';
 import {
   Logo,
   IconoCorreo,
@@ -10,7 +12,9 @@ import {
   IconoAdvertencia,
   IconoCheckCirculo,
   IconoFlecha,
+  IconoCerrar,
 } from '../components/Iconos.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 // Lo que gana quien tiene cuenta, en la mitad derecha. No es relleno: quien
 // llega sin cuenta necesita saber a quién pedirla.
@@ -23,6 +27,10 @@ const VENTAJAS = [
 
 export default function Login() {
   const [correo, setCorreo] = useState('');
+  // Las cuentas con las que ya se entró en este equipo. Se leen una sola vez:
+  // no cambian mientras la pantalla está abierta, salvo que se borre una.
+  const [recordadas, setRecordadas] = useState(() => cuentasRecordadas());
+  const [abiertas, setAbiertas] = useState(false);
   const [contrasena, setContrasena] = useState('');
   const [recordarme, setRecordarme] = useState(true);
   const [verContrasena, setVerContrasena] = useState(false);
@@ -33,6 +41,9 @@ export default function Login() {
   const navegar = useNavigate();
   const ubicacion = useLocation();
   const campoCorreo = useRef(null);
+  // Al elegir una cuenta de la lista el foco salta a la contraseña: el correo
+  // ya está puesto y es lo único que queda por escribir.
+  const campoContrasena = useRef(null);
 
   // El foco arranca en el correo: es lo primero que se completa
   useEffect(() => {
@@ -55,6 +66,20 @@ export default function Login() {
     setEntrando(true);
     try {
       await entrar(correo, contrasena, recordarme);
+
+      try {
+        const yo = await obtenerUsuarioActual();
+        recordarCuenta({
+          correo: yo.correo ?? correo.trim(),
+          nombre: [yo.nombre, yo.apellido].filter(Boolean).join(' ') || null,
+          foto: yo.foto ?? null,
+          rol: yo.rol ?? null,
+        });
+      } catch {
+        // Sin los datos, se recuerda al menos el correo
+        recordarCuenta({ correo: correo.trim() });
+      }
+
       navegar(destino, { replace: true });
     } catch (fallo) {
       setError(fallo.message);
@@ -111,6 +136,66 @@ export default function Login() {
               </p>
             )}
 
+            {/* Las cuentas de este equipo. Se guarda el correo y la cara,
+                nunca la contraseña: sirve para reconocer de quién es la
+                cuenta, no para entrar sin escribirla. */}
+            {recordadas.length > 0 && (
+              <div className={abiertas ? 'acceso-cuentas abiertas' : 'acceso-cuentas'}>
+                {/* Plegado por omisión: lo normal es entrar con la cuenta que
+                    ya está escrita, y una lista siempre abierta empuja los
+                    campos fuera de la vista. */}
+                <button
+                  type="button"
+                  className="acceso-cuentas-abrir"
+                  onClick={() => setAbiertas((v) => !v)}
+                  aria-expanded={abiertas}
+                >
+                  <IconoFlecha width={13} height={13} />
+                  Sesiones anteriores
+                  <small>{recordadas.length}</small>
+                </button>
+
+                {/* Se abre animando la altura, el mismo truco que las
+                    carpetas de un módulo: así no hay que medirla. */}
+                <div className="acceso-cuentas-panel">
+                  <ul inert={abiertas ? undefined : ''}>
+                  {recordadas.map((c) => (
+                    <li key={c.correo} className={c.correo === correo ? 'elegida' : undefined}>
+                      <button
+                        type="button"
+                        className="acceso-cuenta"
+                        onClick={() => {
+                          setCorreo(c.correo);
+                          campoContrasena.current?.focus();
+                        }}
+                        disabled={entrando}
+                      >
+                        <Avatar persona={c} tamano={32} />
+                        <span>
+                          <strong>{c.nombre ?? c.correo}</strong>
+                          <small>{c.correo}</small>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="acceso-cuenta-olvidar"
+                        title={`Olvidar ${c.correo} en este equipo`}
+                        aria-label={`Olvidar ${c.correo}`}
+                        disabled={entrando}
+                        onClick={() => {
+                          olvidarCuenta(c.correo);
+                          setRecordadas(cuentasRecordadas());
+                        }}
+                      >
+                        <IconoCerrar width={13} height={13} />
+                      </button>
+                    </li>
+                  ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <label className="acceso-campo">
               <span className="acceso-etiqueta">Correo</span>
               <span className="acceso-caja">
@@ -132,6 +217,7 @@ export default function Login() {
               <span className="acceso-caja">
                 <IconoCandado />
                 <input
+                  ref={campoContrasena}
                   type={verContrasena ? 'text' : 'password'}
                   value={contrasena}
                   onChange={(e) => setContrasena(e.target.value)}

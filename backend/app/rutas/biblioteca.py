@@ -40,7 +40,8 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Body, HTTPException, Request, Response
 
 from .. import datos as d
-from ..servicios import auditoria
+from ..servicios import almacenamiento as alm
+from ..servicios import ambito, auditoria
 from ..servicios.autenticacion import UsuarioActual
 from ..servicios.libros_externos import buscar_libros_externos, obtener_libro_externo
 
@@ -62,10 +63,14 @@ def _materias_visibles(persona: dict) -> list[dict]:
     """Las materias cuya biblioteca puede abrir esta persona.
 
     Estudiante: las que cursa. Docente: las que dicta. Las dos cosas si es las
-    dos cosas, que pasa. Quien supervisa las ve todas.
+    dos cosas, que pasa.
+
+    Quien supervisa, **las de su ámbito**: todas si no se le puso ninguno —que
+    es como venía—, y solo las de sus carreras si la facultad se lo recortó.
+    Ver `servicios/ambito.py`.
     """
     if _supervisa(persona):
-        return list(d.materias_plan)
+        return ambito.materias(persona)
 
     ids: set[int] = set()
 
@@ -94,7 +99,13 @@ def _ids_visibles(persona: dict) -> set[int]:
 def _materias_que_modera(persona: dict) -> set[int] | None:
     """Las materias cuyos aportes puede aprobar. `None` quiere decir todas."""
     if _supervisa(persona):
-        return None
+        # Sin ámbito, todas; con ámbito, las de sus carreras. Moderar es
+        # decidir qué se publica: tiene que llegar exactamente igual de lejos
+        # que lo que se puede ver, o alguien aprueba material de una cátedra
+        # que ni siquiera puede abrir.
+        if not ambito.recortado(persona):
+            return None
+        return {m["id"] for m in ambito.materias(persona)}
     if d.tiene_rol(persona, "Docente"):
         return {m["id"] for m in d.materias_que_dicta(persona["id"])}
     return set()
@@ -731,11 +742,38 @@ def subir_archivo(
     if not formato["firma"](bytes_archivo):
         raise HTTPException(415, f"El archivo no es un {extension.upper()} válido")
 
-    d.guardar_archivo(material["id"], bytes_archivo)
+    nombre = _nombre_seguro(cuerpo.get("nombre"), extension)
+    objeto = alm.clave(alm.BIBLIOTECA, material["materiaId"], material["id"], nombre=nombre)
+
+    # Si ya tenía uno, el anterior se va: dos archivos para una ficha que
+    # solo apunta a uno dejan basura pagando lugar en el bucket.
+    anterior = (material.get("archivo") or {}).get("objectKey")
+    if anterior and anterior != objeto:
+        alm.olvidar(anterior)
+
+    # Se escribe primero y recién después se toca la ficha: si R2 falla, la
+    # ruta corta acá con error y el material queda como estaba. Nunca al
+    # revés, que es decirle al estudiante que subió algo que no está.
+    try:
+        alm.subir(objeto, bytes_archivo, formato["mime"])
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(502, f"No se pudo guardar el archivo: {error}")
+
+    alm.registrar(
+        objeto,
+        nombre=nombre,
+        tipo=formato["mime"],
+        tamano=len(bytes_archivo),
+        persona_id=yo["id"],
+        modulo=alm.BIBLIOTECA,
+        registro_id=material["id"],
+    )
+
     material["archivo"] = {
-        "nombre": _nombre_seguro(cuerpo.get("nombre"), extension),
+        "nombre": nombre,
         "tamano": len(bytes_archivo),
         "tipo": formato["mime"],
+        "objectKey": objeto,
     }
     # Si el archivo está alojado acá, el enlace externo sobra
     material["enlace"] = None
@@ -751,7 +789,12 @@ def descargar_archivo(id_material: str, yo: dict = UsuarioActual):
     material = _buscar_material(id_material)
     _exigir_ver(material, yo)
 
-    contenido = d.leer_archivo(material["id"])
+    guardado = material.get("archivo") or {}
+    # `objectKey` es el camino nuevo; el id suelto es cómo se guardaba antes
+    # de R2, y se sigue leyendo para no perder lo que ya estaba subido.
+    contenido = alm.leer(guardado["objectKey"]) if guardado.get("objectKey") else None
+    if contenido is None:
+        contenido = d.leer_archivo(material["id"])
     if not contenido or not material.get("archivo"):
         raise HTTPException(404, "Este material no tiene un archivo alojado en el campus")
 
@@ -1012,6 +1055,9 @@ def borrar_material(id_material: str, yo: dict = UsuarioActual):
     )
 
     d.materiales.remove(material)
+    guardado = material.get("archivo") or {}
+    if guardado.get("objectKey"):
+        alm.olvidar(guardado["objectKey"])
     d.borrar_archivo(material["id"])
     # Los favoritos que apuntaban ahí quedarían colgados
     d.favoritos_biblioteca[:] = [

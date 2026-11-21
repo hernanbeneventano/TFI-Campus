@@ -52,21 +52,20 @@ const enviar = conCuerpo('POST', 'enviar a');
 const actualizar = conCuerpo('PUT', 'actualizar');
 const parchear = conCuerpo('PATCH', 'modificar');
 
-async function borrar(ruta) {
+async function borrar(ruta, cuerpo) {
+  // Algunas bajas llevan cuerpo: retirar la publicación de otra persona exige
+  // el motivo, y ese motivo viaja con el DELETE.
   return responderOFallar(
-    await fetch(`/api${ruta}`, { method: 'DELETE', headers: await cabeceras() }),
+    await fetch(`/api${ruta}`, {
+      method: 'DELETE',
+      headers: await cabeceras(cuerpo ? { 'Content-Type': 'application/json' } : {}),
+      ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}),
+    }),
     `borrar ${ruta}`
   );
 }
 
 export const obtenerUsuarioActual = () => pedir('/me');
-// Al guardar el perfil se avisa: el menú lateral tiene el nombre y lo pidió
-// una sola vez, al arrancar.
-export const guardarPerfil = (datos) =>
-  actualizar('/me', datos).then((usuario) => {
-    window.dispatchEvent(new CustomEvent('campustfi:perfil'));
-    return usuario;
-  });
 export const obtenerCursos = () => pedir('/cursos');
 
 // Al cambiar un favorito se avisa: el menú lateral tiene su propia copia de
@@ -113,6 +112,14 @@ export const borrarAnuncio = (idCurso, idAnuncio) =>
 export const obtenerSeguimiento = (idCurso) => pedir(`/cursos/${idCurso}/seguimiento`);
 export const obtenerEntregasDeSeccion = (idCurso, idSeccion) =>
   pedir(`/cursos/${idCurso}/carpetas/${idSeccion}/entregas`);
+// Las entregas de **un** trabajo, para verlas al abrirlo: la planilla de la
+// sección las tiene, pero hay que ir a buscarla.
+// Publicar en el tablero de consultas de un módulo. Escribe cualquiera del
+// módulo: el tablero es donde se pregunta.
+export const publicarEnTablero = (idCurso, idItem, columna, texto) =>
+  enviar(`/cursos/${idCurso}/tableros/${idItem}/publicaciones`, { columna, texto });
+export const obtenerEntregasDeTarea = (idCurso, idTarea) =>
+  pedir(`/cursos/${idCurso}/tareas/${idTarea}/entregas`);
 export const obtenerNotas = (idCurso) => pedir(`/cursos/${idCurso}/notas`);
 export const guardarNota = (idCurso, datos) => actualizar(`/cursos/${idCurso}/notas`, datos);
 // La condición que fija el docente pesa más que el promedio; con
@@ -136,6 +143,20 @@ export const obtenerConversacion = (id) => pedir(`/mensajes/${id}`);
 export const enviarMensaje = (id, texto, adjuntos = []) =>
   enviar(`/mensajes/${id}`, { texto, adjuntos });
 export const abrirConversacionCon = (paraId) => enviar('/mensajes', { paraId });
+
+// --- Lo que se puede hacer con un mensaje ---
+// Editar y eliminar, solo los propios: en una conversación de a dos, poder
+// cambiar lo que dijo el otro convierte el chat en algo que no sirve como
+// constancia de nada. Fijar, en cambio, lo puede cualquiera de los dos:
+// lo que conviene tener a la vista normalmente lo dijo el docente.
+export const editarMensaje = (idConversacion, idMensaje, texto) =>
+  parchear(`/mensajes/${idConversacion}/mensajes/${idMensaje}`, { texto });
+
+export const eliminarMensaje = (idConversacion, idMensaje) =>
+  borrar(`/mensajes/${idConversacion}/mensajes/${idMensaje}`);
+
+export const fijarMensaje = (idConversacion, idMensaje) =>
+  enviar(`/mensajes/${idConversacion}/mensajes/${idMensaje}/fijar`, {});
 export const obtenerContactos = () => pedir('/mensajes/contactos');
 export const obtenerContadores = () => pedir('/contadores');
 
@@ -256,6 +277,10 @@ export const obtenerAsignaciones = (filtros = {}) => {
   const cola = p.toString();
   return pedir(`/institucion/asignaciones${cola ? `?${cola}` : ''}`);
 };
+// El legajo que le tocaría a quien se inscriba a esa carrera. Es para
+// mostrarlo en el formulario: el definitivo lo arma el servidor al guardar.
+export const legajoSiguiente = (carreraId) =>
+  pedir(`/institucion/legajo-siguiente?carreraId=${carreraId}`);
 export const crearAsignacion = (datos) => enviar('/institucion/asignaciones', datos);
 export const editarAsignacion = (id, datos) =>
   parchear(`/institucion/asignaciones/${id}`, datos);
@@ -331,19 +356,23 @@ export const enlaceDescarga = (id) => `/api/biblioteca/${idEnRuta(id)}/archivo`;
 
 // El archivo viaja en base64 dentro del JSON. Es lo que se puede hacer sin
 // Firebase Storage; cuando esté, sube al bucket y acá queda la referencia.
-export function subirArchivoMaterial(id, archivo, alAvanzar) {
+/**
+ * Sube un archivo a la ruta indicada, en base64 dentro del JSON.
+ *
+ * Es `XMLHttpRequest` y no `fetch` porque es lo único que avisa cómo va la
+ * subida, y un PDF de 10 MB sin barra de progreso se siente colgado.
+ */
+function subirArchivoA(ruta, archivo, alAvanzar, extra = {}) {
   return new Promise((resolve, rechazar) => {
     const lector = new FileReader();
     lector.onerror = () => rechazar(new Error('No se pudo leer el archivo'));
     lector.onload = async () => {
       const peticion = new XMLHttpRequest();
-      peticion.open('POST', `/api/biblioteca/${idEnRuta(id)}/archivo`);
+      peticion.open('POST', `/api${ruta}`);
       peticion.setRequestHeader('Content-Type', 'application/json');
       const token = await obtenerToken().catch(() => null);
       if (token) peticion.setRequestHeader('Authorization', `Bearer ${token}`);
 
-      // XMLHttpRequest en vez de fetch porque es lo único que avisa cómo va
-      // la subida, y un PDF de 10 MB sin barra de progreso se siente colgado.
       peticion.upload.onprogress = (e) => {
         if (e.lengthComputable) alAvanzar?.(Math.round((e.loaded / e.total) * 100));
       };
@@ -366,6 +395,10 @@ export function subirArchivoMaterial(id, archivo, alAvanzar) {
           extension: archivo.name.split('.').pop(),
           // data:application/pdf;base64,XXXX → solo la parte de después de la coma
           contenido: String(lector.result).split(',')[1] ?? '',
+          // Lo que viaje junto al archivo: el comentario de una entrega, por
+          // ejemplo. Va al final para que nada de acá pise los campos de
+          // arriba, que son los que el servidor valida.
+          ...extra,
         })
       );
     };
@@ -401,3 +434,117 @@ export const enlaceExportarAuditoria = (filtros, formato) =>
 // --- Panel de control ---
 export const obtenerPanel = () => pedir('/panel');
 export const obtenerAlertas = () => pedir('/panel/alertas');
+
+// --- Acceso de la cuenta ---
+export const obtenerMiAcceso = () => pedir('/usuarios/yo/acceso');
+export const cerrarMisSesiones = () => enviar('/usuarios/yo/cerrar-sesiones', {});
+export const restablecerContrasena = (id) => enviar(`/usuarios/${id}/contrasena`, {});
+
+
+// --- Retirar publicaciones ---
+// El motivo es obligatorio cuando se retira lo de otra persona; el servidor
+// lo vuelve a exigir.
+export const retirarNovedad = (id, motivo) => borrar(`/novedades/${id}`, { motivo });
+
+export const retirarTemaForo = (id, motivo) => borrar(`/foro/${id}`, { motivo });
+
+export const retirarRespuestaForo = (idTema, idMensaje, motivo) =>
+  borrar(`/foro/${idTema}/mensajes/${idMensaje}`, { motivo });
+
+
+// --- La configuración académica de la facultad ---
+export const obtenerConfiguracionAcademica = () => pedir('/institucion/configuracion');
+
+export const guardarPeriodoInscripcion = (datos) =>
+  actualizar('/institucion/configuracion/periodo', datos);
+
+export const guardarConfiguracionAsistencia = (datos) =>
+  actualizar('/institucion/configuracion/asistencia', datos);
+
+// --- La imagen de una novedad ---
+// Se sube aparte de la novedad porque, al crearla, todavía no hay id al que
+// colgar el archivo.
+export const subirImagenDeNovedad = (id, archivo, alAvanzar) =>
+  subirArchivoA(`/novedades/${id}/imagen`, archivo, alAvanzar);
+
+export const quitarImagenDeNovedad = (id) => borrar(`/novedades/${id}/imagen`);
+
+// --- Los eventos del calendario académico ---
+export const obtenerEventos = () => pedir('/institucion/eventos');
+export const crearEvento = (datos) => enviar('/institucion/eventos', datos);
+export const editarEvento = (id, datos) => actualizar(`/institucion/eventos/${id}`, datos);
+export const borrarEvento = (id) => borrar(`/institucion/eventos/${id}`);
+
+// --- Lo que ya vi de un módulo ---
+// Las tres devuelven la lista completa, así que la pantalla se queda con lo
+// que dice el servidor y no con lo que ella creía: si otra pestaña marcó
+// algo, acá aparece.
+export const obtenerMiProgreso = () => pedir('/mi-progreso');
+
+export const marcarVisto = (idCurso, idItem) =>
+  actualizar(`/cursos/${idCurso}/mi-progreso/${idEnRuta(idItem)}`, {});
+
+export const desmarcarVisto = (idCurso, idItem) =>
+  borrar(`/cursos/${idCurso}/mi-progreso/${idEnRuta(idItem)}`);
+
+export const importarMiProgreso = (completados) =>
+  enviar('/mi-progreso/importar', { completados });
+
+// --- Entregar un trabajo ---
+// Va con `subirArchivoA`, que es lo único que avisa cómo viene la subida: un
+// trabajo puede pesar unos megas y una barra quieta parece colgada.
+export const obtenerMiEntrega = (idTarea) => pedir(`/tareas/${idTarea}/mi-entrega`);
+
+export const entregarTrabajo = (idTarea, archivo, alAvanzar) =>
+  subirArchivoA(`/tareas/${idTarea}/mi-entrega`, archivo, alAvanzar);
+
+export const retirarMiEntrega = (idTarea) => borrar(`/tareas/${idTarea}/mi-entrega`);
+
+// --- La foto de perfil ---
+// Va con `subirArchivoA`, igual que el resto: es lo único que avisa cómo
+// viene la subida, y una foto del celular puede pesar unos megas.
+//
+// Al terminar se avisa con `campustfi:perfil`, el mismo truco que el nombre:
+// el menú lateral tiene su propia copia del usuario y la pidió una sola vez
+// al arrancar. Sin esto, se cambiaba la foto y el menú seguía mostrando la
+// anterior hasta recargar la página.
+export const subirMiFoto = (archivo, alAvanzar) =>
+  subirArchivoA('/usuarios/yo/foto', archivo, alAvanzar).then(avisarPerfil);
+
+export const quitarMiFoto = () => borrar('/usuarios/yo/foto').then(avisarPerfil);
+
+function avisarPerfil(respuesta) {
+  window.dispatchEvent(new CustomEvent('campustfi:perfil'));
+  return respuesta;
+}
+
+export const subirArchivoMaterial = (id, archivo, alAvanzar) =>
+  subirArchivoA(`/biblioteca/${idEnRuta(id)}/archivo`, archivo, alAvanzar);
+
+/** El archivo de un elemento de una sección del módulo. */
+export const subirArchivoDeElemento = (idCurso, idSeccion, idItem, archivo, alAvanzar) =>
+  subirArchivoA(
+    `/cursos/${idCurso}/carpetas/${idSeccion}/items/${idEnRuta(idItem)}/archivo`,
+    archivo,
+    alAvanzar
+  );
+
+export const enlaceArchivoDeElemento = (idCurso, idSeccion, idItem) =>
+  `/api/cursos/${idCurso}/carpetas/${idSeccion}/items/${idEnRuta(idItem)}/archivo`;
+
+// --- Días de cursada de un módulo ---
+export const agregarDiaDeClase = (idCurso, datos) =>
+  enviar(`/cursos/${idCurso}/clases`, datos);
+
+export const quitarDiaDeClase = (idCurso, dia, desde) =>
+  borrar(`/cursos/${idCurso}/clases/${dia}/${desde}`);
+
+// --- Materias del plan de estudios ---
+export const obtenerMaterias = (filtros = {}) =>
+  pedir(`/institucion/materias?${parametrosDe(filtros)}`);
+
+export const crearMateria = (datos) => enviar('/institucion/materias', datos);
+
+export const editarMateria = (id, datos) => parchear(`/institucion/materias/${id}`, datos);
+
+export const borrarMateria = (id) => borrar(`/institucion/materias/${id}`);

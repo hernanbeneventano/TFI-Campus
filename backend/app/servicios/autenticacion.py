@@ -77,11 +77,18 @@ def _anotar_fallo(motivo: str, correo: str | None = None) -> None:
 # Mientras el campus se desarrolla conviene poder usarlo sin iniciar sesión.
 # Si no llega token, se responde como el usuario de prueba.
 #
-# En producción esto tiene que estar apagado: sin él, cualquiera que llegue sin
-# token entra como esa persona. Por eso la variable se llama como se llama y no
-# algo como "modo_desarrollo": que quede claro qué se está permitiendo.
+# **Viene apagado.** Hay que pedirlo a propósito con
+# `PERMITIR_USUARIO_SIN_TOKEN=si` en el `.env`, que no viaja por el
+# repositorio. Estaba al revés —abierto si la variable faltaba— y eso
+# significaba que una copia recién clonada, o un despliegue nuevo, arrancaba
+# con el campus entero abierto como Secretaría Académica, que es
+# administradora. Un valor por defecto que hay que acordarse de apagar es un
+# agujero esperando a que alguien se distraiga.
+#
+# La variable se llama como se llama, y no algo como "modo_desarrollo", para
+# que quede claro qué se está permitiendo al encenderla.
 def _permite_usuario_de_prueba() -> bool:
-    return (os.environ.get("PERMITIR_USUARIO_SIN_TOKEN") or "si").lower() in ("si", "1", "true")
+    return (os.environ.get("PERMITIR_USUARIO_SIN_TOKEN") or "no").lower() in ("si", "1", "true")
 
 
 def _persona_por_correo(correo: str | None) -> dict | None:
@@ -116,7 +123,12 @@ def identificar(peticion: Request) -> dict:
         raise HTTPException(401, "Hay que iniciar sesión")
 
     try:
-        datos_token = auth.verify_id_token(token)
+        # `check_revoked` hace que Firebase mire también si esa cuenta fue
+        # deshabilitada o si se le revocaron las sesiones. Sin esto, el token
+        # que la persona ya tenía en la mano le seguía sirviendo hasta
+        # vencerse —hasta una hora—, así que suspender a alguien no lo sacaba
+        # del campus en el momento, que es justo para lo que se suspende.
+        datos_token = auth.verify_id_token(token, check_revoked=True)
     except auth.ExpiredIdTokenError:
         _anotar_fallo("La sesión venció")
         raise HTTPException(401, "La sesión venció. Volvé a iniciar sesión.")
@@ -132,6 +144,21 @@ def identificar(peticion: Request) -> dict:
         raise HTTPException(503, "No se pudo verificar la sesión. Probá de nuevo.")
 
     persona = _persona_por_correo(datos_token.get("email"))
+
+    # Y el estado que lleva el campus, que es el que mira la secretaría.
+    # `cuentas.habilitar` deshabilita además la cuenta en Firebase, pero si
+    # esa llamada falló —sin red, o la cuenta no existe allá— la suspensión
+    # solo quedaría anotada acá y no serviría de nada. Comparar el estado
+    # cierra ese caso sin costo.
+    if persona is not None and (persona.get("estado") or "activa") != "activa":
+        _anotar_fallo(
+            f"La cuenta está {persona.get('estado')}", datos_token.get("email")
+        )
+        raise HTTPException(
+            403,
+            "Tu cuenta no está habilitada para entrar al campus. Consultá en la secretaría.",
+        )
+
     if persona is None:
         # La cuenta existe en Firebase pero nadie con ese correo está en el
         # campus. Es un caso real: alguien de la facultad con cuenta de Google

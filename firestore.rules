@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para CampusTFI
+// ================================================
+//
+// **Nadie entra directo a la base. Se niega todo.**
+//
+// No es una regla provisoria ni un "después lo afinamos": es la postura de
+// seguridad del campus, y conviene entender por qué antes de aflojarla.
+//
+// El navegador nunca habla con Firestore. `frontend/src/services/firebase.js`
+// solo inicializa Authentication —para iniciar sesión y conseguir el token— y
+// todos los datos pasan por el backend de FastAPI. El backend usa el kit de
+// administrador con una cuenta de servicio, que **no está sujeta a estas
+// reglas**: las saltea por diseño.
+//
+// Entonces estas reglas gobiernan exactamente una cosa: qué puede hacer
+// alguien que agarre las claves públicas del frontend —que son públicas por
+// definición, viajan en el paquete de JavaScript— y se ponga a consultar
+// Firestore por su cuenta. La respuesta correcta es: nada.
+//
+// Dónde viven los permisos de verdad
+// -----------------------------------
+// En el servidor, en cada ruta, y están probados: quién ve qué materia, quién
+// modera qué aporte, quién puede cargar una nota. Son reglas que dependen del
+// historial académico, de los dictados y de las correlatividades, y ninguna
+// se puede expresar en un `allow read` sin volver a escribir medio campus en
+// este archivo —y mantener las dos copias sincronizadas para siempre, que es
+// la forma segura de que un día dejen de coincidir.
+//
+// Qué pasa si mañana el frontend lee directo
+// -------------------------------------------
+// Antes de aflojar esto hay que escribir acá la regla equivalente a la del
+// backend para esa colección. Un `allow read: if request.auth != null` sería
+// peor que no tener reglas: cualquier estudiante con sesión podría leer las
+// conversaciones privadas de los demás, el registro de auditoría completo y
+// las planillas de examen sin cerrar.
+//
+// Cómo se publican
+//     firebase deploy --only firestore:rules
+// (o pegarlas en la consola: Firestore → Reglas)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Todo el campus: solo el backend, que entra con cuenta de servicio y no
+    // pasa por acá.
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}

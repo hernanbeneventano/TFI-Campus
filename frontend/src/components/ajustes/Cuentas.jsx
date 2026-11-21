@@ -6,10 +6,25 @@
 // sin ningún administrador.
 
 import { useCallback, useEffect, useState } from 'react';
-import { obtenerUsuarios, administrarUsuario, crearUsuario } from '../../services/api.js';
+import {
+  obtenerUsuarios,
+  administrarUsuario,
+  crearUsuario,
+  restablecerContrasena,
+} from '../../services/api.js';
+import Confirmacion from '../Confirmacion.jsx';
 import { avisar } from '../../services/avisos.js';
 import { hace } from '../../services/fechas.js';
-import { IconoMas, IconoBuscar, IconoCerrar, IconoEstudiante, IconoUsuario } from '../Iconos.jsx';
+import {
+  IconoMas,
+  IconoBuscar,
+  IconoCerrar,
+  IconoEstudiante,
+  IconoUsuario,
+  IconoAdvertencia,
+  IconoCandado,
+} from '../Iconos.jsx';
+import Avatar from '../Avatar.jsx';
 
 const ESTADO = {
   activa: 'al-dia',
@@ -17,9 +32,25 @@ const ESTADO = {
   pendiente: 'en-riesgo',
 };
 
-function Editor({ usuario, roles, estados, yo, onGuardar, onCerrar, trabajando }) {
+function Editor({
+  usuario,
+  roles,
+  estados,
+  carreras,
+  sedes,
+  yo,
+  onGuardar,
+  onCerrar,
+  trabajando,
+}) {
   const [elegidos, setElegidos] = useState(usuario.roles ?? []);
   const [estado, setEstado] = useState(usuario.estadoCuenta ?? 'activa');
+  // Hasta dónde llega si supervisa. Vacío quiere decir todo el campus, que es
+  // como venían todos antes de que esto existiera.
+  const [susCarreras, setSusCarreras] = useState(
+    (usuario.ambito?.carreras ?? []).map((c) => c.id)
+  );
+  const [susSedes, setSusSedes] = useState((usuario.ambito?.sedes ?? []).map((s) => s.id));
 
   useEffect(() => {
     function alTeclado(e) {
@@ -47,7 +78,15 @@ function Editor({ usuario, roles, estados, yo, onGuardar, onCerrar, trabajando }
         aria-modal="true"
         onSubmit={(e) => {
           e.preventDefault();
-          onGuardar({ roles: elegidos, estado });
+          onGuardar({
+            roles: elegidos,
+            estado,
+            // El administrador alcanza todo el campus por definición: el
+            // servidor rechaza ponerle ámbito, así que ni se manda.
+            ...(elegidos.includes('Administrador')
+              ? {}
+              : { ambito: { carreras: susCarreras, sedes: susSedes } }),
+          });
         }}
       >
         <button
@@ -96,6 +135,55 @@ function Editor({ usuario, roles, estados, yo, onGuardar, onCerrar, trabajando }
             ))}
           </select>
         </label>
+
+        {/* El ámbito solo tiene sentido para quien supervisa: es lo que
+            recorta hasta dónde llega. El administrador define qué es la
+            facultad, así que la ve entera y no lleva ámbito. */}
+        {elegidos.includes('Supervisor') && !elegidos.includes('Administrador') && (
+          <fieldset className="editor-tipos compacto">
+            <legend>
+              Ámbito <small>vacío: todo el campus</small>
+            </legend>
+            <p className="texto-suave ambito-ayuda">
+              Elegí las carreras y las sedes de las que responde. Sin nada marcado ve y modera
+              todo el campus.
+            </p>
+            <div>
+              {carreras.map((c) => (
+                <label key={`c${c.id}`} className={susCarreras.includes(c.id) ? 'tipo elegido' : 'tipo'}>
+                  <input
+                    type="checkbox"
+                    checked={susCarreras.includes(c.id)}
+                    disabled={esYo}
+                    onChange={() =>
+                      setSusCarreras((x) =>
+                        x.includes(c.id) ? x.filter((i) => i !== c.id) : [...x, c.id]
+                      )
+                    }
+                  />
+                  <strong>{c.nombre}</strong>
+                </label>
+              ))}
+            </div>
+            <div>
+              {sedes.map((s) => (
+                <label key={`s${s.id}`} className={susSedes.includes(s.id) ? 'tipo elegido' : 'tipo'}>
+                  <input
+                    type="checkbox"
+                    checked={susSedes.includes(s.id)}
+                    disabled={esYo}
+                    onChange={() =>
+                      setSusSedes((x) =>
+                        x.includes(s.id) ? x.filter((i) => i !== s.id) : [...x, s.id]
+                      )
+                    }
+                  />
+                  <strong>{s.nombre}</strong>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         <div className="editor-botones">
           <button type="button" className="boton-suave" onClick={onCerrar} disabled={trabajando}>
@@ -146,7 +234,8 @@ function Alta({ roles, onGuardar, onCerrar, trabajando }) {
 
         <h3>Dar de alta una cuenta</h3>
         <p className="correccion-trabajo">
-          Queda pendiente hasta que se le cree el acceso en Firebase Authentication.
+          Se le crea el acceso en el acto y se te muestra una contraseña provisoria para
+          que se la pases.
         </p>
 
         <label>
@@ -208,6 +297,61 @@ function Alta({ roles, onGuardar, onCerrar, trabajando }) {
   );
 }
 
+/**
+ * La contraseña provisoria recién generada.
+ *
+ * Se muestra **una sola vez y nunca se guarda**: ni en el campus, ni en la
+ * auditoría. Lo que queda registrado es que se restableció y quién lo hizo,
+ * no cuál es. Por eso tampoco se puede "ver la contraseña anterior" de nadie:
+ * el campus no la tiene —la guarda Firebase, cifrada—, solo puede reemplazarla.
+ */
+function ContrasenaProvisoria({ persona, contrasena, onCerrar }) {
+  const [copiada, setCopiada] = useState(false);
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(contrasena);
+      setCopiada(true);
+      setTimeout(() => setCopiada(false), 2500);
+    } catch {
+      avisar('No se pudo copiar. Seleccionala y copiala a mano.', 'error');
+    }
+  }
+
+  return (
+    <div className="correccion-fondo" role="presentation">
+      <section className="correccion" role="dialog" aria-modal="true">
+        <h3>Contraseña provisoria</h3>
+        <p className="correccion-trabajo">{persona}</p>
+
+        <p className="texto-suave">
+          Pasásela por un medio seguro y pedile que la cambie desde Ajustes al entrar.
+        </p>
+
+        <div className="contrasena-provisoria">
+          <code>{contrasena}</code>
+          <button type="button" className="boton-suave" onClick={copiar}>
+            {copiada ? 'Copiada' : 'Copiar'}
+          </button>
+        </div>
+
+        <p className="nota-bloque">
+          <IconoAdvertencia width={14} height={14} />
+          Es la única vez que se muestra: no queda guardada en ningún lado. Si se pierde,
+          hay que generar otra.
+        </p>
+
+        <div className="editor-botones">
+          <button type="button" className="boton-principal" onClick={onCerrar}>
+            Listo, ya la copié
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
 export default function Cuentas({ yo }) {
   const [datos, setDatos] = useState(null);
   const [busqueda, setBusqueda] = useState('');
@@ -216,6 +360,24 @@ export default function Cuentas({ yo }) {
   const [creando, setCreando] = useState(false);
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState(null);
+  // La provisoria recién generada, para mostrarla una sola vez
+  const [provisoria, setProvisoria] = useState(null);
+  // La cuenta a la que se le está por restablecer la contraseña
+  const [aRestablecer, setARestablecer] = useState(null);
+
+  async function restablecer() {
+    setTrabajando(true);
+    try {
+      const r = await restablecerContrasena(aRestablecer.id);
+      setProvisoria({ persona: aRestablecer.nombre, contrasena: r.contrasenaProvisoria });
+      setARestablecer(null);
+      traer();
+    } catch (e) {
+      avisar(e.message, 'error');
+    } finally {
+      setTrabajando(false);
+    }
+  }
 
   const traer = useCallback(() => {
     obtenerUsuarios({ q: busqueda, rol })
@@ -285,11 +447,10 @@ export default function Cuentas({ yo }) {
       ) : (
         <ul className="catalogo">
           {datos.usuarios.map((u) => {
-            const Avatar = u.roles?.includes('Estudiante') ? IconoEstudiante : IconoUsuario;
             return (
               <li key={u.id} className="fila-catalogo">
                 <span className="perfil-avatar chica">
-                  <Avatar />
+                  <Avatar persona={u} tamano={30} />
                 </span>
 
                 <div className="fila-texto">
@@ -312,19 +473,30 @@ export default function Cuentas({ yo }) {
                 </span>
 
                 {datos.puedeAdministrar && (
-                  <button
-                    type="button"
-                    className="boton-suave"
-                    onClick={() => setEditando(u)}
-                    disabled={u.id === yo?.id}
-                    title={
-                      u.id === yo?.id
-                        ? 'No podés cambiarte los roles a vos mismo'
-                        : 'Cambiar roles o estado'
-                    }
-                  >
-                    Roles
-                  </button>
+                  <span className="fila-acciones">
+                    <button
+                      type="button"
+                      className="boton-suave"
+                      onClick={() => setARestablecer(u)}
+                      title="Asignarle una contraseña provisoria"
+                    >
+                      <IconoCandado width={14} height={14} />
+                      Contraseña
+                    </button>
+                    <button
+                      type="button"
+                      className="boton-suave"
+                      onClick={() => setEditando(u)}
+                      disabled={u.id === yo?.id}
+                      title={
+                        u.id === yo?.id
+                          ? 'No podés cambiarte los roles a vos mismo'
+                          : 'Cambiar roles o estado'
+                      }
+                    >
+                      Roles
+                    </button>
+                  </span>
                 )}
               </li>
             );
@@ -337,6 +509,8 @@ export default function Cuentas({ yo }) {
           usuario={editando}
           roles={datos.roles}
           estados={datos.estadosCuenta}
+          carreras={datos.carreras ?? []}
+          sedes={datos.sedes ?? []}
           yo={yo}
           trabajando={trabajando}
           onCerrar={() => setEditando(null)}
@@ -346,12 +520,60 @@ export default function Cuentas({ yo }) {
         />
       )}
 
+      {aRestablecer && (
+        <Confirmacion
+          titulo="¿Le asignás una contraseña nueva?"
+          mensaje={
+            'La anterior deja de servir en el acto. Nadie puede ver cuál era —el campus no la ' +
+            'guarda—, así que si la persona la recuerda después, igual va a tener que usar la nueva.'
+          }
+          detalles={[
+            { etiqueta: 'Cuenta', valor: aRestablecer.nombre },
+            { etiqueta: 'Correo', valor: aRestablecer.correo },
+          ]}
+          textoConfirmar="Generar la provisoria"
+          trabajando={trabajando}
+          onConfirmar={restablecer}
+          onCancelar={() => setARestablecer(null)}
+        />
+      )}
+
+      {provisoria && (
+        <ContrasenaProvisoria
+          persona={provisoria.persona}
+          contrasena={provisoria.contrasena}
+          onCerrar={() => setProvisoria(null)}
+        />
+      )}
+
       {creando && (
         <Alta
           roles={datos.roles}
           trabajando={trabajando}
           onCerrar={() => setCreando(false)}
-          onGuardar={(valores) => accionar(() => crearUsuario(valores), 'Cuenta creada.')}
+          onGuardar={async (valores) => {
+            setTrabajando(true);
+            try {
+              const r = await crearUsuario(valores);
+              setCreando(false);
+              traer();
+              if (r.contrasenaProvisoria) {
+                setProvisoria({
+                  persona: valores.nombre,
+                  contrasena: r.contrasenaProvisoria,
+                });
+              } else {
+                avisar(
+                  'Cuenta creada, pero sin acceso: hay que crearle la contraseña a mano.',
+                  'error'
+                );
+              }
+            } catch (e) {
+              avisar(e.message, 'error');
+            } finally {
+              setTrabajando(false);
+            }
+          }}
         />
       )}
     </>

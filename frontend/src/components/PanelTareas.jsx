@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { leerCompletados, avanceDeApartado, nivel } from '../services/progreso.js';
 import { IconoCampana, IconoReloj } from './Iconos.jsx';
@@ -69,8 +69,20 @@ function ListaTareas({ tareas, atrasadas, completados }) {
 }
 
 export default function PanelTareas({ pendientes }) {
-  // Lo marcado no cambia desde esta pantalla, alcanza con leerlo al entrar
-  const [completados] = useState(leerCompletados);
+  // Lo marcado no cambia desde esta pantalla, alcanza con pedirlo al entrar.
+  // Si falla se sigue con la lista vacía: el panel muestra las tareas igual,
+  // solo que sin el contador de cuánto falta en su carpeta.
+  const [completados, setCompletados] = useState([]);
+
+  useEffect(() => {
+    let vigente = true;
+    leerCompletados()
+      .then((lista) => vigente && setCompletados(lista))
+      .catch(() => {});
+    return () => {
+      vigente = false;
+    };
+  }, []);
 
   return (
     <aside className="panel">

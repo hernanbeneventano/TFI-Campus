@@ -43,7 +43,7 @@ export default function FormularioMesa({ opciones, mesa, onCerrar, onListo }) {
         }
       : {
           materiaId: String(opciones.materias[0]?.id ?? ''),
-          llamado: '',
+          llamado: opciones.llamados?.[0] ?? '',
           fecha: campoEnDias(30),
           desde: '16:00',
           hasta: '19:00',
@@ -95,7 +95,7 @@ export default function FormularioMesa({ opciones, mesa, onCerrar, onListo }) {
 
   function revisar() {
     if (!datos.materiaId) return 'Elegí la materia.';
-    if (!datos.llamado.trim()) return 'Poné el nombre del llamado.';
+    if (!datos.llamado.trim()) return 'Elegí el llamado de la mesa.';
     if (!datos.fecha || !datos.inscripcionDesde || !datos.inscripcionHasta)
       return 'Completá las fechas.';
     if (!datos.desde || !datos.hasta) return 'Completá el horario.';
@@ -179,14 +179,19 @@ export default function FormularioMesa({ opciones, mesa, onCerrar, onListo }) {
           </label>
         )}
 
+        {/* Los llamados son los ocho del año académico y los fija la
+            facultad. Escritos a mano, la misma mesa terminaba cargada con dos
+            nombres distintos según quién la creara. */}
         <label className="ancho-completo">
           <span>Llamado *</span>
-          <input
-            type="text"
-            value={datos.llamado}
-            onChange={alEscribir('llamado')}
-            maxLength={80}
-            placeholder="Turno diciembre · 1.er llamado"
+          <Desplegable
+            valor={datos.llamado}
+            opciones={[
+              { valor: '', nombre: 'Elegí el llamado' },
+              ...(opciones.llamados ?? []).map((l) => ({ valor: l, nombre: l })),
+            ]}
+            onCambiar={cambiar('llamado')}
+            etiqueta="Llamado"
           />
         </label>
 

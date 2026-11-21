@@ -23,7 +23,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from .. import datos as d
+from ..servicios import ambito
 from ..servicios import auditoria as a
+from ..servicios import persistencia
 from ..servicios.autenticacion import UsuarioActual
 
 router = APIRouter(prefix="/api/auditoria", tags=["Auditoría"])
@@ -32,6 +34,17 @@ router = APIRouter(prefix="/api/auditoria", tags=["Auditoría"])
 MODULOS_ACADEMICOS = {
     "academico", "asistencias", "calificaciones", "finales", "biblioteca", "modulos",
 }
+
+
+def _de_su_ambito(yo: dict, eventos: list[dict]) -> list[dict]:
+    """Recorta el registro al ámbito de quien pregunta.
+
+    El administrador lo ve entero; a quien supervisa se le muestra lo de sus
+    carreras y sedes, si la facultad se las fijó. Ver `servicios/ambito.py`.
+    """
+    if not ambito.recortado(yo):
+        return eventos
+    return [e for e in eventos if ambito.alcanza_evento(yo, e)]
 
 
 def _modulos_que_ve(yo: dict) -> set[str] | None:
@@ -89,10 +102,19 @@ def opciones(yo: dict = UsuarioActual):
         ],
         "resultados": [{"id": k, "nombre": v} for k, v in a.RESULTADOS.items()],
         "roles": d.ROLES,
+        # Los filtros también se recortan al ámbito: ofrecer una carrera que
+        # no se puede mirar es prometer un resultado vacío y hacer dudar de si
+        # no pasó nada o si no se ve.
         "carreras": [
-            {"id": c["id"], "nombre": c["nombre"]} for c in d.carreras_institucion
+            {"id": c["id"], "nombre": c["nombre"]}
+            for c in d.carreras_institucion
+            if ambito.alcanza_carrera(yo, c["id"])
         ],
-        "sedes": [{"id": s["id"], "nombre": s["nombre"]} for s in d.sedes],
+        "sedes": [
+            {"id": s["id"], "nombre": s["nombre"]}
+            for s in d.sedes
+            if ambito.alcanza_sede(yo, s["id"])
+        ],
         "comisiones": [
             {
                 "id": c["id"],
@@ -101,6 +123,8 @@ def opciones(yo: dict = UsuarioActual):
                 "sedeId": c.get("sedeId"),
             }
             for c in d.comisiones
+            if ambito.alcanza_carrera(yo, c.get("carreraId"))
+            and ambito.alcanza_sede(yo, c.get("sedeId"))
         ],
         # Para el desplegable de "Usuario": solo quienes dejaron huella, que
         # es mucho más corto que todo el campus y más útil.
@@ -109,13 +133,22 @@ def opciones(yo: dict = UsuarioActual):
                 {"id": i, "nombre": n}
                 for i, n in {
                     e["quienId"]: e["quien"]
-                    for e in a.buscar({}, permitidos)
+                    for e in _de_su_ambito(yo, a.buscar({}, permitidos))
                     if e.get("quienId")
                 }.items()
             ),
             key=lambda u: u["nombre"].lower(),
         ),
         "puedeExportar": True,
+        # Para que la pantalla pueda decir hasta dónde llega lo que se está
+        # mirando. Un registro recortado que no avisa que lo está se lee como
+        # el registro entero.
+        "ambito": ambito.resumen(yo),
+        # Si la facultad configuró dejar en memoria solo lo reciente, desde
+        # cuándo hay datos acá. La pantalla tiene que decirlo: un registro
+        # recortado que no avisa se lee como el registro entero, y entonces
+        # "no pasó nada" y "no lo tengo cargado" se confunden.
+        "desde": persistencia.auditoria_desde(),
     }
 
 
@@ -168,7 +201,7 @@ def exportar(request: Request, yo: dict = UsuarioActual):
     p = dict(request.query_params)
     formato = (p.get("formato") or "csv").lower()
 
-    eventos = [a.con_nombres(e) for e in a.buscar(p, permitidos)]
+    eventos = [a.con_nombres(e) for e in _de_su_ambito(yo, a.buscar(p, permitidos))]
 
     # Quien exporta también queda registrado: es una salida de datos.
     a.registrar(
@@ -330,7 +363,7 @@ def listar(request: Request, yo: dict = UsuarioActual):
     permitidos = _exigir_acceso(yo)
     p = dict(request.query_params)
 
-    eventos = a.buscar(p, permitidos)
+    eventos = _de_su_ambito(yo, a.buscar(p, permitidos))
     paginacion = _paginar(eventos, p)
     recortada = paginacion.pop("recortada")
 
@@ -349,7 +382,12 @@ def ver(id_evento: int, yo: dict = UsuarioActual):
     permitidos = _exigir_acceso(yo)
 
     evento = next((e for e in d.auditoria if e["id"] == id_evento), None)
-    if not evento or (permitidos is not None and evento["modulo"] not in permitidos):
+    fuera = (
+        not evento
+        or (permitidos is not None and evento["modulo"] not in permitidos)
+        or not ambito.alcanza_evento(yo, evento)
+    )
+    if fuera:
         # Fuera de alcance se niega como inexistente, igual que en Biblioteca
         # y en Finales.
         raise HTTPException(404, "Ese movimiento no existe")

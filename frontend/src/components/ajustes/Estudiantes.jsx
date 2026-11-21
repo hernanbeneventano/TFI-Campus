@@ -12,6 +12,7 @@ import {
   obtenerAsignaciones,
   crearAsignacion,
   editarAsignacion,
+  legajoSiguiente,
   obtenerUsuarios,
 } from '../../services/api.js';
 import { avisar } from '../../services/avisos.js';
@@ -39,6 +40,31 @@ function Formulario({ catalogo, estudiantes, asignacion, onGuardar, onCerrar, tr
   }, [onCerrar, trabajando]);
 
   const cambio = (c) => setV((x) => ({ ...x, ...c }));
+
+  // El legajo que le va a tocar. Se muestra apenas se elige la carrera: el
+  // número sale del código de esa carrera y del año, así que antes de
+  // elegirla no hay nada que mostrar.
+  //
+  // **No se manda de vuelta.** Es una vista previa: el definitivo lo arma el
+  // servidor al guardar, con los datos de ese momento. Si se mandara este,
+  // dos personas inscribiendo a la vez guardarían el mismo número.
+  const [previo, setPrevio] = useState(null);
+  const [aMano, setAMano] = useState(false);
+
+  useEffect(() => {
+    if (editando || !v.carreraId) {
+      setPrevio(null);
+      return undefined;
+    }
+    let vigente = true;
+    setPrevio({ cargando: true });
+    legajoSiguiente(v.carreraId)
+      .then((r) => vigente && setPrevio(r))
+      .catch(() => vigente && setPrevio(null));
+    return () => {
+      vigente = false;
+    };
+  }, [v.carreraId, editando]);
 
   // Los planes y las comisiones dependen de la carrera elegida: mostrar
   // todos obligaría al supervisor a saber de memoria cuál va con cuál.
@@ -73,7 +99,8 @@ function Formulario({ catalogo, estudiantes, asignacion, onGuardar, onCerrar, tr
             sedeId: Number(v.sedeId),
             planId: Number(v.planId),
             comisionId: v.comisionId ? Number(v.comisionId) : null,
-            legajo: v.legajo || null,
+            // Vacío quiere decir «armalo vos»: ver el comentario de `previo`
+            legajo: (aMano || editando ? v.legajo : '') || null,
           });
         }}
       >
@@ -181,18 +208,50 @@ function Formulario({ catalogo, estudiantes, asignacion, onGuardar, onCerrar, tr
           </label>
         </div>
 
-        <label>
-          <span>
-            Legajo <small>opcional</small>
-          </span>
-          <input
-            type="text"
-            value={v.legajo}
-            maxLength={40}
-            placeholder="SIS-2026-0042"
-            onChange={(e) => cambio({ legajo: e.target.value })}
-          />
-        </label>
+        {editando || aMano ? (
+          <label>
+            <span>Legajo</span>
+            <input
+              type="text"
+              value={v.legajo}
+              maxLength={40}
+              autoFocus={aMano}
+              placeholder="El que trae de su sistema anterior"
+              onChange={(e) => cambio({ legajo: e.target.value })}
+            />
+            {!editando && (
+              <button
+                type="button"
+                className="enlace-suave"
+                onClick={() => {
+                  setAMano(false);
+                  cambio({ legajo: '' });
+                }}
+              >
+                Usar el que sigue de la carrera
+              </button>
+            )}
+          </label>
+        ) : (
+          <div className="correccion-campo">
+            <span>Legajo</span>
+            <div className="legajo-previsto">
+              {!v.carreraId ? (
+                <span className="texto-suave">Elegí la carrera y acá aparece el legajo</span>
+              ) : previo?.cargando || !previo ? (
+                <span className="texto-suave">Buscando el número…</span>
+              ) : (
+                <>
+                  <strong>{previo.legajo}</strong>
+                  <small>es el que sigue en {previo.carrera}</small>
+                </>
+              )}
+              <button type="button" className="enlace-suave" onClick={() => setAMano(true)}>
+                Escribir otro
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="editor-botones">
           <button type="button" className="boton-suave" onClick={onCerrar} disabled={trabajando}>

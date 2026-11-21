@@ -13,6 +13,9 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   sendPasswordResetEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
 } from 'firebase/auth';
 import { auth, hayConfiguracion } from './firebase.js';
 
@@ -101,4 +104,43 @@ export async function obtenerToken() {
   const usuario = auth?.currentUser;
   if (!usuario) return null;
   return usuario.getIdToken();
+}
+
+/**
+ * Cambia la contraseña de quien está conectado.
+ *
+ * Firebase exige haber iniciado sesión hace poco para aceptar una contraseña
+ * nueva, así que primero se vuelve a entrar con la actual. Eso además hace de
+ * comprobación: sin la contraseña de ahora no se puede poner otra, y alguien
+ * que encuentre la sesión abierta no puede quedarse con la cuenta.
+ *
+ * La contraseña **no pasa por nuestro servidor** en ningún momento.
+ */
+export async function cambiarContrasena(actual, nueva) {
+  if (!hayConfiguracion || !auth?.currentUser) {
+    throw new Error('Hay que iniciar sesión para cambiar la contraseña.');
+  }
+  if (String(nueva ?? '').length < 6) {
+    throw new Error('La contraseña nueva tiene que tener al menos 6 caracteres.');
+  }
+
+  const usuario = auth.currentUser;
+  try {
+    const credencial = EmailAuthProvider.credential(usuario.email, actual);
+    await reauthenticateWithCredential(usuario, credencial);
+  } catch (error) {
+    if (error?.code === 'auth/wrong-password' || error?.code === 'auth/invalid-credential') {
+      throw new Error('La contraseña actual no es correcta.');
+    }
+    throw new Error(explicar(error));
+  }
+
+  try {
+    await updatePassword(usuario, nueva);
+  } catch (error) {
+    if (error?.code === 'auth/weak-password') {
+      throw new Error('Esa contraseña es demasiado fácil de adivinar.');
+    }
+    throw new Error(explicar(error));
+  }
 }

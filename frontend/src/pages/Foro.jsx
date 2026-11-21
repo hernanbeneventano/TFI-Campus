@@ -7,7 +7,11 @@ import {
   obtenerCursos,
   votarMensaje,
   seguirTema,
+  retirarTemaForo,
+  retirarRespuestaForo,
 } from '../services/api.js';
+import { avisar } from '../services/avisos.js';
+import MotivoDeRetiro from '../components/MotivoDeRetiro.jsx';
 import { hace } from '../services/fechas.js';
 import Encabezado from '../components/Encabezado.jsx';
 import Desplegable from '../components/Desplegable.jsx';
@@ -20,13 +24,15 @@ import {
   IconoPulgar,
   IconoCampana,
   IconoBuscar,
+  IconoPapelera,
 } from '../components/Iconos.jsx';
+import Avatar from '../components/Avatar.jsx';
 
-function Avatar({ persona, grande }) {
-  const Icono = persona?.rol === 'Estudiante' ? IconoEstudiante : IconoUsuario;
+/** La cara de quien escribió, con su foto si la tiene. */
+function Cara({ persona, grande }) {
   return (
     <span className={grande ? 'docente-avatar grande' : 'docente-avatar'}>
-      <Icono />
+      <Avatar persona={persona} tamano={grande ? 40 : 26} />
     </span>
   );
 }
@@ -99,6 +105,29 @@ function Tema({ id, onVolver, onCambio }) {
   const [tema, setTema] = useState(null);
   const [texto, setTexto] = useState('');
   const [error, setError] = useState(null);
+  // Lo que se está por retirar: el tema entero o una respuesta suelta
+  const [retirando, setRetirando] = useState(null);
+  const [trabajando, setTrabajando] = useState(false);
+
+  function retirar(motivo) {
+    setTrabajando(true);
+    const esElTema = retirando.que === 'tema';
+    const hacer = esElTema
+      ? retirarTemaForo(id, motivo)
+      : retirarRespuestaForo(id, retirando.mensaje.id, motivo);
+
+    hacer
+      .then((actualizado) => {
+        avisar(esElTema ? 'Tema retirado del foro.' : 'Respuesta retirada.');
+        setRetirando(null);
+        onCambio();
+        // Si se fue el tema entero no hay a dónde volver dentro de él
+        if (esElTema) onVolver();
+        else setTema(actualizado);
+      })
+      .catch((e) => avisar(e.message, 'error'))
+      .finally(() => setTrabajando(false));
+  }
 
   useEffect(() => {
     obtenerTema(id).then(setTema).catch((e) => setError(e.message));
@@ -153,7 +182,7 @@ function Tema({ id, onVolver, onCambio }) {
         </header>
 
         <div className="tema-autor">
-          <Avatar persona={tema.autor} grande />
+          <Cara persona={tema.autor} grande />
           <div>
             <strong>{tema.autor?.nombre}</strong>
             <small className="texto-suave">
@@ -174,6 +203,17 @@ function Tema({ id, onVolver, onCambio }) {
 
         <div className="tema-acciones">
           {consulta && <Util mensaje={consulta} onVotar={votar} />}
+          {tema.puedeRetirar && (
+            <button
+              type="button"
+              className="voto peligro"
+              onClick={() => setRetirando({ que: 'tema' })}
+              title="Retirar el tema del foro"
+            >
+              <IconoPapelera width={15} height={15} />
+              Retirar
+            </button>
+          )}
           <button
             type="button"
             className={tema.siguiendo ? 'voto puesto' : 'voto'}
@@ -216,7 +256,7 @@ function Tema({ id, onVolver, onCambio }) {
         <ul>
           {respuestas.map((m) => (
             <li key={m.id} className="tema-respuesta">
-              <Avatar persona={m.autor} />
+              <Cara persona={m.autor} />
               <div>
                 <div className="tema-mensaje-quien">
                   <strong>{m.autor?.nombre}</strong>
@@ -225,12 +265,50 @@ function Tema({ id, onVolver, onCambio }) {
                   </small>
                 </div>
                 <p>{m.texto}</p>
-                <Util mensaje={m} onVotar={votar} />
+                <div className="tema-acciones">
+                  <Util mensaje={m} onVotar={votar} />
+                  {m.puedeRetirar && (
+                    <button
+                      type="button"
+                      className="voto peligro"
+                      onClick={() => setRetirando({ que: 'respuesta', mensaje: m })}
+                      title="Retirar la respuesta"
+                      aria-label="Retirar la respuesta"
+                    >
+                      <IconoPapelera width={14} height={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </li>
           ))}
         </ul>
       </section>
+
+      {retirando && (
+        <MotivoDeRetiro
+          titulo={
+            retirando.que === 'tema' ? '¿Retirar el tema entero?' : '¿Retirar esta respuesta?'
+          }
+          queSeRetira={
+            retirando.que === 'tema'
+              ? `${tema.titulo} · se lleva las ${respuestas.length} respuestas`
+              : retirando.mensaje.texto.slice(0, 120)
+          }
+          autor={
+            (retirando.que === 'tema' ? tema.autor : retirando.mensaje.autor)?.nombre ??
+            'Quien lo escribió'
+          }
+          exigeMotivo={
+            retirando.que === 'tema'
+              ? tema.retiroExigeMotivo
+              : retirando.mensaje.retiroExigeMotivo
+          }
+          trabajando={trabajando}
+          onCerrar={() => setRetirando(null)}
+          onRetirar={retirar}
+        />
+      )}
     </div>
   );
 }
@@ -243,6 +321,21 @@ export default function Foro() {
   const [abierto, setAbierto] = useState(null);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState(null);
+  // El tema que se está por retirar desde la lista
+  const [retirandoDeLaLista, setRetirandoDeLaLista] = useState(null);
+  const [trabajando, setTrabajando] = useState(false);
+
+  function retirarDeLaLista(motivo) {
+    setTrabajando(true);
+    retirarTemaForo(retirandoDeLaLista.id, motivo)
+      .then(() => {
+        avisar('Tema retirado del foro.');
+        setRetirandoDeLaLista(null);
+        recargar();
+      })
+      .catch((e) => avisar(e.message, 'error'))
+      .finally(() => setTrabajando(false));
+  }
 
   function recargar() {
     return obtenerForo().then(setDatos).catch((e) => setError(e.message));
@@ -352,9 +445,9 @@ export default function Foro() {
 
       <ul className="temas">
         {visibles.map((t) => (
-          <li key={t.id}>
+          <li key={t.id} className="tema-fila-caja">
             <button type="button" className="tema-fila" onClick={() => setAbierto(t.id)}>
-              <Avatar persona={t.autor} />
+              <Cara persona={t.autor} />
 
               <span className="tema-fila-texto">
                 <span className="tema-fila-titulo">
@@ -378,9 +471,33 @@ export default function Foro() {
                 {hace(t.ultimaActividad)}
               </small>
             </button>
+
+            {t.puedeRetirar && (
+              <button
+                type="button"
+                className="tema-retirar"
+                onClick={() => setRetirandoDeLaLista(t)}
+                title="Retirar el tema del foro"
+                aria-label={`Retirar «${t.titulo}»`}
+              >
+                <IconoPapelera width={15} height={15} />
+              </button>
+            )}
           </li>
         ))}
       </ul>
+
+      {retirandoDeLaLista && (
+        <MotivoDeRetiro
+          titulo="¿Retirar el tema entero?"
+          queSeRetira={`${retirandoDeLaLista.titulo} · se lleva las ${retirandoDeLaLista.respuestas} respuestas`}
+          autor={retirandoDeLaLista.autor?.nombre ?? 'Quien lo abrió'}
+          exigeMotivo={retirandoDeLaLista.retiroExigeMotivo}
+          trabajando={trabajando}
+          onCerrar={() => setRetirandoDeLaLista(null)}
+          onRetirar={retirarDeLaLista}
+        />
+      )}
 
       {datos && visibles.length === 0 && (
         <p className="texto-suave">

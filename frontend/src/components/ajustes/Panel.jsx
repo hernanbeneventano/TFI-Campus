@@ -35,7 +35,7 @@ function Indicador({ nombre, valor, detalle, ruta, alerta }) {
     </>
   );
 
-  const clase = alerta ? 'indicador alerta' : 'indicador';
+  const clase = alerta ? 'indicador con-pendientes' : 'indicador';
   return ruta ? (
     <Link className={`${clase} enlace`} to={ruta}>
       {cuerpo}
@@ -156,17 +156,17 @@ export default function Panel() {
               comisión, materias sin docente ni aportes esperando revisión.
             </p>
           ) : (
-            <ul className="alertas">
+            <ul className="panel-alerta-lista">
               {alertas.alertas.map((a) => (
-                <li key={a.id} className={`alerta nivel-${a.nivel}`}>
+                <li key={a.id} className={`panel-alerta nivel-${a.nivel}`}>
                   <button
                     type="button"
-                    className="alerta-cabecera"
+                    className="panel-alerta-cabecera"
                     onClick={() => setAbierta(abierta === a.id ? null : a.id)}
                     aria-expanded={abierta === a.id}
                   >
-                    <span className="alerta-cantidad">{a.cantidad}</span>
-                    <span className="alerta-texto">
+                    <span className="panel-alerta-cantidad">{a.cantidad}</span>
+                    <span className="panel-alerta-texto">
                       <strong>{a.titulo}</strong>
                       <small>{a.explicacion}</small>
                     </span>
@@ -182,7 +182,7 @@ export default function Panel() {
                   {/* El detalle se despliega acá: cada línea lleva a su
                       pantalla, que es donde se arregla. */}
                   {abierta === a.id && a.items.length > 0 && (
-                    <ul className="alerta-items">
+                    <ul className="panel-alerta-items">
                       {a.items.map((item) => (
                         <li key={item.id}>
                           <Link to={item.ruta}>{item.texto}</Link>
@@ -196,7 +196,7 @@ export default function Panel() {
                     </ul>
                   )}
 
-                  <Link className="alerta-accion" to={a.ruta}>
+                  <Link className="panel-alerta-accion" to={a.ruta}>
                     {a.accion}
                   </Link>
                 </li>

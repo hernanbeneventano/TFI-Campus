@@ -22,6 +22,7 @@ import Panel from '../components/ajustes/Panel.jsx';
 import Estructura from '../components/ajustes/Estructura.jsx';
 import Estudiantes from '../components/ajustes/Estudiantes.jsx';
 import Cuentas from '../components/ajustes/Cuentas.jsx';
+import Academico from '../components/ajustes/Academico.jsx';
 import Auditoria from './Auditoria.jsx';
 import {
   IconoPanel,
@@ -30,6 +31,7 @@ import {
   IconoAjustes,
   IconoActividad,
   IconoAdvertencia,
+  IconoCalendario,
 } from '../components/Iconos.jsx';
 
 export default function Administracion() {
@@ -73,6 +75,15 @@ export default function Administracion() {
       Icono: IconoModulos,
       visible: institucion.puedeAdministrar,
       descripcion: 'Carreras, sedes, planes de estudio y comisiones.',
+    },
+    {
+      // Después de la estructura y antes de la gente: primero se define
+      // cuándo se cursa, después quién.
+      id: 'academico',
+      nombre: 'Académico',
+      Icono: IconoCalendario,
+      visible: institucion.puedeAsignar,
+      descripcion: 'El período de inscripción, la asistencia y el calendario de la facultad.',
     },
     {
       id: 'estudiantes',
@@ -140,6 +151,7 @@ export default function Administracion() {
         {actual.id === 'estructura' && (
           <Estructura datos={institucion} onCambio={setInstitucion} />
         )}
+        {actual.id === 'academico' && <Academico />}
         {actual.id === 'estudiantes' && <Estudiantes catalogo={institucion} />}
         {actual.id === 'cuentas' && <Cuentas yo={perfil.perfil} />}
         {/* El registro de actividad trae su propia cabecera y sus filtros: acá

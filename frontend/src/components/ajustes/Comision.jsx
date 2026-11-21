@@ -6,11 +6,25 @@
 //
 // Los docentes son una lista: una cátedra compartida tiene titular y
 // adjunto, y la misma persona puede dictar en varias comisiones.
+//
+// **Lo que ya se dicta va arriba de todo**, y el resto del plan abajo,
+// separado por año y cuatrimestre. Con veinte materias seguidas en una sola
+// lista no se encontraba lo que se acababa de asignar ni lo que faltaba: hay
+// que poder mirar el cuadro de la comisión y, aparte, buscar qué agregar.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { obtenerComision, configurarDictado, quitarDictado } from '../../services/api.js';
 import { avisar } from '../../services/avisos.js';
 import { IconoCerrar, IconoCheckCirculo } from '../Iconos.jsx';
+
+const ORDINAL = { 1: '1.er', 2: '2.º', 3: '3.er', 4: '4.º', 5: '5.º', 6: '6.º', 7: '7.º' };
+
+/** "2.º año · 1.º cuatrimestre". El 3 es anual, no un tercer cuatrimestre. */
+function tituloDePeriodo(materia) {
+  const anio = `${ORDINAL[materia.anio] ?? materia.anio} año`;
+  if (materia.cuatrimestre === 3) return `${anio} · anual`;
+  return `${anio} · ${materia.cuatrimestre === 2 ? '2.º' : '1.º'} cuatrimestre`;
+}
 
 function Materia({ materia, docentes, onGuardar, onQuitar, trabajando }) {
   const [editando, setEditando] = useState(false);
@@ -161,6 +175,34 @@ export default function Comision({ comisionId, onCerrar }) {
     }
   }
 
+  const guardar = (materia, valores) =>
+    accionar(() => configurarDictado(comisionId, materia.id, valores), 'Docentes asignados.');
+
+  const quitar = (materia) =>
+    accionar(() => quitarDictado(comisionId, materia.id), 'La materia deja de dictarse acá.');
+
+  // Lo que ya se dicta, para el bloque de arriba.
+  const dictadas = useMemo(
+    () => (datos?.materias ?? []).filter((m) => m.seDicta),
+    [datos]
+  );
+
+  // Y el resto, agrupado por año y cuatrimestre. El servidor ya las manda
+  // ordenadas por (año, cuatrimestre, código), así que alcanza con cortar la
+  // lista cada vez que cambia el período: no hace falta volver a ordenar.
+  const porPeriodo = useMemo(() => {
+    const grupos = [];
+    for (const m of datos?.materias ?? []) {
+      if (m.seDicta) continue;
+      const clave = `${m.anio}-${m.cuatrimestre}`;
+      if (grupos.at(-1)?.clave !== clave) {
+        grupos.push({ clave, titulo: tituloDePeriodo(m), materias: [] });
+      }
+      grupos.at(-1).materias.push(m);
+    }
+    return grupos;
+  }, [datos]);
+
   return (
     <div
       className="lista-fondo"
@@ -198,32 +240,54 @@ export default function Comision({ comisionId, onCerrar }) {
             </header>
 
             <p className="nota-bloque">
-              {datos.materias.filter((m) => m.seDicta).length} de {datos.materias.length}{' '}
-              materias del plan se dictan en esta comisión.
+              {dictadas.length} de {datos.materias.length} materias del plan se dictan en esta
+              comisión.
             </p>
+            {datos.materias.length === 0 ? (
+              <p className="vacio">
+                El plan de esta carrera todavía no tiene materias cargadas, así que no hay nada
+                para dictar acá. Cargalas primero en la pestaña <strong>Materias</strong>.
+              </p>
+            ) : (
+              <>
 
-            <ul className="catalogo">
-              {datos.materias.map((m) => (
-                <Materia
-                  key={m.id}
-                  materia={m}
-                  docentes={datos.docentesDisponibles}
-                  trabajando={trabajando}
-                  onGuardar={(materia, valores) =>
-                    accionar(
-                      () => configurarDictado(comisionId, materia.id, valores),
-                      'Docentes asignados.'
-                    )
-                  }
-                  onQuitar={(materia) =>
-                    accionar(
-                      () => quitarDictado(comisionId, materia.id),
-                      'La materia deja de dictarse acá.'
-                    )
-                  }
-                />
-              ))}
-            </ul>
+            {/* Lo que ya está configurado, arriba de todo: es el cuadro de la
+                comisión, y es a lo que se vuelve después de asignar algo. */}
+            <h4 className="comision-titulo">Se dictan en esta comisión</h4>
+            {dictadas.length === 0 ? (
+              <p className="vacio">
+                Todavía no se dicta ninguna materia acá. Agregá la primera desde el plan de
+                abajo.
+              </p>
+            ) : (
+              <ul className="catalogo">
+                {dictadas.map((m) => (
+                  <Materia key={m.id} materia={m} docentes={datos.docentesDisponibles}
+                    trabajando={trabajando} onGuardar={guardar} onQuitar={quitar} />
+                ))}
+              </ul>
+            )}
+
+            {/* Y el resto del plan, por año y cuatrimestre: así se busca qué
+                agregar sin leer veinte nombres seguidos. */}
+            <h4 className="comision-titulo">Resto del plan</h4>
+            {porPeriodo.length === 0 ? (
+              <p className="vacio">Todo el plan se dicta en esta comisión.</p>
+            ) : (
+              porPeriodo.map((grupo) => (
+                <section key={grupo.clave} className="comision-periodo">
+                  <h5>{grupo.titulo}</h5>
+                  <ul className="catalogo">
+                    {grupo.materias.map((m) => (
+                      <Materia key={m.id} materia={m} docentes={datos.docentesDisponibles}
+                        trabajando={trabajando} onGuardar={guardar} onQuitar={quitar} />
+                    ))}
+                  </ul>
+                </section>
+              ))
+            )}
+              </>
+            )}
           </>
         )}
       </section>

@@ -11,6 +11,7 @@ import {
   IconoReloj,
   IconoUbicacion,
 } from '../Iconos.jsx';
+import Avatar from '../Avatar.jsx';
 import { obtenerInscriptosFinales } from '../../services/api.js';
 import { fechaConDia } from '../../services/fechas.js';
 import {
@@ -302,7 +303,7 @@ export default function Inscriptos({ mesas }) {
                           <td data-etiqueta="Alumno">
                             <span className="finales-alumno">
                               <span className={`finales-avatar avatar-estado ${f.alumno.estado}`}>
-                                <IconoEstudiante width={18} height={18} />
+                                <Avatar persona={f.alumno} tamano={18} />
                               </span>
                               <span>
                                 <strong>{f.alumno.nombre}</strong>

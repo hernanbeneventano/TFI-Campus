@@ -139,7 +139,7 @@ function Justificaciones({ datos, onResolver, trabajando }) {
       <p className="vacio">
         {datos.puedeResolver
           ? 'No hay justificaciones en tus materias.'
-          : 'No pediste ninguna justificación. Se piden desde la pestaña Asistencias de cada módulo.'}
+          : 'No pediste ninguna justificación.'}
       </p>
     );
   }
