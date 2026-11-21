@@ -9,6 +9,7 @@ import {
   IconoEstudiante,
   IconoNotas,
 } from '../Iconos.jsx';
+import Avatar from '../Avatar.jsx';
 import { cerrarActa, guardarResultados, obtenerMesaGestion } from '../../services/api.js';
 import { fechaConDia } from '../../services/fechas.js';
 import { avisar } from '../../services/avisos.js';
@@ -311,7 +312,7 @@ function Planilla({ mesaId, opciones, onCambio }) {
                 <td data-etiqueta="Alumno">
                   <span className="finales-alumno">
                     <span className="finales-avatar">
-                      <IconoEstudiante width={18} height={18} />
+                      <Avatar persona={f.alumno} tamano={18} />
                     </span>
                     <span>
                       <strong>{f.alumno.nombre}</strong>

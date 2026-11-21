@@ -53,7 +53,33 @@ const ESTADOS = {
     Icono: IconoAdvertencia,
     corto: 'Sin cupos',
   },
+  // La institución la dio de baja. Solo la ve quien ya tuvo que ver con ella.
+  'No se ofrece': { clase: 'bloqueada', Icono: IconoCandado, corto: 'De baja' },
 };
+
+/** "15 de 40", o "15 inscriptos" cuando la materia no tiene tope. */
+function lugares(materia) {
+  return materia.cupo == null
+    ? `${materia.inscriptos} inscriptos · sin límite`
+    : `${materia.inscriptos} de ${materia.cupo}`;
+}
+
+/** Los requisitos de un grupo, con la condición que pide cada uno.
+ *
+ * Decir solo el nombre no alcanza: el plan puede pedir una materia **regular**
+ * para cursar y **aprobada** para rendir, y son dos cosas distintas. Si la
+ * pantalla las muestra igual, el estudiante no sabe qué tiene que hacer.
+ */
+function Requisitos({ titulo, grupo }) {
+  if (!grupo || !grupo.requisitos || grupo.requisitos.length === 0) return null;
+  const union = grupo.modo === 'alguna' ? ' o ' : ', ';
+  return (
+    <p className="materia-correlativas">
+      <strong>{titulo}:</strong>{' '}
+      {grupo.requisitos.map((c) => `${c.nombre} (${c.condicion.toLowerCase()})`).join(union)}
+    </p>
+  );
+}
 
 const ORDINAL = { 1: '1.er', 2: '2.º', 3: '3.er', 4: '4.º', 5: '5.º' };
 
@@ -98,17 +124,13 @@ function Materia({ materia, onInscribirse, onBaja, trabajando }) {
         <div>
           <dt>Lugares</dt>
           <dd>
-            <IconoPersonas width={14} height={14} /> {materia.inscriptos} de {materia.cupo}
+            <IconoPersonas width={14} height={14} /> {lugares(materia)}
           </dd>
         </div>
       </dl>
 
-      {materia.correlativas.length > 0 && (
-        <p className="materia-correlativas">
-          <strong>Correlativas:</strong>{' '}
-          {materia.correlativas.map((c) => c.nombre).join(', ')}
-        </p>
-      )}
+      <Requisitos titulo="Para cursar" grupo={materia.correlativas} />
+      <Requisitos titulo="Para rendir el final" grupo={materia.correlativasRendir} />
 
       {materia.motivo && (
         <p className={`materia-motivo ${clase}`}>
@@ -211,7 +233,7 @@ export default function InscripcionMaterias() {
     ];
     if (materia.horario) datos.push({ etiqueta: 'Horario', valor: materia.horario });
     if (materia.docente) datos.push({ etiqueta: 'Profesor', valor: materia.docente });
-    datos.push({ etiqueta: 'Lugares', valor: `${materia.inscriptos} de ${materia.cupo}` });
+    datos.push({ etiqueta: 'Lugares', valor: lugares(materia) });
     return datos;
   }
 

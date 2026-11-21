@@ -1226,6 +1226,38 @@ select {
   gap: 18px;
 }
 
+/* Con un documento adentro, el visor deja de ser una columna de lectura y
+   pasa a ser un lector: el que se desplaza es el documento, no la página, y
+   el ancho de texto le dejaría una hoja A4 del tamaño de una estampilla. */
+.visor-cuerpo.con-documento {
+  overflow: hidden;
+  padding: 16px 20px 20px;
+}
+
+.visor-contenido.ancho {
+  max-width: 1400px;
+  height: 100%;
+  gap: 10px;
+}
+
+.visor-contenido.ancho h1 {
+  font-size: 1.35rem;
+}
+
+/* `.visor-archivo` centra sus hijos, que es lo que quiere una ficha de
+   archivo pero no un lector: sin esto el documento se encogía al ancho de la
+   hoja y dejaba media pantalla vacía a los costados. */
+.visor-contenido.ancho .visor-archivo {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  align-items: stretch;
+}
+
+.visor-contenido.ancho .documento {
+  width: 100%;
+}
+
 .visor-contenido h1 {
   font-size: 1.8rem;
   color: var(--oscuro);
@@ -6067,6 +6099,12 @@ a.proxima:hover {
   font-size: 0.9rem;
 }
 
+/* Cuando lleva ícono, el texto necesita aire: pegado parece una sola palabra. */
+.nota-bloque svg {
+  margin-right: 7px;
+  vertical-align: -2px;
+}
+
 .bloque-mesas,
 .bloque-anio {
   display: flex;
@@ -8260,12 +8298,12 @@ a.proxima:hover {
   font-weight: 400;
 }
 
-.editor-seccion input,
+.editor-seccion input:not(.interruptor),
 .editor-seccion textarea,
-.editor-elemento input,
+.editor-elemento input:not(.interruptor),
 .editor-elemento textarea,
 .editor-elemento select,
-.correccion input,
+.correccion input:not(.interruptor),
 .correccion textarea,
 .correccion select {
   width: 100%;
@@ -8285,12 +8323,12 @@ a.proxima:hover {
   min-height: 80px;
 }
 
-.editor-seccion input:focus,
+.editor-seccion input:not(.interruptor):focus,
 .editor-seccion textarea:focus,
-.editor-elemento input:focus,
+.editor-elemento input:not(.interruptor):focus,
 .editor-elemento textarea:focus,
 .editor-elemento select:focus,
-.correccion input:focus,
+.correccion input:not(.interruptor):focus,
 .correccion textarea:focus,
 .correccion select:focus {
   outline: 2px solid var(--principal);
@@ -8525,6 +8563,76 @@ a.proxima:hover {
   text-transform: none;
   letter-spacing: 0;
   font-weight: 400;
+}
+
+/* Un campo del diálogo que no es un control: lleva el mismo título que los
+   demás para que la columna se lea pareja. */
+.correccion-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.correccion-campo > span {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* El legajo que le va a tocar al estudiante. Se muestra en vez de un campo
+   vacío que dijera "se genera solo": es el número con el que después se lo
+   busca, y verlo recién al final obliga a volver a buscarlo.
+   En monoespaciada y con el color principal, igual que en el perfil. */
+.legajo-previsto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--principal) 35%, var(--borde));
+  border-radius: var(--radio-chico);
+  background: color-mix(in srgb, var(--principal) 7%, var(--blanco));
+}
+
+.legajo-previsto strong {
+  color: var(--principal);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.legajo-previsto small {
+  color: var(--texto-suave);
+}
+
+/* Mientras no hay carrera elegida el recuadro no promete nada: va apagado */
+.legajo-previsto:has(.texto-suave:first-child) {
+  border-color: var(--borde);
+  background: var(--panel);
+}
+
+.legajo-previsto .enlace-suave {
+  margin-left: auto;
+}
+
+/* Un botón que se lee como un enlace: una acción secundaria dentro de un
+   campo, donde un botón de verdad competiría con el de guardar. */
+.enlace-suave {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.enlace-suave:hover {
+  color: var(--principal);
 }
 
 .correccion-cerrar {
@@ -10962,11 +11070,11 @@ a.proxima:hover {
 /* Lo que falló lleva el rojo solo cuando hay algo que mirar: un cero en rojo
    es una alarma que no suena por nada. */
 .auditoria-tarjeta.alerta {
-  border-color: var(--principal);
+  border-color: var(--alerta);
 }
 
 .auditoria-tarjeta.alerta strong {
-  color: var(--principal);
+  color: var(--alerta);
 }
 
 .filtros-plan.segunda-fila {
@@ -11049,7 +11157,7 @@ a.proxima:hover {
 
 /* Una fila fallida se ve desde lejos: es lo que se viene a buscar. */
 .tabla-auditoria tr.fallida td {
-  background: color-mix(in srgb, var(--principal) 5%, transparent);
+  background: color-mix(in srgb, var(--alerta) 5%, transparent);
 }
 
 .auditoria-fecha {
@@ -11073,8 +11181,8 @@ a.proxima:hover {
 }
 
 .resultado.fallo {
-  background: color-mix(in srgb, var(--principal) 12%, transparent);
-  color: var(--principal);
+  background: color-mix(in srgb, var(--alerta) 12%, transparent);
+  color: var(--alerta);
 }
 
 /* ---------- El detalle de un movimiento ---------- */
@@ -11228,13 +11336,15 @@ a.proxima:hover {
 .cuenta-urgente {
   padding: 2px 10px;
   border-radius: 999px;
-  background: var(--principal);
+  /* El rojo de atención, no el azul de los botones: acá el color quiere
+     decir "mirá esto", no "tocá esto". */
+  background: var(--alerta);
   color: var(--blanco);
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.alertas {
+.panel-alerta-lista {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -11243,7 +11353,7 @@ a.proxima:hover {
   list-style: none;
 }
 
-.alerta {
+.panel-alerta {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
@@ -11258,19 +11368,21 @@ a.proxima:hover {
   animation: aparecer-subiendo 0.3s ease;
 }
 
-.alerta.nivel-alta {
-  border-left-color: var(--principal);
+.panel-alerta.nivel-alta {
+  border-left-color: var(--alerta);
 }
 
-.alerta.nivel-media {
+.panel-alerta.nivel-media {
   border-left-color: var(--progreso-medio);
 }
 
-.alerta.nivel-info {
+.panel-alerta.nivel-info {
   border-left-color: var(--gris);
 }
 
-.alerta-cabecera {
+.panel-alerta-cabecera {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -11282,7 +11394,7 @@ a.proxima:hover {
   cursor: pointer;
 }
 
-.alerta-cantidad {
+.panel-alerta-cantidad {
   flex: none;
   min-width: 34px;
   padding: 3px 8px;
@@ -11294,35 +11406,45 @@ a.proxima:hover {
   text-align: center;
 }
 
-.alerta.nivel-alta .alerta-cantidad {
-  background: color-mix(in srgb, var(--principal) 12%, transparent);
-  color: var(--principal);
+.panel-alerta.nivel-alta .panel-alerta-cantidad {
+  background: color-mix(in srgb, var(--alerta) 12%, transparent);
+  color: var(--alerta);
 }
 
-.alerta-texto {
+.panel-alerta-texto {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-.alerta-texto strong {
+.panel-alerta-texto strong {
   color: var(--oscuro);
 }
 
-.alerta-texto small {
+.panel-alerta-texto small {
   color: var(--texto-suave);
   font-size: 0.82rem;
 }
 
-.alerta-cabecera svg {
-  transition: transform 0.2s ease;
+.panel-alerta-cabecera svg {
+  /* Cerrada apunta abajo y abierta arriba, igual que el menú lateral: las dos
+     posiciones son simétricas respecto del eje vertical, así que el glifo cae
+     centrado en los dos estados. */
+  transform: rotate(90deg);
+  transition: transform 0.26s ease;
 }
 
-.alerta-cabecera svg.girada {
-  transform: rotate(180deg);
+.panel-alerta-cabecera svg.girada {
+  transform: rotate(-90deg);
 }
 
-.alerta-accion {
+.panel-alerta-accion {
+  /* Fija en la primera fila: si no, al abrirse el detalle el botón caía
+     debajo y se estiraba a todo el ancho de la tarjeta. */
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
   flex: none;
   padding: 7px 14px;
   border: 1px solid var(--borde);
@@ -11333,13 +11455,14 @@ a.proxima:hover {
   white-space: nowrap;
 }
 
-.alerta-accion:hover {
+.panel-alerta-accion:hover {
   border-color: var(--oscuro);
   background: var(--panel);
 }
 
-.alerta-items {
+.panel-alerta-items {
   grid-column: 1 / -1;
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -11351,12 +11474,14 @@ a.proxima:hover {
   animation: aparecer 0.2s ease;
 }
 
-.alerta-items a {
+.panel-alerta-items a {
   color: var(--oscuro);
+  text-decoration: none;
 }
 
-.alerta-items a:hover {
+.panel-alerta-items a:hover {
   color: var(--principal);
+  text-decoration: underline;
 }
 
 /* ---------- Indicadores ---------- */
@@ -11395,12 +11520,12 @@ a.proxima:hover {
 
 /* Un indicador en rojo solo cuando hay algo que hacer: un cero en rojo es una
    alarma que no suena por nada. */
-.indicador.alerta {
-  border-color: var(--principal);
+.indicador.con-pendientes {
+  border-color: var(--alerta);
 }
 
-.indicador.alerta strong {
-  color: var(--principal);
+.indicador.con-pendientes strong {
+  color: var(--alerta);
 }
 
 .indicador.enlace:hover {
@@ -11597,11 +11722,14 @@ a.proxima:hover {
 }
 
 @media (max-width: 760px) {
-  .alerta {
+  .panel-alerta {
     grid-template-columns: 1fr;
   }
 
-  .alerta-accion {
+  /* En una sola columna el botón sí va debajo, pegado a la izquierda */
+  .panel-alerta-accion {
+    grid-column: 1;
+    grid-row: 3;
     justify-self: start;
   }
 
@@ -11612,4 +11740,1890 @@ a.proxima:hover {
   .barra-pista {
     grid-column: 1 / -1;
   }
+}
+
+/* Un campo que se muestra pero no se edita: lo cambia la administración.
+   Va en gris y con candado para que se entienda que no está roto, sino que
+   no te corresponde a vos. */
+.campo-bloqueado span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texto-suave);
+}
+
+.campo-bloqueado input {
+  background: var(--panel);
+  color: var(--texto-suave);
+  cursor: not-allowed;
+}
+
+/* Editar y retirar van juntos en la cabecera de la publicación */
+.publicacion-acciones {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.publicacion-editar.peligro:hover {
+  color: var(--alerta);
+}
+
+/* El botón de retirar, junto al de útil */
+.voto.peligro:hover {
+  border-color: var(--alerta);
+  color: var(--alerta);
+}
+
+/* Mientras Firebase dice quién está conectado: la pantalla queda en el color
+   del fondo, sin parpadear entre el campus y el login. */
+.layout.cargando {
+  background: var(--fondo);
+  min-height: 100vh;
+}
+
+/* Un módulo sin contenido: el texto y, para la cátedra, por dónde empezar */
+.modulo-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 22px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+}
+
+.modulo-vacio p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* El selector de archivo del editor de contenido */
+.campo-archivo input[type='file'] {
+  padding: 9px 12px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  font: inherit;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.campo-archivo input[type='file']:hover {
+  border-color: var(--principal);
+}
+
+.visor-archivo a.boton-principal {
+  text-decoration: none;
+}
+
+/* La fila de un tema, con su botón de retirar al costado. El botón va fuera
+   del que abre el tema: uno dentro de otro no es válido. */
+.tema-fila-caja {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.tema-fila-caja .tema-fila {
+  flex: 1;
+  min-width: 0;
+}
+
+.tema-retirar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.tema-retirar:hover {
+  border-color: var(--alerta);
+  color: var(--alerta);
+}
+
+/* ==================== Controles del navegador ====================
+   El campus tiene su propio desplegable (`Desplegable`) porque la lista que
+   abre el navegador no se puede estilar. Pero en los formularios quedaron
+   `<select>` nativos, y el control cerrado —que es lo que se ve casi todo el
+   tiempo— sí se puede vestir. Con esto dejan de desentonar sin tener que
+   reescribir once formularios.
+
+   Lo mismo con el selector de archivo: el botón gris de "Seleccionar
+   archivo" no se parece a nada del campus. */
+select {
+  appearance: none;
+  width: 100%;
+  height: 42px;
+  padding: 0 38px 0 16px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background-color: var(--blanco);
+  color: var(--texto);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  /* La flecha, dibujada acá: es el mismo chevron que usa Desplegable */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%235f6b7e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+}
+
+select:hover {
+  border-color: var(--gris);
+}
+
+select:focus-visible {
+  outline: none;
+  border-color: var(--principal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--principal) 18%, transparent);
+}
+
+select:disabled {
+  background-color: var(--panel);
+  color: var(--texto-suave);
+  cursor: not-allowed;
+}
+
+/* El desplegable abierto lo dibuja el sistema operativo y no se puede
+   estilar; al menos las opciones heredan la tipografía. */
+select option {
+  font: inherit;
+  color: var(--texto);
+}
+
+/* ---------- Selector de archivo ---------- */
+input[type='file'] {
+  width: 100%;
+  padding: 7px;
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+input[type='file']:hover {
+  border-color: var(--principal);
+}
+
+input[type='file']::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--oscuro);
+  color: var(--blanco);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+input[type='file']::file-selector-button:hover {
+  background: var(--principal);
+}
+
+/* ---------- Fechas y horas ---------- */
+/* El reloj y el almanaque del navegador vienen en su gris por omisión */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator:hover,
+input[type='time']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ---------- Los días de clase, en el panel del módulo ---------- */
+.cursada li {
+  position: relative;
+}
+
+.cursada-quitar {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: inline-flex;
+  padding: 4px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.cursada-quitar:hover {
+  background: var(--panel);
+  color: var(--alerta);
+}
+
+.cursada-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer-subiendo 0.25s ease;
+}
+
+.cursada-horas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* La etiqueta de cada campo, con el mismo peso que las del resto del campus.
+   Va con `>` a propósito: el desplegable se dibuja **dentro** del <label>, y
+   sin eso esta regla le ponía mayúsculas también a sus opciones. */
+.cursada-form label > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--texto-suave);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cursada-form label > span small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+/* En el panel, que es angosto, los desplegables y el aula ocupan todo el
+   ancho y achican su relleno: con el de la barra de filtros quedarían
+   apretados contra el borde. */
+.cursada-form .desplegable-boton,
+.cursada-form input[type='text'] {
+  width: 100%;
+  height: 38px;
+  padding-left: 14px;
+  font-size: 0.9rem;
+}
+
+.cursada-form input[type='text'] {
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--blanco);
+}
+
+/* La lista de horas es larga: se desplaza en vez de estirar el panel */
+.cursada-form .desplegable-lista {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.cursada-form .editor-botones {
+  margin-top: 2px;
+}
+
+/* La contraseña provisoria: grande y en monoespaciada, porque hay que
+   leerla y pasarla sin equivocarse. */
+.contrasena-provisoria {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+}
+
+.contrasena-provisoria code {
+  flex: 1;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+  color: var(--oscuro);
+  user-select: all;
+}
+
+.fila-catalogo .fila-acciones {
+  display: flex;
+  gap: 6px;
+}
+
+.fila-acciones .boton-suave {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* ===================== Materias del plan ===================== */
+/* La tabla es la misma de Auditoría: una tabla de registros se lee igual en
+   todo el campus. Acá solo se agrega lo propio de una materia. */
+
+/* El nombre es el enlace a la ficha, pero un subrayado en cada fila ensucia
+   la tabla: se marca al pasar por encima y nada más. */
+.materia-nombre {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.materia-nombre strong {
+  color: var(--oscuro);
+}
+
+.materia-nombre:hover strong,
+.materia-nombre:focus-visible strong {
+  color: var(--principal);
+}
+
+.materia-nombre small {
+  display: block;
+  font-size: 0.78rem;
+}
+
+/* Una materia dada de baja se sigue viendo, apagada: los historiales y las
+   correlatividades que la mencionan siguen en pie. */
+.tabla-materias tr.inactiva td {
+  background: color-mix(in srgb, var(--panel) 50%, var(--blanco));
+  color: var(--texto-suave);
+}
+
+.tabla-materias tr.inactiva .materia-nombre strong {
+  color: var(--texto-suave);
+}
+
+/* ---------- Correlatividades ---------- */
+/* Son dos grupos —para cursar y para rendir— y cada uno es un recuadro
+   aparte: son requisitos distintos y mezclarlos es el error que se quiere
+   evitar al cargarlos. */
+.correlativas-grupo {
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--fondo);
+}
+
+.correlativas-grupo legend {
+  padding: 0 6px;
+  color: var(--oscuro);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.correlativas-grupo > .texto-suave {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+}
+
+.correlativas-grupo > .vacio {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.correlativas-lista {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.correlativas-lista li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  animation: aparecer 0.25s ease;
+}
+
+.correlativa-nombre {
+  flex: 1;
+  min-width: 0;
+}
+
+.correlativa-nombre strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.correlativa-nombre small {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+}
+
+/* El desplegable de la condición no tiene por qué ocupar todo lo que pueda:
+   "Aprobada" y "Regular" son palabras cortas. */
+.correlativas-lista li .desplegable {
+  width: 150px;
+  flex: none;
+}
+
+.correlativa-quitar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--borde);
+  border-radius: 50%;
+  background: var(--blanco);
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.correlativa-quitar:hover,
+.correlativa-quitar:focus-visible {
+  border-color: var(--alerta);
+  color: var(--alerta);
+}
+
+.correlativas-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.correlativas-pie .desplegable {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* ---------- El interruptor dentro de una fila de campos ---------- */
+/* Hace que el estado se alinee con los campos de al lado: sin esto el
+   interruptor queda pegado arriba y la fila se ve desprolija. */
+.campo-interruptor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo-interruptor .interruptor-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* El título del campo va en versalitas como todos, pero lo que dice el
+   interruptor es un valor, no un título: hereda la transformación del
+   título y hay que devolverla. */
+.campo-interruptor .interruptor-texto {
+  color: var(--oscuro);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+@media (max-width: 760px) {
+  .correlativas-lista li {
+    flex-wrap: wrap;
+  }
+
+  .correlativas-lista li .desplegable {
+    width: auto;
+    flex: 1 1 140px;
+  }
+}
+
+/* ===================== La foto de perfil ===================== */
+/* La foto reemplaza a la silueta en el mismo hueco, así que se recorta al
+   círculo y se recuadra: una imagen apaisada estirada a cuadrado deforma la
+   cara, y `cover` recorta en vez de deformar. */
+.avatar-foto {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* En el menú y en los listados el hueco ya es redondo y la foto lo llena. */
+.menu-usuario .avatar-foto,
+.fila-catalogo .avatar-foto {
+  width: 100%;
+  height: 100%;
+}
+
+.perfil-foto {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.perfil-foto .perfil-avatar {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+}
+
+.perfil-foto-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.perfil-foto-acciones small {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+}
+
+/* El selector de archivo del navegador no se puede estilar, así que se
+   esconde y la etiqueta hace de botón. Es lo mismo que hace el resto del
+   campus con sus subidas. */
+.perfil-foto-acciones label.boton-suave {
+  cursor: pointer;
+}
+
+.perfil-foto-acciones label input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Mientras sube, la foto se apaga y una franja marca cuánto va. Se ve sobre
+   la imagen misma: un porcentaje suelto al lado no dice de qué es. */
+.perfil-avatar.subiendo .avatar-foto {
+  opacity: 0.45;
+}
+
+.perfil-foto-avance {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 5px;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.perfil-foto-avance::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: var(--avance, 0%);
+  background: var(--principal);
+  transition: width 0.2s ease;
+}
+
+.perfil-foto .aviso-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* ===================== Avisos institucionales ===================== */
+/* Un aviso de la facultad, no una aclaración al pasar: lleva su recuadro y su
+   barrita, como las alertas del panel. No usa el rojo —no hay nada que
+   atender ni nada roto— sino el borde y el fondo del panel, que es "esto es
+   así". El rojo en el campus quiere decir "prestá atención ahora". */
+.aviso-institucional {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--gris);
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.aviso-institucional svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--gris);
+}
+
+.aviso-institucional strong {
+  color: var(--oscuro);
+}
+
+/* ===================== La foto de perfil ===================== */
+/* La foto es el control: se toca para cambiarla. Al pasar el mouse —o al
+   llegar con el teclado— aparece el lápiz encima. */
+.perfil-avatar.editable {
+  position: relative;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.perfil-avatar-editar {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.5);
+  color: var(--blanco);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.perfil-avatar.editable:hover .perfil-avatar-editar,
+.perfil-avatar.editable:focus-visible .perfil-avatar-editar {
+  opacity: 1;
+}
+
+.perfil-avatar.grande {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  overflow: hidden;
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+.foto-panel {
+  max-width: 440px;
+}
+
+.foto-panel-vista {
+  display: grid;
+  place-items: center;
+  margin: 4px 0 18px;
+}
+
+/* La zona de arrastre es también la etiqueta del selector de archivos, que no
+   se puede estilar y por eso va escondido. */
+.foto-zona {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 22px 18px;
+  border: 1.5px dashed var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--fondo);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.foto-zona:hover,
+.foto-zona.arrastrando {
+  border-color: var(--principal);
+  background: color-mix(in srgb, var(--principal) 6%, var(--fondo));
+}
+
+.foto-zona svg {
+  color: var(--texto-suave);
+}
+
+.foto-zona strong {
+  color: var(--oscuro);
+  font-size: 0.92rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.foto-zona small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.foto-zona input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* La aclaración de abajo del cartel de adjuntar: lo que conviene saber, no
+   una advertencia. Va apagada y separada de la zona de arrastre. */
+.adjuntar-nota {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.foto-panel .aviso-error {
+  margin: 12px 0 0;
+}
+
+/* Un aro en la vista previa: una foto clara, o con el fondo transparente, se
+   confundía con el panel y parecía que no se había elegido nada. */
+.perfil-avatar.grande {
+  border: 1px solid var(--borde);
+}
+
+/* Eliminar la foto es lo único del panel que deshace algo: va a la izquierda,
+   separado de Cancelar y Guardar, para que no se toque de paso. */
+.foto-panel .editor-botones .peligro {
+  margin-right: auto;
+}
+
+/* ===================== El cuadro de materias de una comisión ===================== */
+/* Dos bloques: lo que ya se dicta y el resto del plan. El segundo va partido
+   por año y cuatrimestre, porque veinte materias seguidas no se leen. */
+.comision-titulo {
+  margin: 22px 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--borde);
+  color: var(--oscuro);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.comision-titulo:first-of-type {
+  margin-top: 16px;
+}
+
+.comision-periodo {
+  margin-bottom: 14px;
+}
+
+/* El rótulo del período va en versalitas, como los títulos de campo: es una
+   división, no un encabezado que compita con los dos bloques. */
+.comision-periodo h5 {
+  margin: 0 0 7px;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ===================== Módulos por año ===================== */
+/* Tres niveles: carrera, año y cuatrimestre. El año lleva su propio título,
+   más chico que el de la carrera y más grande que el del cuatrimestre: la
+   jerarquía se tiene que leer sin pensarla. */
+.grupo-anio {
+  margin-bottom: 18px;
+}
+
+.anio-titulo {
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--borde);
+  color: var(--oscuro);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Dentro del año, el cuatrimestre es una división, no un encabezado que
+   compita: va en versalitas, como los rótulos de campo. */
+.grupo-anio .periodo-titulo {
+  margin: 0 0 8px;
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Las comisiones, agrupadas por carrera. El nombre de cada una ya dice el
+   año, así que con la carrera alcanza: un tercer nivel sería ruido. */
+.grupo-comisiones {
+  list-style: none;
+  margin-bottom: 18px;
+}
+
+.comision-carrera {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--borde);
+  color: var(--oscuro);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.comision-carrera small {
+  color: var(--texto-suave);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* La ayuda del ámbito, dentro del editor de una cuenta: explica qué quiere
+   decir dejarlo vacío, que es lo único que no se adivina mirándolo. */
+.ambito-ayuda {
+  margin: -2px 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+/* El legajo, dentro de los datos de la carrera. Entre la comisión y el plan
+   se perdía como un dato más, y es con el que la facultad te identifica: va
+   en su recuadro, con el color principal. En monoespaciada porque es un
+   número de expediente y se lee de a dígitos. */
+.dato-legajo {
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--principal) 35%, var(--borde));
+  border-radius: var(--radio-chico);
+  background: color-mix(in srgb, var(--principal) 7%, var(--blanco));
+}
+
+.dato-legajo dt {
+  color: color-mix(in srgb, var(--principal) 70%, var(--texto-suave));
+}
+
+.dato-legajo dd {
+  color: var(--principal);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* El ícono de una fila de catálogo. Dice de qué es antes de leerla: en una
+   lista de recuadros iguales, el título solo se distingue leyéndolos todos.
+   Va en un círculo apagado para que acompañe sin competir con el texto. */
+.fila-icono {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--texto-suave);
+}
+
+/* ===================== Imágenes en el chat ===================== */
+/* Una imagen adjunta se muestra, no se nombra: "foto.jpg · 41 KB" obliga a
+   bajarla para saber qué es. Se recorta a un alto máximo para que una captura
+   larga no empuje el resto del hilo fuera de la pantalla. */
+.adjunto-imagen {
+  display: block;
+  margin: 6px 0 2px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radio-chico);
+  background: none;
+  overflow: hidden;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.adjunto-imagen img {
+  display: block;
+  max-width: 260px;
+  max-height: 260px;
+  width: auto;
+  height: auto;
+  border-radius: var(--radio-chico);
+}
+
+.adjunto-miniatura {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* El visor en grande */
+.visor-imagen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 36px 24px;
+  background: rgb(10 12 20 / 0.86);
+  animation: aparecer 0.18s ease;
+}
+
+.visor-imagen figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.visor-imagen img {
+  max-width: min(1100px, 92vw);
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: var(--radio-chico);
+}
+
+.visor-imagen figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--blanco);
+  font-size: 0.88rem;
+}
+
+.visor-imagen figcaption .boton-suave {
+  background: rgb(255 255 255 / 0.14);
+  border-color: rgb(255 255 255 / 0.3);
+  color: var(--blanco);
+  text-decoration: none;
+}
+
+.visor-imagen-cerrar {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.14);
+  color: var(--blanco);
+  cursor: pointer;
+}
+
+.visor-imagen-cerrar:hover {
+  background: rgb(255 255 255 / 0.26);
+}
+
+/* La vista previa de un PDF dentro del módulo. Alto fijo y generoso: con
+   menos de media pantalla hay que desplazar dos veces —el visor y el PDF— y
+   deja de servir para mirar de qué se trata. */
+/* ===================== Mirar un documento sin bajarlo =====================
+   El PDF lo dibuja pdf.js en un canvas y el Word lo pasa mammoth a HTML: el
+   documento nunca se abre como documento, así que no hay nada que ejecutar.
+   Las hojas van sobre un fondo oscuro, como en cualquier lector: es lo que
+   hace que se vea dónde termina una y empieza la otra. */
+.documento {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.documento.a-pantalla-completa {
+  border: 0;
+  border-radius: 0;
+}
+
+/* Descargar e imprimir, arriba a la derecha y con su nombre: son lo que se
+   hace con el documento, no una herramienta del visor como el zoom. Llevan
+   texto porque un ícono solo obliga a adivinar cuál es cuál. */
+.documento-barra .documento-accion {
+  /* La regla de arriba los hace una grilla de 28×28 para los que son solo
+     ícono; estos llevan ícono y texto en una línea. */
+  display: flex;
+  align-items: center;
+  width: auto;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* En una pantalla angosta no entran los nombres: quedan los íconos, que ahí
+   ya no compiten con nada. */
+@media (max-width: 900px) {
+  .documento-barra .documento-accion {
+    width: 28px;
+    padding: 0;
+    border: 0;
+  }
+
+  .documento-barra .documento-accion span {
+    display: none;
+  }
+}
+
+/* La barra de herramientas: nombre, página, zoom y acciones. Oscura como la
+   ruta de arriba del visor, para que las dos se lean como el marco y no
+   compitan con la hoja. */
+.documento-barra {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 12px;
+  background: var(--oscuro);
+  color: var(--blanco);
+}
+
+.documento-nombre {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.documento-paginas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.documento-paginas input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: var(--radio-chico);
+  background: rgb(255 255 255 / 10%);
+  color: var(--blanco);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.documento-paginas small {
+  color: rgb(255 255 255 / 65%);
+  white-space: nowrap;
+}
+
+.documento-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.documento-zoom small {
+  min-width: 46px;
+  text-align: center;
+  color: rgb(255 255 255 / 80%);
+}
+
+.documento-acciones {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.documento-barra :is(button, a) {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radio-chico);
+  background: none;
+  color: var(--blanco);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.documento-barra :is(button, a):hover:not(:disabled) {
+  background: rgb(255 255 255 / 14%);
+}
+
+.documento-barra button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Lo que se desplaza */
+.documento-hojas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+  background: var(--fondo);
+}
+
+.documento-hojas.oscuro {
+  padding: 0;
+  background: #30323f;
+}
+
+.documento-esperando {
+  margin: 0;
+  padding: 40px 0;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+.documento-hojas.oscuro .documento-esperando {
+  color: rgb(255 255 255 / 70%);
+}
+
+.documento-error {
+  margin: 20px;
+}
+
+.documento-pdf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+/* Cada hoja, con su sombra: es lo que la hace leer como una hoja y no como
+   una imagen pegada al fondo. */
+.documento-pagina {
+  height: auto;
+  max-width: 100%;
+  background: var(--blanco);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+}
+
+/* El Word convertido. Se le da el ancho de una hoja y la tipografía de
+   lectura: convertido a HTML sin estilos queda como un volante. */
+.documento-word {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 36px 40px;
+  border-radius: 2px;
+  background: var(--blanco);
+  box-shadow: 0 1px 8px rgb(43 45 66 / 16%);
+  line-height: 1.6;
+}
+
+.documento-word :is(h1, h2, h3, h4) {
+  margin: 1.4em 0 0.5em;
+  color: var(--oscuro);
+}
+
+.documento-word > :first-child {
+  margin-top: 0;
+}
+
+.documento-word p {
+  margin: 0 0 0.9em;
+}
+
+.documento-word img {
+  max-width: 100%;
+  height: auto;
+}
+
+.documento-word table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.documento-word :is(td, th) {
+  padding: 6px 10px;
+  border: 1px solid var(--borde);
+  text-align: left;
+}
+
+/* En celular la barra no entra en una línea: el nombre se va solo. */
+@media (max-width: 760px) {
+  .documento-nombre {
+    display: none;
+  }
+
+  .visor-cuerpo.con-documento {
+    padding: 10px;
+  }
+}
+
+/* ===================== Cuentas recordadas en el login ===================== */
+/* Se guarda el correo y la cara, nunca la contraseña: sirve para reconocer de
+   quién es la cuenta, no para entrar sin escribirla. */
+.acceso-cuentas {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+/* El botón que la despliega. La flecha sigue la convención del campus:
+   mirando abajo cuando está cerrada, arriba cuando está abierta. */
+.acceso-cuentas-abrir {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 2px;
+  border: none;
+  background: none;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.acceso-cuentas-abrir svg {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.acceso-cuentas.abiertas .acceso-cuentas-abrir svg {
+  transform: rotate(-90deg);
+}
+
+.acceso-cuentas-abrir small {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+}
+
+/* Se abre animando la altura con grid, el mismo truco que las carpetas de un
+   módulo: no hay que medir nada y el contenido queda siempre montado. */
+.acceso-cuentas-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.acceso-cuentas.abiertas .acceso-cuentas-panel {
+  grid-template-rows: 1fr;
+}
+
+.acceso-cuentas-panel > ul {
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.acceso-cuentas.abiertas .acceso-cuentas-panel > ul {
+  visibility: visible;
+}
+
+.acceso-cuentas ul {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acceso-cuentas li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--fondo);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.acceso-cuentas li:hover,
+.acceso-cuentas li.elegida {
+  border-color: var(--principal);
+  background: color-mix(in srgb, var(--principal) 6%, var(--fondo));
+}
+
+.acceso-cuenta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.acceso-cuenta > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.acceso-cuenta strong {
+  color: var(--oscuro);
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acceso-cuenta small {
+  color: var(--texto-suave);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La X queda apagada hasta que se pasa por la fila: borrar una cuenta no es
+   lo que se viene a hacer acá, y un botón rojo permanente invita a tocarlo. */
+.acceso-cuenta-olvidar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--texto-suave);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.acceso-cuentas li:hover .acceso-cuenta-olvidar,
+.acceso-cuenta-olvidar:focus-visible {
+  opacity: 1;
+}
+
+.acceso-cuenta-olvidar:hover {
+  background: color-mix(in srgb, var(--alerta) 12%, transparent);
+  color: var(--alerta);
+}
+
+.acceso-cuenta .avatar-foto {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* Un adjunto de antes de que el campus guardara los archivos: se nombra pero
+   no se puede abrir. Va apagado y sin cursor de enlace, para que no se
+   confunda con uno que sí está. */
+.adjunto.sin-archivo {
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* ===================== La entrega de un trabajo ===================== */
+/* Lo ya entregado va arriba del formulario y se ve de un vistazo: lo primero
+   que quiere saber alguien al abrir un trabajo es si ya lo entregó. */
+.entrega-hecha {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 13px 15px;
+  border: 1px solid color-mix(in srgb, var(--progreso-alto) 35%, var(--borde));
+  border-radius: var(--radio-chico);
+  background: color-mix(in srgb, var(--progreso-alto) 7%, var(--blanco));
+}
+
+/* Entregar tarde no se impide —lo decide el docente— pero se dice, porque es
+   lo que mira al corregir. En ámbar y no en rojo: está entregado. */
+.entrega-hecha.tarde {
+  border-color: color-mix(in srgb, var(--progreso-medio) 45%, var(--borde));
+  background: color-mix(in srgb, var(--progreso-medio) 9%, var(--blanco));
+}
+
+.entrega-icono {
+  flex-shrink: 0;
+  color: var(--progreso-alto);
+}
+
+.entrega-hecha.tarde .entrega-icono {
+  color: var(--progreso-medio);
+}
+
+.entrega-hecha > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.entrega-hecha strong {
+  display: block;
+  color: var(--oscuro);
+  font-size: 0.92rem;
+}
+
+.entrega-hecha small {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+}
+
+.entrega-comentario {
+  margin: 6px 0 0;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.entrega-hecha .boton-suave {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+/* La caja de la entrega alinea a la izquierda —lo heredó de cuando era solo
+   un botón—, pero el selector de archivo tiene que usar el ancho entero: un
+   campo angosto en una caja ancha se lee como un error. */
+.visor-entrega > * {
+  width: 100%;
+}
+
+.visor-entrega .foto-zona {
+  position: relative;
+}
+
+.visor-entrega .editor-botones {
+  margin-top: 4px;
+}
+
+/* Retirar queda lejos de Guardar: es lo único que deshace algo. */
+.visor-entrega .editor-botones .peligro {
+  margin-right: auto;
+}
+
+/* ===================== Configuración académica ===================== */
+.academico {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.academico .bloque-ajustes h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* Si la inscripción está abierta o cerrada es la pregunta que trae a
+   cualquiera a esta pantalla: va arriba y se lee de un vistazo. */
+.estado-periodo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--gris);
+  border-radius: var(--radio-chico);
+  background: var(--panel);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.estado-periodo svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.estado-periodo.abierto {
+  border-left-color: var(--progreso-alto);
+  background: color-mix(in srgb, var(--progreso-alto) 7%, var(--blanco));
+}
+
+.estado-periodo.abierto svg {
+  color: var(--progreso-alto);
+}
+
+.estado-periodo.cerrado {
+  border-left-color: var(--alerta);
+  background: color-mix(in srgb, var(--alerta) 6%, var(--blanco));
+}
+
+.estado-periodo.cerrado svg {
+  color: var(--alerta);
+}
+
+.estado-periodo strong {
+  color: var(--oscuro);
+}
+
+/* El "%" pegado al número: sin eso hay que leer la etiqueta para saber de
+   qué unidad se habla. */
+.campo-con-sufijo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.campo-con-sufijo input {
+  width: 100px;
+}
+
+.campo-con-sufijo > span {
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+/* Los rótulos de esta pantalla van como los del resto del campus: en
+   versalitas y apagados. Sin esto se leían como texto corrido, porque el
+   bloque no está dentro de un cartel ni de un editor. */
+.academico label > span:first-child {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.academico input[type='date'],
+.academico .campo-con-sufijo input {
+  padding: 10px 13px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--fondo);
+  font: inherit;
+  font-size: 0.93rem;
+  color: var(--texto);
+}
+
+.academico input[type='date'] {
+  width: 100%;
+}
+
+.academico input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.academico .editor-botones {
+  margin-top: 14px;
+}
+
+/* ===================== Acciones de un mensaje ===================== */
+/* Aparecen al pasar por encima de la burbuja. Un menú siempre visible en
+   cada una convierte el hilo en una lista de botones y no se lee más. */
+.burbuja {
+  position: relative;
+}
+
+.burbuja-acciones {
+  position: absolute;
+  top: -12px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--blanco);
+  box-shadow: 0 2px 10px rgb(16 24 40 / 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.burbuja:hover .burbuja-acciones,
+.burbuja:focus-within .burbuja-acciones {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.burbuja-acciones button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.burbuja-acciones button:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+.burbuja-acciones button.activo {
+  color: var(--principal);
+}
+
+.burbuja-acciones button.peligro:hover {
+  background: color-mix(in srgb, var(--alerta) 12%, transparent);
+  color: var(--alerta);
+}
+
+/* El fijado queda marcado en el hilo, además de arriba */
+.burbuja.fijada {
+  outline: 2px solid color-mix(in srgb, var(--principal) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.editado {
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* ---------- Editar sin salir del hilo ---------- */
+.burbuja-editar textarea {
+  width: 100%;
+  min-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--blanco);
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.92rem;
+  resize: vertical;
+}
+
+.burbuja-editar-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ---------- El mensaje fijado, arriba del hilo ---------- */
+/* Sirve para lo que hay que tener a mano: la fecha de un parcial, un aula.
+   Uno solo por conversación: con varios deja de ser "lo importante". */
+.hilo-fijado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--borde);
+  background: color-mix(in srgb, var(--principal) 6%, var(--blanco));
+  color: var(--texto-suave);
+  font-size: 0.86rem;
+}
+
+.hilo-fijado svg {
+  flex-shrink: 0;
+  color: var(--principal);
+}
+
+.hilo-fijado p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--oscuro);
+}
+
+.hilo-fijado button {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.hilo-fijado button:hover {
+  background: var(--panel);
+  color: var(--oscuro);
+}
+
+/* El tipo de evento, como etiqueta de la fila. Dos tonos distintos porque
+   son cosas distintas: un examen es de una cátedra, un evento es de la
+   facultad entera. */
+.etiqueta-rol.tipo-examen {
+  background: color-mix(in srgb, var(--progreso-medio) 20%, var(--panel));
+  color: color-mix(in srgb, var(--progreso-medio) 75%, var(--oscuro));
+}
+
+.etiqueta-rol.tipo-evento {
+  background: color-mix(in srgb, var(--progreso-alto) 16%, var(--panel));
+  color: color-mix(in srgb, var(--progreso-alto) 75%, var(--oscuro));
+}
+
+.eventos-bajada {
+  margin: -6px 0 14px;
+  font-size: 0.86rem;
+}
+
+/* La hora y el lugar van con su ícono, alineados con el texto */
+.fila-catalogo .fila-texto small svg {
+  vertical-align: -2px;
+  margin-right: 2px;
+}
+
+/* ===================== La imagen de una novedad ===================== */
+/* Era una dirección escrita a mano: el docente tenía que subir el archivo en
+   otro lado y pegar la ruta. Ahora se elige acá y se sube con la novedad. */
+.novedad-imagen {
+  margin: 4px 0;
+}
+
+.novedad-imagen-elegida {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--fondo);
+}
+
+.novedad-imagen-elegida img {
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radio-chico);
+  flex-shrink: 0;
+}
+
+.novedad-imagen .foto-zona {
+  position: relative;
+  padding: 16px;
+}
+
+/* El archivo entregado es un enlace: el docente abre lo que entregó cada uno
+   sin salir de la planilla, que es para lo que mira esta pantalla. */
+.entrega-archivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--principal);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.entrega-archivo:hover {
+  text-decoration: underline;
+}
+
+.entrega-alumno .atrasada .entrega-archivo {
+  color: inherit;
+}
+
+/* Las entregas dentro del visor de un trabajo: lo que ve la cátedra al
+   abrirlo. Una fila por estudiante, y los que no entregaron apagados para
+   que la lista se lea por lo que falta. */
+.visor-entregas {
+  margin-top: 18px;
+}
+
+.visor-entregas > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.visor-entregas > header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.visor-entregas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visor-entregas-lista li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.visor-entregas-lista li.sin-entregar {
+  background: transparent;
+  border-color: var(--borde);
+  border-style: dashed;
+}
+
+/* El hueco redondo de la foto. `.avatar-foto` se dibuja al 100% de lo que lo
+   contenga —en el menú y en los listados el hueco ya existe—, así que suelto
+   en una fila flexible se estiraba hasta ocupar toda la pantalla. */
+.visor-entrega-cara {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--blanco);
+  color: var(--texto-suave);
+}
+
+.visor-entrega-quien {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.visor-entrega-quien strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visor-entrega-quien small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--texto-suave);
+}
+
+.visor-entregas-lista .boton-suave {
+  flex: none;
+  padding: 6px 12px;
+  text-decoration: none;
+}
+
+.visor-entregas-lista > li > .etiqueta {
+  flex: none;
+}
+
+.visor-entrega-sin {
+  flex: none;
+  padding-right: 12px;
 }

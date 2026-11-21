@@ -6,9 +6,21 @@ Finales (`rutas/finales.py`) e Inscripciones a materias
 rechazar lo que no corresponde.
 
 **El plan de estudios no está escrito en el código.** Las correlatividades de
-cada materia son la lista `correlativas` de `datos_iniciales.json`: cambiar un
-requisito es cambiar un dato, no tocar el servidor. Eso es lo que va a
-administrar el panel de la institución cuando exista.
+cada materia son un dato de `materiasPlan`: cambiar un requisito es cambiar un
+dato, no tocar el servidor. Las administra el apartado Materias del panel.
+
+Una correlatividad distingue **para qué** es el requisito y **qué condición**
+exige, que es como funciona un plan de verdad:
+
+    "correlativas": {
+      "cursar": {"modo": "todas", "requisitos": [{"materiaId": 103, "condicion": "Regular"}]},
+      "rendir": {"modo": "todas", "requisitos": [{"materiaId": 103, "condicion": "Aprobada"}]}
+    }
+
+Lo habitual es pedir **regular** para cursar y **aprobada** para rendir el
+final: son dos requisitos distintos sobre la misma materia, y con una sola
+lista no se podían expresar. `modo` vale "todas" o "alguna", para los planes
+que admiten equivalencias.
 
 Condiciones de cursada que maneja el historial:
 
@@ -36,6 +48,9 @@ INSCRIPTO = "Inscripto"
 BLOQUEADA = "Bloqueada por correlatividad"
 SIN_CUPO = "Sin cupos disponibles"
 HABILITADA = "Habilitada"
+# La institución la dio de baja desde el apartado Materias. Sigue en el
+# plan —los historiales la mencionan— pero ya no se ofrece.
+NO_SE_OFRECE = "No se ofrece"
 
 # Los de una mesa de examen.
 MESA_NO_HABILITADO = "No habilitado"
@@ -69,22 +84,38 @@ def materia_publica(materia: dict) -> dict:
         "planId": materia.get("planId"),
         "anio": materia["anio"],
         "cuatrimestre": materia["cuatrimestre"],
-        "cupo": materia["cupo"],
+        "cupo": materia.get("cupo"),
         "comision": materia.get("comision"),
         "horario": materia.get("horario"),
         "cursoId": materia.get("cursoId"),
         "docente": docentes[0]["nombre"] if docentes else None,
         "docentes": [x["nombre"] for x in docentes],
-        "correlativas": [
-            {
-                "id": c["id"],
-                "codigo": c["codigo"],
-                "nombre": c["nombre"],
-            }
-            for c in (d.buscar_materia(i) for i in materia.get("correlativas", []))
-            if c
-        ],
+        "descripcion": materia.get("descripcion"),
+        "cargaHoraria": materia.get("cargaHoraria"),
+        "modalidad": materia.get("modalidad"),
+        "activa": materia.get("activa", True),
+        # Las dos listas resueltas a nombres: el frontend muestra
+        # "Programación I", no el número 103.
+        "correlativas": _correlativas_publicas(materia, CURSAR),
+        "correlativasRendir": _correlativas_publicas(materia, RENDIR),
     }
+
+
+def _correlativas_publicas(materia: dict, para: str) -> dict:
+    grupo = requisitos_de(materia, para)
+    salida = []
+    for r in grupo["requisitos"]:
+        c = d.buscar_materia(r.get("materiaId"))
+        if c:
+            salida.append(
+                {
+                    "id": c["id"],
+                    "codigo": c["codigo"],
+                    "nombre": c["nombre"],
+                    "condicion": r.get("condicion") or APROBADA,
+                }
+            )
+    return {"modo": grupo["modo"], "requisitos": salida}
 
 
 def inscriptos_en_materia(materia_id: int) -> int:
@@ -98,27 +129,101 @@ def esta_inscripto_en_materia(persona_id: int, materia_id: int) -> bool:
     )
 
 
-def correlativas_faltantes(persona_id: int, materia: dict) -> list[dict]:
-    """Las materias que hay que aprobar antes y todavía no están aprobadas.
+# ===================== Correlatividades =====================
+CURSAR = "cursar"
+RENDIR = "rendir"
+VACIO = {"modo": "todas", "requisitos": []}
 
-    Se devuelven enteras para poder decir *cuál* falta: un "no podés
-    inscribirte" sin el motivo no le sirve a nadie.
+
+def requisitos_de(materia: dict, para: str = CURSAR) -> dict:
+    """Los requisitos de esa materia para cursarla o para rendirla.
+
+    Acepta el formato viejo —una lista de ids, que significaba "aprobadas
+    para cursar"— para que un dato sin migrar no rompa nada.
     """
+    correlativas = materia.get("correlativas")
+
+    if isinstance(correlativas, list):
+        if para != CURSAR:
+            return dict(VACIO)
+        return {
+            "modo": "todas",
+            "requisitos": [{"materiaId": i, "condicion": APROBADA} for i in correlativas],
+        }
+
+    grupo = (correlativas or {}).get(para) or {}
+    return {
+        "modo": grupo.get("modo") or "todas",
+        "requisitos": grupo.get("requisitos") or [],
+    }
+
+
+def _cumple(persona_id: int, requisito: dict) -> bool:
+    """Si la persona cumple ese requisito.
+
+    `Aprobada` cumple también donde se pide `Regular`: quien aprobó la materia
+    obviamente aprobó la cursada. Al revés no.
+    """
+    tiene = d.condicion_en(persona_id, requisito.get("materiaId"))
+    pedida = requisito.get("condicion") or APROBADA
+    if pedida == REGULAR:
+        return tiene in (REGULAR, APROBADA)
+    return tiene == APROBADA
+
+
+def correlativas_faltantes(
+    persona_id: int, materia: dict, para: str = CURSAR
+) -> list[dict]:
+    """Los requisitos que todavía no cumple.
+
+    Se devuelven enteros para poder decir *cuál* falta y *qué* le falta de
+    ella: un "no podés inscribirte" sin el motivo no le sirve a nadie.
+
+    Con `modo` en "alguna" alcanza con cumplir uno: si cumple alguno, no falta
+    ninguno; si no cumple ninguno, faltan todos, porque cualquiera le sirve.
+    """
+    grupo = requisitos_de(materia, para)
+    requisitos = grupo["requisitos"]
+    if not requisitos:
+        return []
+
+    sin_cumplir = [r for r in requisitos if not _cumple(persona_id, r)]
+    if grupo["modo"] == "alguna" and len(sin_cumplir) < len(requisitos):
+        return []
+
     faltan = []
-    for id_correlativa in materia.get("correlativas", []):
-        if d.condicion_en(persona_id, id_correlativa) == APROBADA:
+    for r in sin_cumplir:
+        requisito = d.buscar_materia(r.get("materiaId"))
+        if not requisito:
             continue
-        requisito = d.buscar_materia(id_correlativa)
-        if requisito:
-            faltan.append(
-                {
-                    "id": requisito["id"],
-                    "codigo": requisito["codigo"],
-                    "nombre": requisito["nombre"],
-                    "condicion": d.condicion_en(persona_id, id_correlativa) or "Sin cursar",
-                }
-            )
+        faltan.append(
+            {
+                "id": requisito["id"],
+                "codigo": requisito["codigo"],
+                "nombre": requisito["nombre"],
+                "pide": r.get("condicion") or APROBADA,
+                "condicion": d.condicion_en(persona_id, requisito["id"]) or "Sin cursar",
+            }
+        )
     return faltan
+
+
+def texto_de_faltantes(faltantes: list[dict], modo: str = "todas") -> str:
+    """Qué le falta, dicho como está configurado.
+
+    Importa que la frase coincida con el requisito: si el plan pide la materia
+    **regular** y el campus dice "te falta aprobar", el estudiante cree que
+    tiene que rendir el final cuando no hace falta. Y con `modo` en "alguna"
+    hay que decir que alcanza con una, o parece que se piden todas.
+    """
+    partes = [f"{x['nombre']} ({str(x['pide']).lower()})" for x in faltantes]
+    if not partes:
+        return ""
+    if len(partes) == 1:
+        return f"Te falta {partes[0]}."
+    if modo == "alguna":
+        return "Te falta alguna de: " + ", ".join(partes) + "."
+    return "Te falta: " + ", ".join(partes) + "."
 
 
 def periodo_materias() -> dict:
@@ -143,13 +248,16 @@ def estado_de_materia(persona_id: int, materia: dict) -> dict:
     """
     condicion = d.condicion_en(persona_id, materia["id"])
     inscriptos = inscriptos_en_materia(materia["id"])
-    cupo = materia["cupo"]
-    faltantes = correlativas_faltantes(persona_id, materia)
+    # El cupo vacío es una materia sin límite, igual que una mesa sin cupo.
+    # Entonces no hay lugares que contar y nunca se queda sin lugar.
+    cupo = materia.get("cupo")
+    grupo = requisitos_de(materia, CURSAR)
+    faltantes = correlativas_faltantes(persona_id, materia, CURSAR)
 
     base = {
         "inscriptos": inscriptos,
         "cupo": cupo,
-        "lugares": max(cupo - inscriptos, 0),
+        "lugares": None if cupo is None else max(cupo - inscriptos, 0),
         "faltantes": faltantes,
         "puedeInscribirse": False,
         "motivo": None,
@@ -169,15 +277,24 @@ def estado_de_materia(persona_id: int, materia: dict) -> dict:
     if esta_inscripto_en_materia(persona_id, materia["id"]):
         return {**base, "estado": INSCRIPTO, "motivo": "Ya estás inscripto."}
 
+    # Una materia dada de baja no se ofrece. Va después de la condición y de
+    # la inscripción porque lo que ya pasó sigue valiendo: dar de baja una
+    # materia no borra la cursada de nadie.
+    if not materia.get("activa", True):
+        return {
+            **base,
+            "estado": NO_SE_OFRECE,
+            "motivo": "La institución dio de baja esta materia: no se ofrece este período.",
+        }
+
     if faltantes:
-        nombres = ", ".join(f["nombre"] for f in faltantes)
         return {
             **base,
             "estado": BLOQUEADA,
-            "motivo": f"Te falta aprobar {nombres}.",
+            "motivo": texto_de_faltantes(faltantes, grupo["modo"]),
         }
 
-    if inscriptos >= cupo:
+    if cupo is not None and inscriptos >= cupo:
         return {**base, "estado": SIN_CUPO, "motivo": "No quedan lugares."}
 
     abierto = periodo_materias()["abierto"]
@@ -270,6 +387,21 @@ def estado_de_mesa(persona_id: int, mesa: dict) -> dict:
         else:
             motivo = "Necesitás tener la cursada aprobada para rendir."
         return {**base, "estado": MESA_NO_HABILITADO, "motivo": motivo}
+
+    # Las correlativas **para rendir**: suele pedirse tener aprobada la
+    # anterior, aunque para cursar alcanzara con tenerla regular. Va después
+    # de la condición de cursada porque sin la cursada aprobada no se rinde
+    # igual, y antes del cupo: si no puede rendir, que sobren lugares no
+    # cambia nada.
+    materia = d.buscar_materia(mesa["materiaId"])
+    faltantes = correlativas_faltantes(persona_id, materia, RENDIR) if materia else []
+    if faltantes:
+        return {
+            **base,
+            "estado": MESA_NO_HABILITADO,
+            "faltantes": faltantes,
+            "motivo": texto_de_faltantes(faltantes, requisitos_de(materia, RENDIR)["modo"]),
+        }
 
     inscripcion = inscripcion_en_mesa(persona_id, mesa["id"])
     if inscripcion:

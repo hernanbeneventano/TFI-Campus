@@ -4,12 +4,17 @@ import {
   publicarNovedad,
   editarNovedad,
   reaccionar,
+  retirarNovedad,
+  subirImagenDeNovedad,
 } from '../services/api.js';
+import { avisar } from '../services/avisos.js';
+import MotivoDeRetiro from '../components/MotivoDeRetiro.jsx';
 import { hace } from '../services/fechas.js';
 import Desplegable from '../components/Desplegable.jsx';
 import {
   IconoUsuario,
   IconoAjustes,
+  IconoPapelera,
   IconoAnuncio,
   IconoCalendario,
   IconoInformacion,
@@ -20,6 +25,10 @@ import {
   IconoPulgar,
   IconoDuda,
 } from '../components/Iconos.jsx';
+import Avatar from '../components/Avatar.jsx';
+
+// Lo mismo que exige el servidor (`IMAGENES_MAX_MB` en servicios/archivos.py).
+const MAXIMO_IMAGEN_MB = 10;
 
 const DIAS_NUEVO = 7;
 // A partir de acá la tarjeta recorta y ofrece abrir la novedad entera
@@ -65,11 +74,11 @@ function Reacciones({ publicacion, onReaccionar }) {
 }
 
 // Quién la publicó, al estilo de una red social
-function Autor({ publicacion, onEditar }) {
+function Autor({ publicacion, onEditar, onRetirar }) {
   return (
     <header className="publicacion-cabecera">
       <span className="docente-avatar">
-        <IconoUsuario />
+        <Avatar persona={publicacion.autor} tamano={26} />
       </span>
       <div className="publicacion-quien">
         <strong>{publicacion.autor?.nombre}</strong>
@@ -78,17 +87,30 @@ function Autor({ publicacion, onEditar }) {
           {publicacion.editada && ' · editada'}
         </small>
       </div>
-      {publicacion.puedeEditar && (
-        <button
-          type="button"
-          className="publicacion-editar"
-          onClick={onEditar}
-          title="Editar la novedad"
-          aria-label="Editar la novedad"
-        >
-          <IconoAjustes width={16} height={16} />
-        </button>
-      )}
+      <span className="publicacion-acciones">
+        {publicacion.puedeEditar && (
+          <button
+            type="button"
+            className="publicacion-editar"
+            onClick={onEditar}
+            title="Editar la novedad"
+            aria-label="Editar la novedad"
+          >
+            <IconoAjustes width={16} height={16} />
+          </button>
+        )}
+        {publicacion.puedeRetirar && (
+          <button
+            type="button"
+            className="publicacion-editar peligro"
+            onClick={onRetirar}
+            title="Retirar del muro"
+            aria-label="Retirar del muro"
+          >
+            <IconoPapelera width={16} height={16} />
+          </button>
+        )}
+      </span>
     </header>
   );
 }
@@ -110,12 +132,16 @@ function Editor({ inicial, onGuardar, onCancelar }) {
   const [categoria, setCategoria] = useState(inicial?.categoria ?? 'Académico');
   const [ambito, setAmbito] = useState(inicial?.ambito ?? 'Institucional');
   const [anclada, setAnclada] = useState(inicial?.anclada ?? false);
-  const [imagen, setImagen] = useState(inicial?.imagen ?? '');
+  // La imagen elegida, todavía sin subir: se manda después de guardar la
+  // novedad, porque hasta entonces no hay id al que colgarla.
+  const [imagen, setImagen] = useState(null);
+  const [vistaPrevia, setVistaPrevia] = useState(inicial?.imagen ?? null);
+  const [errorImagen, setErrorImagen] = useState(null);
 
   function enviar(e) {
     e.preventDefault();
     if (!titulo.trim() || !cuerpo.trim()) return;
-    onGuardar({ titulo, cuerpo, categoria, ambito, anclada, imagen });
+    onGuardar({ titulo, cuerpo, categoria, ambito, anclada }, imagen);
   }
 
   return (
@@ -135,14 +161,53 @@ function Editor({ inicial, onGuardar, onCancelar }) {
         aria-label="Texto de la novedad"
       />
 
-      {/* Mientras no haya subida de archivos, la imagen es una direccion */}
-      <input
-        type="text"
-        placeholder="Imagen (opcional): dirección del archivo"
-        value={imagen}
-        onChange={(e) => setImagen(e.target.value)}
-        aria-label="Imagen de la novedad"
-      />
+      {/* La imagen se elige acá y se sube después de guardar: hasta
+          entonces no hay novedad a la que colgarla. */}
+      <div className="novedad-imagen">
+        {vistaPrevia ? (
+          <div className="novedad-imagen-elegida">
+            <img src={vistaPrevia} alt="" />
+            <button
+              type="button"
+              className="boton-suave peligro"
+              onClick={() => {
+                if (imagen) URL.revokeObjectURL(vistaPrevia);
+                setImagen(null);
+                setVistaPrevia(null);
+              }}
+            >
+              Quitar la imagen
+            </button>
+          </div>
+        ) : (
+          <label className="foto-zona">
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(e) => {
+                const archivo = e.target.files?.[0];
+                e.target.value = '';
+                if (!archivo) return;
+                if (!/^image\/(png|jpe?g)$/.test(archivo.type)) {
+                  setErrorImagen('Solo se aceptan imágenes PNG o JPG.');
+                  return;
+                }
+                if (archivo.size > MAXIMO_IMAGEN_MB * 1024 * 1024) {
+                  setErrorImagen(`La imagen supera los ${MAXIMO_IMAGEN_MB} MB.`);
+                  return;
+                }
+                setErrorImagen(null);
+                setImagen(archivo);
+                setVistaPrevia(URL.createObjectURL(archivo));
+              }}
+            />
+            <IconoSubir width={20} height={20} />
+            <strong>Agregar una imagen</strong>
+            <small>PNG o JPG, hasta {MAXIMO_IMAGEN_MB} MB. Opcional.</small>
+          </label>
+        )}
+        {errorImagen && <p className="aviso-error">{errorImagen}</p>}
+      </div>
 
       <div className="editor-pie">
         {/* En una publicación ya hecha no se cambian el ámbito ni la categoría */}
@@ -222,8 +287,8 @@ function Portada({ destacadas, onEditar, onVerTodas, onAbrir, onReaccionar }) {
             <Editor
               inicial={actual}
               onCancelar={() => setEditando(false)}
-              onGuardar={(datos) => {
-                onEditar(actual.id, datos);
+              onGuardar={(datos, imagen) => {
+                onEditar(actual.id, datos, imagen);
                 setEditando(false);
               }}
             />
@@ -467,7 +532,7 @@ function Lector({ publicacion, origen, onCerrar, onReaccionar }) {
 }
 
 // Las demás, en la grilla de abajo
-function Publicacion({ publicacion, onEditar, onAbrir, onReaccionar }) {
+function Publicacion({ publicacion, onEditar, onRetirar, onAbrir, onReaccionar }) {
   const [editando, setEditando] = useState(false);
 
   const largo = publicacion.cuerpo.length > LARGO_RECORTE;
@@ -481,8 +546,8 @@ function Publicacion({ publicacion, onEditar, onAbrir, onReaccionar }) {
         <Editor
           inicial={publicacion}
           onCancelar={() => setEditando(false)}
-          onGuardar={(datos) => {
-            onEditar(publicacion.id, datos);
+          onGuardar={(datos, imagen) => {
+            onEditar(publicacion.id, datos, imagen);
             setEditando(false);
           }}
         />
@@ -492,7 +557,11 @@ function Publicacion({ publicacion, onEditar, onAbrir, onReaccionar }) {
 
   return (
     <article className="publicacion">
-      <Autor publicacion={publicacion} onEditar={() => setEditando(true)} />
+      <Autor
+        publicacion={publicacion}
+        onEditar={() => setEditando(true)}
+        onRetirar={() => onRetirar(publicacion)}
+      />
 
       {publicacion.imagen && (
         <button
@@ -533,8 +602,23 @@ export default function Novedades() {
   // La novedad que se está leyendo entera, superpuesta
   const [leyendo, setLeyendo] = useState(null);
   const [error, setError] = useState(null);
+  // La publicación que se está por retirar, mientras se escribe el motivo
+  const [retirando, setRetirando] = useState(null);
+  const [trabajando, setTrabajando] = useState(false);
 
   const listaCompleta = useRef(null);
+
+  function retirar(motivo) {
+    setTrabajando(true);
+    retirarNovedad(retirando.id, motivo)
+      .then(() => {
+        avisar('Novedad retirada del muro.');
+        setRetirando(null);
+        recargar();
+      })
+      .catch((e) => avisar(e.message, 'error'))
+      .finally(() => setTrabajando(false));
+  }
 
   function recargar() {
     return obtenerPublicaciones().then(setDatos).catch((e) => setError(e.message));
@@ -544,14 +628,27 @@ export default function Novedades() {
     recargar();
   }, []);
 
-  function publicar(nueva) {
-    publicarNovedad(nueva)
-      .then(() => {
-        setEscribiendo(false);
-        return recargar();
-      })
-      .catch((e) => setError(e.message));
+  // La imagen se sube **después** de crear la novedad: hasta que no existe
+  // no hay id al que colgarla. Si la imagen falla, la novedad igual quedó
+  // publicada y se avisa; perderla entera por una foto sería peor.
+  async function publicar(nueva, imagen) {
+    try {
+      const creada = await publicarNovedad(nueva);
+      if (imagen) {
+        try {
+          await subirImagenDeNovedad(creada.id, imagen);
+        } catch (e) {
+          avisar(`La novedad se publicó, pero la imagen no: ${e.message}`, 'error');
+        }
+      }
+      setEscribiendo(false);
+      await recargar();
+    } catch (e) {
+      setError(e.message);
+    }
   }
+
+
 
   // Al reaccionar el backend devuelve la publicación con los totales nuevos:
   // se reemplaza esa sola, sin volver a pedir toda la lista.
@@ -567,10 +664,16 @@ export default function Novedades() {
       .catch((e) => setError(e.message));
   }
 
-  function guardarEdicion(id, cambios) {
-    editarNovedad(id, cambios)
-      .then(recargar)
-      .catch((e) => setError(e.message));
+  async function guardarEdicion(id, cambios, imagen) {
+    try {
+      await editarNovedad(id, cambios);
+      // La imagen va aparte, con su propia ruta: al editar el texto no hace
+      // falta volver a subir la foto que ya estaba.
+      if (imagen) await subirImagenDeNovedad(id, imagen);
+      await recargar();
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   // El backend ya manda la anclada primera y el resto por fecha
@@ -610,6 +713,7 @@ export default function Novedades() {
             key={p.id}
             publicacion={p}
             onEditar={guardarEdicion}
+            onRetirar={setRetirando}
             onAbrir={(p, desde) => setLeyendo({ publicacion: p, desde })}
             onReaccionar={cambiarReaccion}
           />
@@ -618,6 +722,18 @@ export default function Novedades() {
 
       {datos && todas.length === 0 && (
         <p className="texto-suave">Todavía no hay novedades publicadas.</p>
+      )}
+
+      {retirando && (
+        <MotivoDeRetiro
+          titulo="¿Retirar esta novedad?"
+          queSeRetira={retirando.titulo}
+          autor={retirando.autor?.nombre ?? 'Quien la publicó'}
+          exigeMotivo={retirando.retiroExigeMotivo}
+          trabajando={trabajando}
+          onCerrar={() => setRetirando(null)}
+          onRetirar={retirar}
+        />
       )}
 
       {leyendo && (

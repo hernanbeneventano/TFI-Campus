@@ -8,7 +8,7 @@
 // formulario, mismos botones—, así que comparten un componente en vez de
 // repetirse cuatro veces con diferencias de detalle.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   crearCarrera, editarCarrera, borrarCarrera,
   crearSede, editarSede, borrarSede,
@@ -18,6 +18,7 @@ import {
 import { avisar } from '../../services/avisos.js';
 import Confirmacion from '../Confirmacion.jsx';
 import Comision from './Comision.jsx';
+import Materias from './Materias.jsx';
 import { IconoMas, IconoLapiz, IconoPapelera } from '../Iconos.jsx';
 
 function Fila({ titulo, detalle, usos, activo, onEditar, onBorrar, extra }) {
@@ -115,6 +116,21 @@ export default function Estructura({ datos, onCambio }) {
   const [trabajando, setTrabajando] = useState(false);
 
   const { carreras, sedes, planes, comisiones, turnos } = datos;
+
+  // Las comisiones, agrupadas por carrera y en el orden en que vienen. El
+  // nombre ya dice el año ("2.º año - Comisión A"), así que con la carrera
+  // alcanza: no hace falta un tercer nivel.
+  const porCarrera = useMemo(() => {
+    const mapa = new Map();
+    for (const c of comisiones) {
+      const clave = c.carrera || 'Sin carrera';
+      if (!mapa.has(clave)) mapa.set(clave, []);
+      mapa.get(clave).push(c);
+    }
+    return [...mapa.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'es'))
+      .map(([carrera, suyas]) => ({ carrera, suyas }));
+  }, [comisiones]);
 
   async function accionar(accion, exito) {
     setTrabajando(true);
@@ -223,6 +239,9 @@ export default function Estructura({ datos, onCambio }) {
     { id: 'sedes', nombre: 'Sedes', cantidad: sedes.length },
     { id: 'planes', nombre: 'Planes', cantidad: planes.length },
     { id: 'comisiones', nombre: 'Comisiones', cantidad: comisiones.length },
+    // Las materias son del plan, no de la comisión: el plan dice qué hay que
+    // cursar y en qué orden, y ahí viven las correlatividades.
+    { id: 'materias', nombre: 'Materias' },
   ];
 
   return (
@@ -244,14 +263,19 @@ export default function Estructura({ datos, onCambio }) {
         ))}
       </nav>
 
-      <div className="barra-asistencias">
-        {!formulario && (
-          <button type="button" className="boton-principal" onClick={() => abrir(vista)}>
-            <IconoMas width={16} height={16} />
-            Agregar
-          </button>
-        )}
-      </div>
+      {vista !== 'materias' && (
+        <div className="barra-asistencias">
+          {!formulario && (
+            <button type="button" className="boton-principal" onClick={() => abrir(vista)}>
+              <IconoMas width={16} height={16} />
+              Agregar
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Materias trae su propia barra: tiene filtros y su botón de alta */}
+      {vista === 'materias' && <Materias catalogo={datos} />}
 
       {formulario && (
         <Formulario
@@ -305,26 +329,41 @@ export default function Estructura({ datos, onCambio }) {
             />
           ))}
 
+        {/* Las comisiones van agrupadas por carrera: con tres carreras de
+            seis comisiones cada una, dieciocho filas seguidas obligan a leer
+            el subtítulo de cada una para saber de cuál es. */}
         {vista === 'comisiones' &&
-          comisiones.map((c) => (
-            <Fila
-              key={c.id}
-              titulo={c.nombre}
-              detalle={`${c.carrera} · ${c.sede}${c.turno ? ` · ${c.turno}` : ''}`}
-              activo={c.activa}
-              usos={`${c.estudiantes} estudiantes`}
-              onEditar={() => abrir('comisiones', c)}
-              onBorrar={() => pedirBaja('comisiones', c, c.estudiantes)}
-              extra={
-                <button
-                  type="button"
-                  className="boton-suave"
-                  onClick={() => setComision(c.id)}
-                >
-                  Materias y docentes
-                </button>
-              }
-            />
+          porCarrera.map(({ carrera, suyas }) => (
+            <li key={carrera} className="grupo-comisiones">
+              <h4 className="comision-carrera">
+                {carrera}
+                <small>
+                  {suyas.length} {suyas.length === 1 ? 'comisión' : 'comisiones'}
+                </small>
+              </h4>
+              <ul className="catalogo">
+                {suyas.map((c) => (
+                  <Fila
+                    key={c.id}
+                    titulo={c.nombre}
+                    detalle={`${c.sede}${c.turno ? ` · turno ${c.turno}` : ''}`}
+                    activo={c.activa}
+                    usos={`${c.estudiantes} estudiantes`}
+                    onEditar={() => abrir('comisiones', c)}
+                    onBorrar={() => pedirBaja('comisiones', c, c.estudiantes)}
+                    extra={
+                      <button
+                        type="button"
+                        className="boton-suave"
+                        onClick={() => setComision(c.id)}
+                      >
+                        Materias y docentes
+                      </button>
+                    }
+                  />
+                ))}
+              </ul>
+            </li>
           ))}
       </ul>
 

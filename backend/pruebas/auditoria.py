@@ -20,8 +20,10 @@ from fastapi.testclient import TestClient
 
 from app import datos as d
 from app.main import app
+
+from . import escenario
 from app.servicios import auditoria as a
-from app.servicios.autenticacion import identificar
+from app.servicios.autenticacion import identificar, identificar_id
 
 BASE = "/api/auditoria"
 
@@ -37,7 +39,14 @@ pasadas = 0
 fallas: list[str] = []
 
 _quien = {"id": SECRETARIA}
+# El campus arranca vacío, así que las pruebas cargan el suyo. Ver
+# `escenario.py`: no toca ningún archivo, solo la memoria de este proceso.
+escenario.cargar()
+
 app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
+# Algunas rutas piden solo el identificador: esa es otra dependencia y hay
+# que suplantarla también, o se resuelve contra la sesión de verdad.
+app.dependency_overrides[identificar_id] = lambda: _quien["id"]
 cliente = TestClient(app)
 
 

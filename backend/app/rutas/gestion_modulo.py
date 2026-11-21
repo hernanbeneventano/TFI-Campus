@@ -25,12 +25,16 @@ siguiente.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Response
 
 from .. import datos as d
 from ..servicios import cursada as c
+from ..servicios import almacenamiento as alm
+from ..servicios import archivos, fotos
+from ..servicios import modulos as mod
 from ..servicios import auditoria
 from ..servicios.autenticacion import UsuarioActual
 
@@ -560,12 +564,32 @@ def _completados_de(persona_id: int, curso_id: int) -> set[str]:
     }
 
 
-def _marcable(item: dict) -> bool:
-    """Las tareas no se marcan: se dan por hechas al entregarlas.
+def _archivo_entregado(entrega: dict | None) -> dict | None:
+    """El archivo que entregó el alumno, listo para bajarlo.
 
-    Es la misma regla que aplica el alumno en `services/progreso.js`.
+    Le agrega la dirección firmada: el docente tiene que poder abrir lo que
+    entregó cada uno sin salir de la planilla, que es para lo que mira esta
+    pantalla. Ver `servicios/fotos.direccion_de_archivo`.
+
+    Las entregas viejas guardaban solo el nombre del archivo, como texto;
+    se normalizan a la misma forma para que la pantalla no tenga que
+    distinguir dos casos.
     """
-    return item.get("tipo") != "tarea"
+    if not entrega:
+        return None
+    archivo = entrega.get("archivo")
+    if isinstance(archivo, str):
+        return {"nombre": archivo, "url": None}
+    if not isinstance(archivo, dict):
+        return None
+    url = fotos.direccion_de_archivo(archivo["objectKey"]) if archivo.get("objectKey") else None
+    return {**archivo, "url": url}
+
+
+# La regla de qué se puede marcar vive en `datos.es_marcable`: la aplican el
+# alumno al marcar, el servidor al aceptar y esta pantalla al contar. Con una
+# copia en cada lado terminarían contando cosas distintas.
+_marcable = d.es_marcable
 
 
 @router.get("/{id_curso}/seguimiento", summary="Cómo viene el curso con el material")
@@ -676,6 +700,71 @@ def seguimiento(id_curso: int, yo: dict = UsuarioActual):
     }
 
 
+@router.get("/{id_curso}/tareas/{id_tarea}/entregas", summary="Quién entregó este trabajo")
+def entregas_de_tarea(id_curso: int, id_tarea: int, yo: dict = UsuarioActual):
+    """Las entregas de **un** trabajo, para verlas al abrirlo.
+
+    La planilla de la sección ya las muestra, pero hay que ir a buscarla: al
+    abrir un trabajo, lo que el docente quiere saber es quién entregó ese y
+    poder bajar lo que subieron. Es la misma información, en el lugar donde
+    se la busca.
+    """
+    curso = _curso_que_administra(id_curso, yo)
+    tarea = d.buscar_tarea(id_tarea)
+    if not tarea or tarea["cursoId"] != curso["id"]:
+        raise HTTPException(404, "El trabajo no existe en este módulo")
+
+    filas = []
+    for alumno in _alumnos_de(curso):
+        entrega = d.entrega_de(alumno["id"], id_tarea)
+        nota = next(
+            (
+                c
+                for c in d.calificaciones
+                if c["tareaId"] == id_tarea and c["personaId"] == alumno["id"]
+            ),
+            None,
+        )
+        filas.append(
+            {
+                "id": alumno["id"],
+                "nombre": alumno["nombre"],
+                "foto": fotos.direccion(alumno),
+                "entregado": entrega is not None,
+                "fecha": entrega["fecha"] if entrega else None,
+                "archivo": _archivo_entregado(entrega),
+                "comentario": entrega.get("comentario") if entrega else None,
+                "atrasada": bool(
+                    entrega
+                    and d.desde_iso(entrega["fecha"]) > d.desde_iso(tarea["fechaLimite"])
+                ),
+                # La corrección entera, para que el visor pueda abrir el
+                # mismo cartel que la planilla de la sección con lo que ya
+                # está puesto: una corrección que arranca en blanco se
+                # vuelve a escribir de cero y se pierde la devolución.
+                "nota": nota.get("nota") if nota else None,
+                "estado": nota.get("estado") if nota else None,
+                "devolucion": nota.get("comentario") if nota else None,
+                "corregido": bool(nota and nota.get("nota") is not None),
+            }
+        )
+
+    # Primero los que entregaron y no están corregidos: es lo que hay que
+    # hacer. Después el resto, por nombre.
+    filas.sort(key=lambda f: (not (f["entregado"] and not f["corregido"]), f["nombre"]))
+
+    return {
+        "tarea": {"id": tarea["id"], "titulo": tarea["titulo"],
+                  "fechaLimite": tarea["fechaLimite"]},
+        "alumnos": filas,
+        "resumen": {
+            "entregaron": sum(1 for f in filas if f["entregado"]),
+            "total": len(filas),
+            "sinCorregir": sum(1 for f in filas if f["entregado"] and not f["corregido"]),
+        },
+    }
+
+
 @router.get("/{id_curso}/carpetas/{id_carpeta}/entregas", summary="Quién cumplió con una sección")
 def entregas_de_seccion(id_curso: int, id_carpeta: int, yo: dict = UsuarioActual):
     """El detalle que hay detrás del porcentaje de la sección.
@@ -729,7 +818,7 @@ def entregas_de_seccion(id_curso: int, id_carpeta: int, yo: dict = UsuarioActual
                     "fechaLimite": trabajo["fechaLimite"],
                     "entregado": entrega is not None,
                     "fecha": entrega["fecha"] if entrega else None,
-                    "archivo": entrega.get("archivo") if entrega else None,
+                    "archivo": _archivo_entregado(entrega),
                     "comentario": entrega.get("comentario") if entrega else None,
                     "atrasada": atrasada,
                     "nota": nota.get("nota") if nota else None,
@@ -1034,3 +1123,258 @@ def guardar_nota(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActu
         )
 
     return listar_notas(id_curso, yo)
+
+
+# ===================== El archivo de un elemento =====================
+# Un elemento de tipo "archivo" guarda su ficha —nombre, tamaño y tipo— junto
+# al resto del contenido, y los bytes aparte, en el almacén de `datos.py`.
+#
+# Son dos pasos y no uno: primero se crea el elemento, después se le sube el
+# archivo. Así el servidor ya sabe a qué elemento pertenece y comprueba los
+# permisos una sola vez, que es lo mismo que hace la Biblioteca.
+
+
+def _buscar_item(carpetas: list[dict], id_carpeta: int, id_item) -> tuple[dict, dict]:
+    carpeta = _buscar_carpeta(carpetas, id_carpeta)
+    item = next((i for i in carpeta["items"] if str(i["id"]) == str(id_item)), None)
+    if not item:
+        raise HTTPException(404, "Ese elemento no existe en la sección")
+    return carpeta, item
+
+
+@router.post(
+    "/{id_curso}/carpetas/{id_carpeta}/items/{id_item}/archivo",
+    status_code=201,
+    summary="Subir el archivo de un elemento",
+)
+def subir_archivo_item(
+    id_curso: int,
+    id_carpeta: int,
+    id_item: str,
+    cuerpo: dict = Body(default={}),
+    yo: dict = UsuarioActual,
+):
+    """Sube el archivo y lo deja colgado del elemento.
+
+    La validación está en `servicios/archivos.py`, la misma que usa la
+    Biblioteca: se miran los bytes, no la extensión.
+    """
+    curso = _curso_que_administra(id_curso, yo)
+    carpetas = d.asegurar_contenido(curso)
+    carpeta, item = _buscar_item(carpetas, id_carpeta, id_item)
+
+    if item.get("tipo") != "archivo":
+        raise HTTPException(409, "Ese elemento no es un archivo")
+
+    contenido, ficha = archivos.leer_subida(cuerpo)
+    objeto = alm.clave(alm.MODULOS, curso["id"], item["id"], nombre=ficha["nombre"])
+
+    anterior = (item.get("archivo") or {}).get("objectKey")
+    if anterior and anterior != objeto:
+        alm.olvidar(anterior)
+
+    # Primero el archivo, después la ficha: si no se pudo guardar, el
+    # elemento queda como estaba en vez de prometer un archivo que no existe.
+    try:
+        alm.subir(objeto, contenido, ficha["tipo"])
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(502, f"No se pudo guardar el archivo: {error}")
+
+    alm.registrar(
+        objeto,
+        nombre=ficha["nombre"],
+        tipo=ficha["tipo"],
+        tamano=ficha["tamano"],
+        persona_id=yo["id"],
+        modulo=alm.MODULOS,
+        registro_id=item["id"],
+    )
+
+    ficha = {**ficha, "objectKey": objeto}
+    item["archivo"] = ficha
+    # El formato y el tamaño que se muestran salen del archivo de verdad, no
+    # de lo que alguien haya escrito a mano en el formulario.
+    item["formato"] = ficha["nombre"].rsplit(".", 1)[-1].upper()
+    item["tamano"] = archivos.peso_legible(ficha["tamano"])
+
+    auditoria.registrar(
+        yo,
+        "edicion",
+        "modulos",
+        elemento=f"{item['titulo']} · {curso['nombre']}",
+        elemento_id=item["id"],
+        elemento_tipo="archivoDeModulo",
+        despues={"archivo": ficha["nombre"], "tamano": item["tamano"]},
+        detalle="Subió el archivo de un elemento",
+    )
+
+    return _contenido_actualizado(curso)
+
+
+@router.get(
+    "/{id_curso}/carpetas/{id_carpeta}/items/{id_item}/archivo",
+    summary="Descargar el archivo de un elemento",
+)
+def descargar_archivo_item(
+    id_curso: int,
+    id_carpeta: int,
+    id_item: str,
+    # `?ver=1` pide mirarlo en vez de bajarlo. Solo cambia para los PDF.
+    ver: bool = False,
+    yo: dict = UsuarioActual,
+):
+    """Lo descarga quien tiene acceso al módulo: la cátedra y su gente.
+
+    No alcanza con adivinar la dirección: quien no esté en el módulo recibe
+    404, igual que en la Biblioteca.
+    """
+    curso = d.buscar_curso(id_curso)
+    if not curso:
+        raise HTTPException(404, "El módulo no existe")
+
+    # La cátedra, o alguien que curse el módulo
+    if not puede_gestionar(yo, curso) and not any(
+        p["id"] == yo["id"] for p in d.participantes_de_curso(curso)
+    ):
+        raise HTTPException(404, "El módulo no existe")
+
+    carpetas = d.carpetas_de_curso(curso)
+    _, item = _buscar_item(carpetas, id_carpeta, id_item)
+
+    guardado = item.get("archivo") or {}
+    contenido = alm.leer(guardado["objectKey"]) if guardado.get("objectKey") else None
+    if contenido is None:
+        # Lo que se subió antes de R2 sigue estando en memoria
+        contenido = d.leer_archivo(d.clave_de_archivo_de_modulo(curso["id"], item["id"]))
+    if not contenido or not item.get("archivo"):
+        raise HTTPException(404, "Ese elemento todavía no tiene un archivo subido")
+
+    auditoria.registrar(
+        yo,
+        "descarga",
+        "modulos",
+        elemento=f"{item['titulo']} · {curso['nombre']}",
+        elemento_id=item["id"],
+        elemento_tipo="archivoDeModulo",
+        detalle=f"Descargó {item['archivo']['nombre']}",
+    )
+
+    # Un PDF se puede **mirar** sin bajarlo. Es lo que más se sube a un módulo
+    # y bajar cada apunte para ver si es el que se busca es trabajo al pedo.
+    #
+    # Se sirve con `Content-Security-Policy: sandbox`, que apaga los scripts y
+    # los formularios del documento incrustado: un PDF puede traer JavaScript
+    # adentro, así que se mira pero no se le da permiso de hacer nada.
+    tipo = item["archivo"]["tipo"]
+    adentro = ver and tipo == "application/pdf"
+    if adentro:
+        return Response(
+            content=contenido,
+            media_type=tipo,
+            headers={
+                "Content-Disposition": "inline",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "sandbox",
+            },
+        )
+
+    return Response(
+        content=contenido,
+        media_type=tipo,
+        headers={
+            # Siempre como descarga y sin dejar que el navegador adivine el
+            # tipo: lo que sube la cátedra no se abre dentro del campus.
+            "Content-Disposition": f'attachment; filename="{item["archivo"]["nombre"]}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+# ===================== Los días de clase =====================
+# El horario semanal de la materia: "Martes de 18 a 22, Lab. 3". Vive en
+# `d.clases` y lo expande el Calendario a las fechas de cada semana, así que
+# cargarlo acá también llena el calendario de todos los que cursan.
+#
+# Lo maneja la cátedra: es parte de cómo se dicta la materia.
+
+DIAS = mod.DIAS
+HORA = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def _leer_dia_de_clase(cuerpo: dict) -> dict:
+    try:
+        dia = int(cuerpo.get("dia"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Elegí el día de la semana")
+    if not 1 <= dia <= 7:
+        raise HTTPException(400, "Ese día de la semana no existe")
+
+    desde = str(cuerpo.get("desde") or "").strip()
+    hasta = str(cuerpo.get("hasta") or "").strip()
+    if not HORA.match(desde) or not HORA.match(hasta):
+        raise HTTPException(400, "Los horarios van en formato HH:MM")
+    if desde >= hasta:
+        # Comparados como texto, "18:00" < "22:00": el formato de 24 horas con
+        # ceros a la izquierda ordena igual que la hora.
+        raise HTTPException(400, "La clase no puede terminar antes de empezar")
+
+    aula = str(cuerpo.get("aula") or "").strip()
+    if len(aula) > 60:
+        raise HTTPException(400, "El aula es demasiado larga")
+
+    return {"dia": dia, "desde": desde, "hasta": hasta, "aula": aula or None}
+
+
+@router.post("/{id_curso}/clases", status_code=201, summary="Agregar un día de clase")
+def agregar_dia_de_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    curso = _curso_que_administra(id_curso, yo)
+    datos = _leer_dia_de_clase(cuerpo)
+
+    # Dos clases el mismo día a la misma hora son la misma clase cargada dos
+    # veces; en el calendario aparecerían superpuestas.
+    repetida = any(
+        c["cursoId"] == id_curso and c["dia"] == datos["dia"] and c["desde"] == datos["desde"]
+        for c in d.clases
+    )
+    if repetida:
+        raise HTTPException(409, "Ya hay una clase ese día a esa hora")
+
+    d.clases.append({"cursoId": id_curso, **datos})
+    auditoria.registrar(
+        yo,
+        "creacion",
+        "modulos",
+        elemento=f"{DIAS[datos['dia']]} de {datos['desde']} a {datos['hasta']} · {curso['nombre']}",
+        elemento_id=id_curso,
+        elemento_tipo="diaDeClase",
+        despues=datos,
+        detalle="Agregó un día de cursada",
+    )
+    return {"cursada": mod.cursada_de(id_curso)}
+
+
+@router.delete("/{id_curso}/clases/{dia}/{desde}", summary="Quitar un día de clase")
+def quitar_dia_de_clase(id_curso: int, dia: int, desde: str, yo: dict = UsuarioActual):
+    """Se identifica por día y hora de inicio: no hay un id propio, y entre
+    esos dos no puede haber dos clases de la misma materia."""
+    curso = _curso_que_administra(id_curso, yo)
+
+    clase = next(
+        (c for c in d.clases if c["cursoId"] == id_curso and c["dia"] == dia and c["desde"] == desde),
+        None,
+    )
+    if not clase:
+        raise HTTPException(404, "Esa clase no está cargada")
+
+    d.clases.remove(clase)
+    auditoria.registrar(
+        yo,
+        "baja",
+        "modulos",
+        elemento=f"{DIAS[dia]} de {desde} · {curso['nombre']}",
+        elemento_id=id_curso,
+        elemento_tipo="diaDeClase",
+        antes=clase,
+        detalle="Quitó un día de cursada",
+    )
+    return {"cursada": mod.cursada_de(id_curso)}

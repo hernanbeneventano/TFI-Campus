@@ -10,6 +10,22 @@ import BarraHerramientas from '../components/BarraHerramientas.jsx';
 import TarjetaModulo from '../components/TarjetaModulo.jsx';
 import PanelTareas from '../components/PanelTareas.jsx';
 
+const ORDINAL = { 1: '1.er', 2: '2.º', 3: '3.er', 4: '4.º', 5: '5.º', 6: '6.º', 7: '7.º' };
+
+/** "2.º año". El 0 es el módulo que no está en ningún plan. */
+function nombreDeAnio(anio) {
+  if (!anio) return 'Sin año asignado';
+  return `${ORDINAL[anio] ?? `${anio}.º`} año`;
+}
+
+/** El 3 es anual, no un tercer cuatrimestre: así lo guarda el plan. */
+function nombreDeCuatrimestre(cuatrimestre) {
+  if (cuatrimestre === 3) return 'Anual';
+  if (cuatrimestre === 2) return '2.º cuatrimestre';
+  if (cuatrimestre === 1) return '1.er cuatrimestre';
+  return 'Sin período';
+}
+
 export default function Modulos() {
   const [modulos, setModulos] = useState(null);
   const [pendientes, setPendientes] = useState(null);
@@ -19,6 +35,7 @@ export default function Modulos() {
   const [vista, setVista] = useState('grilla');
   const [busqueda, setBusqueda] = useState('');
   const [periodo, setPeriodo] = useState('');
+  const [anio, setAnio] = useState('');
   const [apartado, setApartado] = useState('todos');
 
   // Quién mira: al docente no se le muestra lo que hace el alumno
@@ -41,11 +58,24 @@ export default function Modulos() {
     [modulos]
   );
 
+  // Los años que hay de verdad, no del 1 al 7: ofrecer un año vacío es
+  // ofrecer un filtro que deja la pantalla sin nada.
+  const anios = useMemo(
+    () =>
+      modulos
+        ? [...new Set(modulos.map((m) => m.anio ?? 0))].sort((a, b) =>
+            a === 0 ? 1 : b === 0 ? -1 : a - b
+          )
+        : [],
+    [modulos]
+  );
+
   const visibles = useMemo(() => {
     if (!modulos) return [];
     const texto = busqueda.trim().toLowerCase();
     return modulos
       .filter((m) => !periodo || m.periodo === periodo)
+      .filter((m) => !anio || String(m.anio ?? 0) === anio)
       .filter((m) => apartado !== 'favoritos' || m.favorito)
       .filter(
         (m) =>
@@ -56,43 +86,59 @@ export default function Modulos() {
       )
       // Los favoritos van primero
       .sort((a, b) => Number(b.favorito) - Number(a.favorito));
-  }, [modulos, busqueda, periodo, apartado]);
+  }, [modulos, busqueda, periodo, anio, apartado]);
 
-  // Los módulos van separados **por carrera** y, dentro de cada una, por
-  // cuatrimestre, con los más nuevos arriba.
+  // Los módulos van en tres niveles: **carrera → año → cuatrimestre**.
   //
-  // El nivel de carrera importa desde que el administrador y el supervisor
-  // ven todo el campus: sin él, "2.º cuatrimestre" mezcla materias de
-  // carreras distintas y deja de querer decir nada. Para un estudiante, que
-  // casi siempre está en una sola carrera, queda un único grupo y no estorba.
+  // La carrera importa desde que el administrador y el supervisor ven todo el
+  // campus: sin ella, "2.º cuatrimestre" mezcla materias de carreras
+  // distintas y deja de querer decir nada.
+  //
+  // El año importa por lo mismo, un nivel más abajo. Agrupando solo por
+  // cuatrimestre, el segundo de primer año caía junto al de segundo y al de
+  // tercero: catorce módulos en dos montones donde no se distingue qué se
+  // cursa cuándo. Para un estudiante de un solo año queda un grupo y no
+  // estorba; para quien administra, es lo que hace legible la pantalla.
   const carreras = useMemo(() => {
+    // Agrupa manteniendo el orden de aparición, y manda al final a los que no
+    // tienen el dato: un módulo sin materia en el plan no tiene año.
+    const agrupar = (lista, dato) => {
+      const mapa = new Map();
+      for (const modulo of lista) {
+        const clave = modulo[dato] ?? 0;
+        if (!mapa.has(clave)) mapa.set(clave, []);
+        mapa.get(clave).push(modulo);
+      }
+      return [...mapa.entries()].sort(([a], [b]) =>
+        a === 0 ? 1 : b === 0 ? -1 : a - b
+      );
+    };
+
     const porCarrera = new Map();
     for (const modulo of visibles) {
-      // Un módulo sin materia en el plan no tiene carrera: va al final, junto
       const clave = modulo.carrera ?? '';
       if (!porCarrera.has(clave)) porCarrera.set(clave, []);
       porCarrera.get(clave).push(modulo);
     }
 
-    const porPeriodo = (lista) => {
-      const mapa = new Map();
-      for (const modulo of lista) {
-        if (!mapa.has(modulo.periodo)) mapa.set(modulo.periodo, []);
-        mapa.get(modulo.periodo).push(modulo);
-      }
-      return [...mapa.entries()]
-        .sort(([a], [b]) => b.localeCompare(a, 'es'))
-        .map(([periodo, modulos]) => ({ periodo, modulos }));
-    };
-
     return [...porCarrera.entries()]
       .sort(([a], [b]) => {
-        // Los sin carrera, últimos
-        if (!a) return 1;
+        if (!a) return 1;  // los sin carrera, últimos
         if (!b) return -1;
         return a.localeCompare(b, 'es');
       })
-      .map(([carrera, lista]) => ({ carrera, grupos: porPeriodo(lista) }));
+      .map(([carrera, lista]) => ({
+        carrera,
+        anios: agrupar(lista, 'anio').map(([anio, suyos]) => ({
+          anio,
+          // Primero el 1.º, después el 2.º y al final las anuales: es el
+          // orden en que se cursan, no el alfabético.
+          cuatrimestres: agrupar(suyos, 'cuatrimestre').map(([cuatrimestre, modulos]) => ({
+            cuatrimestre,
+            modulos,
+          })),
+        })),
+      }));
   }, [visibles]);
 
 
@@ -129,6 +175,9 @@ export default function Modulos() {
             periodos={periodos}
             periodo={periodo}
             onPeriodo={setPeriodo}
+            anios={anios}
+            anio={anio}
+            onAnio={setAnio}
             apartado={apartado}
             onApartado={setApartado}
             esAlumno={esAlumno}
@@ -140,7 +189,7 @@ export default function Modulos() {
             <p className="texto-suave">No hay módulos que coincidan con la búsqueda.</p>
           )}
 
-          {carreras.map(({ carrera, grupos }) => (
+          {carreras.map(({ carrera, anios }) => (
             <section key={carrera || 'sin-carrera'} className="grupo-carrera">
               {/* La carrera va siempre, aunque haya una sola: es el nivel
                   que ordena todo lo de abajo y conviene que se vea. */}
@@ -148,35 +197,44 @@ export default function Modulos() {
                 {carrera || 'Sin carrera asignada'}
                 <small>
                   {(() => {
-                    const n = grupos.reduce((suma, g) => suma + g.modulos.length, 0);
+                    const n = anios.reduce(
+                      (suma, a) => suma + a.cuatrimestres.reduce((s, c) => s + c.modulos.length, 0),
+                      0
+                    );
                     return `${n} ${n === 1 ? 'módulo' : 'módulos'}`;
                   })()}
                 </small>
               </h2>
 
-              {grupos.map(({ periodo: cuatrimestre, modulos: delGrupo }) => (
-                <div key={cuatrimestre ?? 'todos'} className="grupo-modulos">
-                  {cuatrimestre && <h3 className="periodo-titulo">{cuatrimestre}</h3>}
-                  <div className="modulos-contenedor">
-                    {/* La `key` con la vista hace que al cambiar de tarjetas a
-                        lista se vuelva a montar, y con eso se reproduce la
-                        animación de entrada de cada módulo. */}
-                    <div
-                      key={vista}
-                      className={vista === 'grilla' ? 'modulos-grilla' : 'modulos-lista'}
-                    >
-                      {delGrupo.map((m, i) => (
-                        <TarjetaModulo
-                          key={m.id}
-                          modulo={m}
-                          vista={vista}
-                          indice={i}
-                          onFavorito={alternarFavorito}
-                        />
-                      ))}
+              {anios.map(({ anio, cuatrimestres }) => (
+                <section key={anio} className="grupo-anio">
+                  <h3 className="anio-titulo">{nombreDeAnio(anio)}</h3>
+
+                  {cuatrimestres.map(({ cuatrimestre, modulos: delGrupo }) => (
+                    <div key={cuatrimestre} className="grupo-modulos">
+                      <h4 className="periodo-titulo">{nombreDeCuatrimestre(cuatrimestre)}</h4>
+                      <div className="modulos-contenedor">
+                        {/* La `key` con la vista hace que al cambiar de tarjetas a
+                            lista se vuelva a montar, y con eso se reproduce la
+                            animación de entrada de cada módulo. */}
+                        <div
+                          key={vista}
+                          className={vista === 'grilla' ? 'modulos-grilla' : 'modulos-lista'}
+                        >
+                          {delGrupo.map((m, i) => (
+                            <TarjetaModulo
+                              key={m.id}
+                              modulo={m}
+                              vista={vista}
+                              indice={i}
+                              onFavorito={alternarFavorito}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  ))}
+                </section>
               ))}
             </section>
           ))}

@@ -208,7 +208,7 @@ def _resumir_mesa(mesa: dict, yo: dict) -> dict:
 def _ficha_alumno(persona_id: int, materia_id: int, mesa_id: int) -> dict:
     """Lo que el docente necesita saber de quien se presenta a rendir.
 
-    Sale de donde ya vive: `inscripcion_carrera` tiene el legajo y la carrera,
+    Sale de donde ya vive: `asociaciones_academicas` tiene el legajo y la carrera,
     y `resultados_finales` los finales que rindió. Nada de esto se guarda de
     nuevo en la inscripción a la mesa.
     """
@@ -308,6 +308,7 @@ def opciones(yo: dict = UsuarioActual):
             for p in d.personas
             if d.tiene_rol(p, "Docente")
         ],
+        "llamados": d.LLAMADOS,
         "modalidades": d.MODALIDADES_FINAL,
         "instancias": d.INSTANCIAS_FINAL,
         "resultados": RESULTADOS,
@@ -409,9 +410,11 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
     cierra = str(cuerpo.get("inscripcionHasta") or "").strip()
 
     if not llamado:
-        raise HTTPException(400, "Poné el nombre del llamado, por ejemplo «Turno diciembre · 1.er llamado»")
-    if len(llamado) > 80:
-        raise HTTPException(400, "El nombre del llamado es demasiado largo")
+        raise HTTPException(400, "Elegí el llamado de la mesa")
+    # Tiene que ser uno de los ocho del año: escrito a mano, la misma mesa
+    # aparecía con dos nombres distintos según quién la cargara.
+    if llamado not in d.LLAMADOS:
+        raise HTTPException(400, "Ese llamado no es uno de los del año académico")
     if not (_FECHA.match(fecha) and _FECHA.match(abre) and _FECHA.match(cierra)):
         raise HTTPException(400, "Revisá las fechas: alguna está vacía o no es válida")
     if not (_HORA.match(desde) and _HORA.match(hasta)):

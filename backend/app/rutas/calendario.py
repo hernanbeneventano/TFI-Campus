@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
 
 from .. import datos as d
+from ..servicios.autenticacion import UsuarioActual
 
 router = APIRouter(prefix="/api/calendario", tags=["Calendario"])
 
@@ -66,7 +67,9 @@ def _leer_fecha(texto: str | None) -> datetime | None:
 
 
 @router.get("", summary="Todo lo que pasa entre dos fechas")
-def listar_calendario(desde: str | None = None, hasta: str | None = None):
+def listar_calendario(
+    desde: str | None = None, hasta: str | None = None, yo: dict = UsuarioActual
+):
     inicio = _leer_fecha(desde)
     fin = _leer_fecha(hasta)
 
@@ -82,7 +85,8 @@ def listar_calendario(desde: str | None = None, hasta: str | None = None):
             "tipo": "entrega",
             "titulo": t["titulo"],
             "tareaId": t["id"],
-            "entregada": t["entregada"],
+            # De quien mira, no del curso: ver `datos.entrego`
+            "entregada": d.entrego(yo["id"], t),
             "dia": d.clave_dia(t["fechaLimite"]),
             "fecha": t["fechaLimite"],
             "desde": d.desde_iso(t["fechaLimite"]).astimezone().strftime("%H:%M"),

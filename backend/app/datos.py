@@ -16,6 +16,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from .servicios import fotos
+
 AQUI = Path(__file__).parent
 
 
@@ -33,8 +35,21 @@ def ahora() -> datetime:
 
 
 def desde_iso(texto: str) -> datetime:
-    """Interpreta una fecha ISO. Las que terminan en Z son UTC."""
-    return datetime.fromisoformat(texto.replace("Z", "+00:00"))
+    """Interpreta una fecha ISO. Las que terminan en Z son UTC.
+
+    **Siempre devuelve una fecha con zona horaria.** Las que guarda el campus
+    la traen, pero las que manda la pantalla no: un `<input type="date">`
+    manda `2026-03-01` a secas, y Python lo interpreta como una fecha sin
+    zona. Comparar una de esas con `ahora()` —que sí la tiene— no da falso:
+    **rompe**, con un error 500 que no dice nada.
+
+    Pasó con la fecha de nacimiento del perfil: guardarla fallaba siempre, y
+    como el único camino que la comparaba era el de validarla, el formulario
+    devolvía «error interno» sin más. Una fecha sola se toma como el comienzo
+    de ese día en hora local, igual que en el resto del campus.
+    """
+    fecha = datetime.fromisoformat(texto.replace("Z", "+00:00"))
+    return fecha.astimezone() if fecha.tzinfo is None else fecha
 
 
 def a_dias(n: int) -> str:
@@ -105,6 +120,10 @@ categorias: list[dict] = _iniciales["categorias"]
 # son entidades: ver `carreras_institucion`.
 carreras: list[str] = _iniciales["carrerasNombres"]
 favoritos_biblioteca: list[dict] = _iniciales["favoritosBiblioteca"]
+# Los módulos que cada uno marcó con la estrella. Es **de cada persona**, no
+# del módulo: antes era un booleano adentro del curso, así que la estrella que
+# ponía uno se la encontraban todos los demás.
+favoritos_modulo: list[dict] = _iniciales["favoritosModulo"]
 moderacion_biblioteca: list[dict] = _iniciales["moderacionBiblioteca"]
 TIPOS_MATERIAL: list[str] = _iniciales["TIPOS_MATERIAL"]
 ESTADOS_MATERIAL: list[str] = _iniciales["ESTADOS_MATERIAL"]
@@ -114,7 +133,13 @@ ESTADOS_MATERIAL: list[str] = _iniciales["ESTADOS_MATERIAL"]
 # materia son una lista de ids y se cambian sin tocar el servidor. Es lo que
 # va a administrar el panel de la institución cuando exista.
 materias_plan: list[dict] = _iniciales["materiasPlan"]
-inscripcion_carrera: list[dict] = _iniciales["inscripcionCarrera"]
+
+# El vocabulario de las materias y sus correlatividades. Son listas cerradas
+# para que el plan no se llene de sinónimos: "Aprobada" y "aprobado" serían
+# la misma condición para la facultad y dos distintas para el sistema.
+MODALIDADES_MATERIA: list[str] = _iniciales["MODALIDADES_MATERIA"]
+CONDICIONES_CORRELATIVA: list[str] = _iniciales["CONDICIONES_CORRELATIVA"]
+MODOS_CORRELATIVA: list[str] = _iniciales["MODOS_CORRELATIVA"]
 historial_academico: list[dict] = _iniciales["historialAcademico"]
 periodo_inscripcion_materias: dict = _iniciales["periodoInscripcionMaterias"]
 inscripciones_materias: list[dict] = _iniciales["inscripcionesMaterias"]
@@ -126,6 +151,12 @@ CONDICIONES_FINAL: list[str] = _iniciales["CONDICIONES_FINAL"]
 # Cómo se toma una mesa. Solo las usa la gestión docente, que es la que las
 # ofrece en el formulario; el alumno las lee ya resueltas en la mesa.
 MODALIDADES_FINAL: list[str] = _iniciales["MODALIDADES_FINAL"]
+
+# Los llamados a final del año académico. Son ocho y los fija la facultad, así
+# que se eligen de una lista en vez de escribirse a mano: dos mesas escritas
+# "Turno diciembre 1er llamado" y "Turno diciembre · 1.er llamado" serían la
+# misma cosa para la facultad y dos distintas para el sistema.
+LLAMADOS: list[str] = _iniciales["LLAMADOS"]
 INSTANCIAS_FINAL: list[str] = _iniciales["INSTANCIAS_FINAL"]
 
 # ----- Notas de la cursada -----
@@ -167,7 +198,6 @@ comisiones: list[dict] = _iniciales["comisiones"]
 # Dónde está cada persona: carrera + sede + comisión + plan. Una persona
 # puede tener varias, en carreras distintas.
 asociaciones_academicas: list[dict] = _iniciales["asociacionesAcademicas"]
-historial_usuarios: list[dict] = _iniciales["historialUsuarios"]
 
 # El registro de auditoría de todo el campus. Es **solo de agregar**: no hay
 # ninguna función que edite o borre un evento, ni acá ni en las rutas.
@@ -238,6 +268,12 @@ historial_asistencia: list[dict] = _iniciales["historialAsistencia"]
 CONFIG_ASISTENCIA: dict = _iniciales["CONFIG_ASISTENCIA"]
 ESTADOS_ASISTENCIA: list[str] = _iniciales["ESTADOS_ASISTENCIA"]
 ESTADOS_JUSTIFICACION: list[str] = _iniciales["ESTADOS_JUSTIFICACION"]
+
+# La ficha de cada archivo subido: nombre original, dónde quedó en
+# Cloudflare R2, tipo, tamaño, quién lo subió y a qué registro pertenece. El
+# archivo vive en R2 y esto en la base: sin la ficha el bucket es una pila de
+# objetos sin dueño. Ver servicios/almacenamiento.py.
+archivos_subidos: list[dict] = []
 
 # El cierre de cursada de cada alumno, cuando el docente lo fija a mano.
 # Si no está, la condición sale del promedio: se aprueba con 6.
@@ -329,6 +365,12 @@ def con_presencia(persona: dict) -> dict:
         "roles": roles_de(persona),
         "ultimoAcceso": ultimo_acceso,
         "estado": estado_por_acceso(ultimo_acceso),
+        # La **dirección** de la foto, no su clave en el almacenamiento: la
+        # pantalla no tiene por qué saber dónde está guardada, y la clave no
+        # sirve para mostrarla. Va acá porque por esta función pasa toda
+        # persona que el campus muestra —participantes, foro, mensajes,
+        # cuentas—, así que el avatar aparece en todas de una sola vez.
+        "foto": fotos.direccion(persona),
     }
 
 
@@ -391,60 +433,110 @@ def buscar_curso(id_curso: Any) -> dict | None:
 
 # ===================== Contenido de los módulos =====================
 def contenido_generico(curso: dict) -> list[dict]:
-    """Contenido mínimo para los módulos que todavía no tienen uno propio."""
-    tareas_curso = [t for t in tareas if t["cursoId"] == curso["id"]]
-    return [
-        {
-            "id": 1,
-            "titulo": "Información del módulo",
-            "descripcion": "Bienvenida y programa de la materia",
-            "items": [
-                {
-                    "id": f"{curso['id']}-1",
-                    "tipo": "pagina",
-                    "titulo": "Bienvenida al módulo",
-                    "cuerpo": [
-                        f"¡Bienvenidos a {curso['nombre']}! Acá vas a encontrar todo el material "
-                        "de la materia organizado por semana.",
-                        f"Docente a cargo: {curso['docente']}.",
-                    ],
-                },
-                {
-                    "id": f"{curso['id']}-2",
-                    "tipo": "archivo",
-                    "titulo": "Programa de la materia",
-                    "formato": "PDF",
-                    "tamano": "280 KB",
-                },
-            ],
-        },
-        {
-            "id": 2,
-            "titulo": "Semana 1",
-            "descripcion": "Material y actividades de la primera semana",
-            "items": [
-                {
-                    "id": f"{curso['id']}-3",
-                    "tipo": "archivo",
-                    "titulo": "Clase 1",
-                    "formato": "Video",
-                    "tamano": "45 min",
-                },
-                *[
-                    {
-                        "id": f"{curso['id']}-t{t['id']}",
-                        "tipo": "tarea",
-                        "titulo": t["titulo"],
-                        "tareaId": t["id"],
-                    }
-                    for t in tareas_curso
-                ],
-            ],
-        },
-    ]
+    """Ninguno: un módulo nuevo arranca **vacío**.
+
+    Antes devolvía una carpeta de bienvenida con un par de archivos, para que
+    la pantalla no quedara en blanco mientras no había datos de verdad. Ahora
+    el campus arranca de cero y eso estorba: el docente abría su materia
+    recién asignada y encontraba contenido que él no había cargado, que no
+    tenía de dónde haber salido y que igual podía editar.
+
+    Se conserva la función —y `asegurar_contenido`, que la materializa— porque
+    es el punto donde un módulo nuevo decide con qué empieza. El día que la
+    facultad quiera una plantilla de cátedra, se arma acá.
+    """
+    return []
 
 
-def carpetas_de_curso(curso: dict) -> list[dict]:
+def resumen_de_persona(id_persona: Any) -> dict | None:
+    """Lo mínimo para mostrar a alguien: quién es, qué rol tiene y su cara.
+
+    Existe porque el foro, las novedades y los mensajes armaban cada uno su
+    propia ficha corta —id, nombre y rol— y ninguna incluía la foto: los
+    avatares salían en silueta aunque la persona tuviera una cargada. Con una
+    sola función, el que aparezca una cara nueva en alguna pantalla ya la
+    muestra sin acordarse de nada.
+    """
+    persona = buscar_persona(id_persona)
+    if not persona:
+        return None
+    return {
+        "id": persona["id"],
+        "nombre": persona["nombre"],
+        "rol": rol_principal(persona),
+        "roles": roles_de(persona),
+        "foto": fotos.direccion(persona),
+    }
+
+
+def _con_direccion_de_archivo(item: dict) -> dict:
+    """Le agrega al elemento la dirección con la que se ve o se baja.
+
+    Va firmada porque un `<iframe>` —el que muestra la vista previa de un
+    PDF— no manda la cabecera `Authorization`, igual que una etiqueta `<img>`.
+    Sin esto la vista previa mostraba «Hay que iniciar sesión» en vez del
+    documento. Ver `servicios/fotos.py`.
+    """
+    guardado = item.get("archivo")
+    if not isinstance(guardado, dict) or not guardado.get("objectKey"):
+        return item
+    return {
+        **item,
+        "archivo": {**guardado, "url": fotos.direccion_de_archivo(guardado["objectKey"])},
+    }
+
+
+def es_marcable(item: dict) -> bool:
+    """Si ese elemento se puede marcar como visto.
+
+    Las tareas no: se dan por hechas al entregarlas. La regla vive acá porque
+    la aplican los tres lados —el alumno al marcar, el servidor al aceptar y
+    el docente al contar—, y con una copia en cada uno terminarían contando
+    cosas distintas.
+    """
+    return item.get("tipo") != "tarea"
+
+
+def buscar_item_de_curso(curso_id: Any, item_id: str) -> dict | None:
+    """El elemento de contenido con ese id, dentro de ese módulo."""
+    curso = buscar_curso(curso_id)
+    if not curso:
+        return None
+    for carpeta in carpetas_de_curso(curso):
+        for item in carpeta["items"]:
+            if str(item.get("id")) == str(item_id):
+                return item
+    return None
+
+
+def entrega_de(persona_id: Any, tarea_id: Any) -> dict | None:
+    """Lo que esa persona entregó en ese trabajo, si entregó algo."""
+    if persona_id is None:
+        return None
+    return next(
+        (e for e in entregas if e["tareaId"] == tarea_id and e["personaId"] == persona_id),
+        None,
+    )
+
+
+def entrego(persona_id: Any, tarea: dict) -> bool:
+    """Si esa persona ya entregó ese trabajo.
+
+    Un cuestionario se da por entregado al responderlo, que es su forma de
+    entregar; un presencial no se entrega nunca —la nota la carga el docente—
+    y por eso no cuenta como pendiente ni como hecho.
+    """
+    if persona_id is None:
+        return False
+    if tarea.get("formato") == "cuestionario":
+        return any(
+            r["tareaId"] == tarea["id"] and r["personaId"] == persona_id
+            for r in respuestas_cuestionario
+        )
+    return entrega_de(persona_id, tarea["id"]) is not None
+
+
+def carpetas_de_curso(curso: dict, persona_id: Any = None) -> list[dict]:
     """Las carpetas con los datos de sus tareas ya resueltos.
 
     La usan tanto la pantalla del módulo como el panel de tareas pendientes.
@@ -455,14 +547,19 @@ def carpetas_de_curso(curso: dict) -> list[dict]:
         items = []
         for item in carpeta["items"]:
             if item.get("tipo") != "tarea":
-                items.append(item)
+                items.append(_con_direccion_de_archivo(item))
                 continue
             tarea = next((t for t in tareas if t["id"] == item.get("tareaId")), None)
             items.append(
                 {
                     **item,
                     "fechaLimite": tarea.get("fechaLimite") if tarea else None,
-                    "entregada": tarea.get("entregada", False) if tarea else False,
+                    # **De quien mira**, no del curso. `tarea["entregada"]`
+                    # era un solo booleano para todos: con entregas de verdad
+                    # eso le mostraba "Entregada" a quien no entregó nada.
+                    # Sin `persona_id` —la vista del docente, que mira el
+                    # contenido y no la entrega de nadie— queda en falso.
+                    "entregada": entrego(persona_id, tarea) if tarea else False,
                     # `cerrada` pesa más que la fecha: el docente puede cortar
                     # las entregas antes o darle prórroga al curso. Sin esto,
                     # la pantalla muestra un plazo que ya no manda.
@@ -480,23 +577,51 @@ def carpetas_de_curso(curso: dict) -> list[dict]:
 
 
 def participantes_de_curso(curso: dict) -> list[dict]:
-    """Los módulos sin lista propia usan una genérica: su docente y un par de
-    estudiantes."""
-    ids = participantes.get(curso["id"]) or [curso["docenteId"], 1, 3]
-    return [p for p in (buscar_persona(i) for i in ids) if p]
+    """Quiénes están en ese módulo: su docente y los estudiantes inscriptos.
+
+    Sale de las inscripciones de verdad. Antes, un módulo sin lista propia
+    caía en una de ejemplo —el docente y dos estudiantes fijos—, y con el
+    campus vacío eso hacía que un alumno que no cursaba nada apareciera en
+    todos los módulos.
+
+    `participantes` sigue existiendo para los módulos que traigan su lista
+    cargada a mano, pero ya no hay invento cuando no la tienen.
+    """
+    propios = participantes.get(curso["id"])
+    if propios is not None:
+        return [p for p in (buscar_persona(i) for i in propios) if p]
+
+    ids: list[int] = []
+    if curso.get("docenteId"):
+        ids.append(curso["docenteId"])
+
+    # La materia del plan que corresponde a este módulo
+    materia = next((m for m in materias_plan if m.get("cursoId") == curso["id"]), None)
+    if materia:
+        ids += [
+            i["personaId"] for i in inscripciones_materias if i["materiaId"] == materia["id"]
+        ]
+        ids += [
+            h["personaId"]
+            for h in historial_academico
+            if h["materiaId"] == materia["id"] and h.get("condicion") == "En curso"
+        ]
+
+    vistos: list[int] = []
+    for i in ids:
+        if i not in vistos:
+            vistos.append(i)
+    return [p for p in (buscar_persona(i) for i in vistos) if p]
 
 
 def anuncios_genericos(curso: dict) -> list[dict]:
-    """Para los módulos que todavía no tienen anuncios propios."""
-    return [
-        {
-            "id": 1,
-            "titulo": f"Bienvenidos a {curso['nombre']}",
-            "cuerpo": "En la carpeta de información está el programa de la materia y el cronograma.",
-            "autor": curso["docente"],
-            "fecha": a_dias(-12),
-        }
-    ]
+    """Ninguno: un módulo sin anuncios se muestra sin anuncios.
+
+    Antes inventaba uno de bienvenida para que la pestaña no quedara vacía.
+    Con el campus arrancando de cero eso es peor: el docente veía un anuncio
+    que él no escribió y que no podía editar ni borrar.
+    """
+    return []
 
 
 # ===================== Novedades de un módulo =====================
@@ -604,11 +729,13 @@ _proximos = {
     "historialAsistencia": 100,
     "carrera": 100,
     "sede": 100,
+    "materia": 200,
     "plan": 100,
     "comision": 100,
     "asociacion": 100,
     "historialUsuario": 100,
     "dictado": 100,
+    "evento": 100,
 }
 
 
@@ -710,6 +837,10 @@ def nuevo_id_sede() -> int:
     return _nuevo_id("sede")
 
 
+def nuevo_id_materia() -> int:
+    return _nuevo_id("materia")
+
+
 def nuevo_id_plan() -> int:
     return _nuevo_id("plan")
 
@@ -728,6 +859,10 @@ def nuevo_id_historial_usuario() -> int:
 
 def nuevo_id_auditoria() -> int:
     return _nuevo_id("auditoria")
+
+
+def nuevo_id_evento() -> int:
+    return _nuevo_id("evento")
 
 
 def nuevo_id_dictado() -> int:
@@ -794,16 +929,28 @@ def avisar_por_mensaje(de_id: int, para_id: int, texto: str) -> None:
 #
 # Vive en memoria y se pierde al reiniciar, como el resto de los datos de
 # prueba. Con Firebase Storage esto pasa a ser una referencia al bucket.
-_archivos: dict[int, bytes] = {}
+# La clave es cualquier cosa que identifique al archivo: el id de un material
+# de la Biblioteca, o "modulo:3:3-2" para el de una sección. Lo importante es
+# que dos apartados no se pisen.
+_archivos: dict[Any, bytes] = {}
 
 
-def guardar_archivo(material_id: int, contenido: bytes) -> None:
-    _archivos[material_id] = contenido
+def guardar_archivo(clave: Any, contenido: bytes) -> None:
+    _archivos[clave] = contenido
 
 
-def leer_archivo(material_id: int) -> bytes | None:
-    return _archivos.get(material_id)
+def leer_archivo(clave: Any) -> bytes | None:
+    return _archivos.get(clave)
 
 
-def borrar_archivo(material_id: int) -> None:
-    _archivos.pop(material_id, None)
+def borrar_archivo(clave: Any) -> None:
+    _archivos.pop(clave, None)
+
+
+def clave_de_archivo_de_modulo(curso_id: int, item_id: Any) -> str:
+    """La clave del archivo de un elemento de módulo.
+
+    Lleva el curso además del elemento porque los identificadores de los
+    elementos se arman por módulo ("3-2") y se repetirían entre materias.
+    """
+    return f"modulo:{curso_id}:{item_id}"
