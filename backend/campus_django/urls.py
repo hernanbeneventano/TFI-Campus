@@ -1,9 +1,12 @@
 """Las rutas que atiende Django.
 
-**En la fase 0 no hay ninguna.** El despachador manda todo a FastAPI, y Django
-solo está montado para poder probarlo.
+Cada módulo migrado tiene su archivo con su `urlpatterns`, y se suma acá. El
+despachador solo le manda a Django lo que está en `MIGRADOS`: una ruta que
+esté acá y no allá no la ve nadie.
 
-Cuando se migre un módulo, sus rutas se agregan acá con el **mismo camino y en
+Migrados: el calendario.
+
+Cuando se migre un módulo, sus rutas se agregan con el **mismo camino y en
 el mismo orden** que en `app/main.py`. El orden importa por dos motivos: las
 rutas con nombre fijo (`/contactos`, `/favoritos`) van antes que las que
 toman un identificador, y `cursos` y `gestion_modulo` comparten el prefijo
@@ -18,6 +21,10 @@ comprobar la sesión, que es el orden en que lo hace FastAPI.
 
 from __future__ import annotations
 
-urlpatterns: list = []
+from . import calendario
+
+urlpatterns: list = [
+    *calendario.urlpatterns,
+]
 
 handler404 = "campus_django.vistas.no_encontrada"

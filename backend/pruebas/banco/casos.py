@@ -113,6 +113,37 @@ def con_parametros() -> list[Caso]:
             _ver("/api/calendario?desde=2026-01-01&hasta=2026-12-31", SANTIAGO),
             _ver("/api/calendario?desde=no-es-una-fecha", SANTIAGO),
         ]),
+        # El primer módulo que pasó a Django: los bordes donde dos frameworks
+        # suelen contestar distinto aunque la lógica sea la misma.
+        Caso("El calendario, a fondo", [
+            # Lo que ve cada uno depende de quién es: «entregada» es de cada alumno
+            _ver("/api/calendario?desde=2026-03-01&hasta=2026-07-31", SANTIAGO),
+            _ver("/api/calendario?desde=2026-03-01&hasta=2026-07-31", HERNAN),
+            _ver("/api/calendario?desde=2026-03-01&hasta=2026-07-31", MARIA),
+            _ver("/api/calendario?desde=2026-03-01&hasta=2026-07-31", SECRETARIA),
+            # Una semana, un día, fechas ISO completas
+            _ver("/api/calendario?desde=2026-04-06&hasta=2026-04-12", SANTIAGO),
+            _ver("/api/calendario?desde=2026-04-08&hasta=2026-04-08", SANTIAGO),
+            _ver("/api/calendario?desde=2026-04-06T00:00:00Z&hasta=2026-04-12T23:59:59Z", SANTIAGO),
+            # Solo uno de los dos, vacío, repetido (gana el último), y con acentos
+            _ver("/api/calendario?hasta=2026-12-31", SANTIAGO),
+            _ver("/api/calendario?desde=&hasta=", SANTIAGO),
+            _ver("/api/calendario?desde=1999-01-01&desde=2026-03-01&hasta=2026-03-31", SANTIAGO),
+            _ver("/api/calendario?desde=2026-03-01&hasta=2026-03-31&otro=ñandú", SANTIAGO),
+            # Los 400: al revés, inválida, mes 13
+            _ver("/api/calendario?desde=2026-12-31&hasta=2026-01-01", SANTIAGO),
+            _ver("/api/calendario?hasta=mañana", SANTIAGO),
+            _ver("/api/calendario?desde=2026-13-01", SANTIAGO),
+            # Sin sesión: 401, y antes que el 400
+            _ver("/api/calendario", None),
+            _ver("/api/calendario?desde=no-es-una-fecha", None),
+            # La barra final (307), y los métodos que no tiene (405)
+            _ver("/api/calendario/", SANTIAGO),
+            _ver("/api/calendario/otra-cosa", SANTIAGO),
+            Paso("POST", "/api/calendario", SANTIAGO, {}),
+            Paso("HEAD", "/api/calendario", SANTIAGO),
+            Paso("DELETE", "/api/calendario", None),
+        ]),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),

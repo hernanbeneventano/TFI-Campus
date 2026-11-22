@@ -4,9 +4,9 @@ Es lo que permite migrar de a un módulo por vez. El frontend sigue pegándole
 a `/api/...` como siempre, y acá se decide quién contesta. Pasar un módulo a
 Django es agregar su prefijo a `MIGRADOS`; volver atrás es sacarlo.
 
-**En la fase 0 la lista está vacía: todo lo atiende FastAPI**, exactamente
-como antes de que existiera este archivo. Para las peticiones de FastAPI esto
-es un pasamanos: no las mira, no las toca y no les agrega nada.
+Lo que no está en la lista lo atiende FastAPI, exactamente como antes de que
+existiera este archivo: para esas peticiones esto es un pasamanos, no las
+mira, no las toca y no les agrega nada.
 
 Un solo proceso, a propósito
 ----------------------------
@@ -62,8 +62,15 @@ from app.main import app as fastapi  # noqa: E402
 
 # ===================== Qué atiende Django =====================
 # Prefijos completos: «/api/foro» atiende «/api/foro» y «/api/foro/...», pero
-# no «/api/forobar». Vacío en la fase 0.
-MIGRADOS: tuple[str, ...] = ()
+# no «/api/forobar». Un prefijo que comparten varios archivos de rutas
+# —«/api/cursos», «/api/tareas», «/api/finales», «/api/salud»— se migra con
+# el camino más largo que sea de uno solo («/api/tareas/pendientes»), nunca
+# entero: se llevaría rutas de otro módulo que Django todavía no tiene.
+#
+# Volver atrás es sacar la línea: la ruta de FastAPI sigue en su lugar.
+MIGRADOS: tuple[str, ...] = (
+    "/api/calendario",
+)
 
 
 def es_de_django(camino: str) -> bool:
