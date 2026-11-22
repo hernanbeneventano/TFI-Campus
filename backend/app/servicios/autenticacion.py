@@ -91,6 +91,47 @@ def _permite_usuario_de_prueba() -> bool:
     return (os.environ.get("PERMITIR_USUARIO_SIN_TOKEN") or "no").lower() in ("si", "1", "true")
 
 
+# ===================== Quién actúa, en las pruebas =====================
+# Las pruebas necesitan hacer la misma petición como distintas personas: lo
+# que comprueban es justamente quién ve qué. Eso se resolvía con
+# `dependency_overrides` de FastAPI, que reemplaza la dependencia desde
+# afuera. Es cómodo y **no existe fuera de FastAPI**, así que era lo único que
+# ataba las catorce suites al framework.
+#
+# Acá la suplantación vive adentro: `identificar` la consulta antes que nada.
+# Es Python a secas, así que sigue funcionando con cualquier framework que
+# llame a esta función.
+#
+# **No agrega superficie de ataque.** Se enciende únicamente llamando a
+# `actuar_como()` desde adentro del proceso: no hay ruta, cabecera ni variable
+# de entorno que lo haga, y nada de `app/` la llama (hay una comprobación en
+# `pruebas/usuarios.py` que lo verifica). Quien pueda ejecutar Python dentro
+# del servidor ya puede editar `datos.personas` directamente, así que esto no
+# le da nada que no tuviera.
+#
+# Se guarda **el identificador y no la persona**: las pruebas recargan su
+# escenario y reemplazan el contenido de `datos.personas`, así que una
+# referencia al diccionario quedaría apuntando a alguien que ya no está.
+_suplantado: dict[str, int | None] = {"personaId": None}
+
+
+def actuar_como(persona_id: int | None) -> None:
+    """Hace que `identificar` devuelva a esa persona. **Solo para pruebas.**
+
+    Con `None` se apaga y se vuelve a la verificación de siempre.
+    """
+    _suplantado["personaId"] = persona_id
+
+
+def suplantando() -> int | None:
+    """A quién se está suplantando, o `None` si a nadie.
+
+    Está para poder comprobarlo desde las pruebas, que es la forma de dejar
+    anotado que en el campus de verdad esto vale `None`.
+    """
+    return _suplantado["personaId"]
+
+
 def _persona_por_correo(correo: str | None) -> dict | None:
     if not correo:
         return None
@@ -112,7 +153,22 @@ def identificar(peticion: Request) -> dict:
     Pensada para usarse como dependencia de FastAPI:
 
         def mi_ruta(yo: dict = Depends(identificar)):
+
+    De `peticion` solo se usa `.headers`, así que sirve igual cualquier
+    petición que tenga esa propiedad.
     """
+    # Las pruebas dicen quién actúa sin pasar por Firebase (ver arriba). En el
+    # campus de verdad esto vale siempre None y la función sigue de largo.
+    #
+    # Si apuntara a alguien que no existe se sigue por el camino normal y la
+    # petición termina en 401: es preferible que una prueba mal escrita falle
+    # fuerte a que entre como quien no quiso.
+    suplantada = _suplantado["personaId"]
+    if suplantada is not None:
+        persona = d.buscar_persona(suplantada)
+        if persona:
+            return persona
+
     token = _token_de(peticion)
 
     if token is None:

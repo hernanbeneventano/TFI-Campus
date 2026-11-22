@@ -23,16 +23,17 @@ Uso (desde backend/):
 
 from __future__ import annotations
 
+import ast
+import os
+import pathlib
 import sys
 
-from fastapi.testclient import TestClient
 
 from app import datos as d
-from app.main import app
 from app.servicios import frenos
-from app.servicios.autenticacion import identificar, identificar_id
 
 from . import escenario
+from .cliente import como, crear_cliente, sin_suplantar
 
 BASE = "/api/usuarios"
 
@@ -44,17 +45,11 @@ CLAUDIA = 19  # Supervisor + Docente
 pasadas = 0
 fallas: list[str] = []
 
-_quien = {"id": SECRETARIA}
 escenario.cargar()
 frenos.olvidar_todo()
 
-app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
-app.dependency_overrides[identificar_id] = lambda: _quien["id"]
-cliente = TestClient(app)
-
-
-def como(persona_id: int) -> None:
-    _quien["id"] = persona_id
+cliente = crear_cliente()
+como(SECRETARIA)
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:
@@ -250,6 +245,50 @@ def correr() -> None:
         cliente.post(BASE, json={"nombre": "  ", "correo": "otra@campus.test"}).status_code
         == 400,
     )
+
+    # ------------------------------------------------------------------
+    # Las pruebas dicen quién actúa con `actuar_como`, que esquiva Firebase.
+    # Es cómodo acá y sería un agujero en el campus: con una llamada desde
+    # cualquier ruta, cualquiera entraría como cualquiera. Que hoy no esté
+    # llamada en ningún lado es fácil de comprobar y fácil de romper sin
+    # querer, así que se comprueba.
+    grupo("La suplantación de las pruebas no llega al campus de verdad")
+    # Se busca con `ast` y no con un buscador de texto: así una mención en un
+    # comentario o la propia definición no cuentan, y una llamada escrita de
+    # cualquier forma —`actuar_como(...)` o `autenticacion.actuar_como(...)`—
+    # sí. Un chequeo que da falsos positivos se termina ignorando.
+    app_py = pathlib.Path(__file__).resolve().parent.parent / "app"
+    la_encienden = []
+    for archivo in sorted(app_py.rglob("*.py")):
+        arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, ast.Call):
+                continue
+            llamada = nodo.func
+            nombre = getattr(llamada, "id", None) or getattr(llamada, "attr", None)
+            if nombre == "actuar_como":
+                la_encienden.append(
+                    f"{archivo.relative_to(app_py).as_posix()}:{nodo.lineno}"
+                )
+    comprobar("ningún archivo de app/ la enciende", not la_encienden, la_encienden)
+
+    # Y apagada, el campus vuelve a pedir sesión como siempre.
+    antes_variable = os.environ.get("PERMITIR_USUARIO_SIN_TOKEN")
+    os.environ["PERMITIR_USUARIO_SIN_TOKEN"] = "no"
+    sin_suplantar()
+    frenos.olvidar_todo()
+    sin_sesion = cliente.get(BASE)
+    comprobar(
+        "apagada, una petición sin token da 401",
+        sin_sesion.status_code == 401,
+        (sin_sesion.status_code, sin_sesion.json()),
+    )
+    como(SECRETARIA)
+    comprobar("y al encenderla de nuevo responde", cliente.get(BASE).status_code == 200)
+    if antes_variable is None:
+        os.environ.pop("PERMITIR_USUARIO_SIN_TOKEN", None)
+    else:
+        os.environ["PERMITIR_USUARIO_SIN_TOKEN"] = antes_variable
 
     # ------------------------------------------------------------------
     print("\n" + "-" * 52)
