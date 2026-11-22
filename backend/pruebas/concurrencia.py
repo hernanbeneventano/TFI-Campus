@@ -35,7 +35,7 @@ import time
 
 from app import datos as d
 from app.servicios import firestore as fs
-from app.servicios import persistencia
+from app.servicios import modulos, persistencia
 
 from . import escenario
 
@@ -446,6 +446,157 @@ def guardado_sin_carrera() -> None:
     comprobar("y el cliente de Firestore es el real otra vez", fs.obtener_firestore is not _prohibido)
 
 
+# ===================== Punto 2: la creación de módulos =====================
+DOCENTE = 9          # dicta 113 y 118, que en el escenario no tienen módulo
+ADMINISTRADORA = 18  # al abrir Módulos crea todos los que tengan cátedra
+ESTUDIANTE = 1
+
+
+def _problemas_de_modulos(materias: list[int]) -> list[str]:
+    """Lo que tendría que ser cierto después de cualquier cantidad de altas."""
+    problemas = []
+    ids = [c["id"] for c in d.cursos]
+    repetidos = sorted({i for i in ids if ids.count(i) > 1})
+    if repetidos:
+        problemas.append(f"ids de módulo repetidos: {repetidos}")
+    for materia_id in materias:
+        materia = d.buscar_materia(materia_id)
+        suyos = [c for c in d.cursos if c["codigo"] == materia["codigo"]]
+        if len(suyos) != 1:
+            problemas.append(f"{materia['codigo']}: {len(suyos)} módulos")
+        if not d.buscar_curso(materia.get("cursoId")):
+            problemas.append(f"{materia['codigo']}: apunta a un módulo que no existe")
+    return problemas
+
+
+def _con_catedra_sin_modulo() -> list[int]:
+    return [
+        m["id"] for m in d.materias_plan
+        if not d.buscar_curso(m.get("cursoId")) and d.docentes_de_materia(m["id"])
+    ]
+
+
+def e2_el_docente_abre_modulos(veces: int) -> None:
+    """E2 tal cual: el menú y la grilla piden la lista a la vez."""
+    grupo("Módulos: el menú y la grilla del docente a la vez (E2)")
+
+    intentos = 200 * veces
+    malos: list[str] = []
+    with hilos_que_se_alternan():
+        for _ in range(intentos):
+            escenario.cargar()
+            en_paralelo(2, lambda _n: modulos.modulos_que_dicta(DOCENTE))
+            malos += _problemas_de_modulos([113, 118])
+    comprobar(
+        f"cada materia queda con un solo módulo y sin ids repetidos ({intentos} intentos)",
+        not malos,
+        f"{len(malos)} problemas, p. ej. {malos[:2]}",
+    )
+
+
+def e2_todos_los_caminos(veces: int) -> None:
+    """Los cinco llamadores de `modulo_para`, cruzados entre sí."""
+    grupo("Módulos: todos los caminos que crean, a la vez")
+
+    intentos = 100 * veces
+    malos: list[str] = []
+    with hilos_que_se_alternan():
+        for _ in range(intentos):
+            escenario.cargar()
+            d.inscripciones_materias.append(
+                {"id": 990100, "personaId": ESTUDIANTE, "materiaId": 113, "fecha": "2026-03-01"}
+            )
+            materia = d.buscar_materia(113)
+            caminos = [
+                lambda: modulos.modulos_que_dicta(DOCENTE),             # el docente
+                lambda: modulos.modulos_con_catedra(),                  # la secretaría
+                lambda: modulos.modulos_en_los_que_cursa(ESTUDIANTE),   # el alumno
+                lambda: modulos.modulo_para(materia, por_inscripcion=True),  # inscribirse
+                lambda: modulos.modulo_para(materia),                   # la comisión
+            ]
+            en_paralelo(len(caminos), lambda n: caminos[n]())
+            malos += _problemas_de_modulos(
+                [113, 114, 115, 116, 117, 118, 119]
+            )
+    comprobar(
+        f"ningún camino duplica un módulo ni un id ({intentos} intentos)",
+        not malos,
+        f"{len(malos)} problemas, p. ej. {malos[:2]}",
+    )
+
+    # Doscientos a la vez sobre el mismo campus, repartidos entre los caminos
+    for repeticion in range(veces):
+        escenario.cargar()
+        antes = len(d.cursos)
+        faltaban = len(_con_catedra_sin_modulo())
+        materia = d.buscar_materia(113)
+        caminos = [
+            lambda: modulos.modulos_que_dicta(DOCENTE),
+            lambda: modulos.modulos_con_catedra(),
+            lambda: modulos.modulo_para(materia, por_inscripcion=True),
+            lambda: modulos.modulos_que_dicta(7),
+        ]
+        with hilos_que_se_alternan():
+            _, errores = en_paralelo(200, lambda n: caminos[n % len(caminos)]())
+        malos = errores + _problemas_de_modulos([113, 114, 115, 116, 117, 118, 119])
+        sufijo = f" (pasada {repeticion + 1})" if veces > 1 else ""
+        comprobar(f"200 pedidos juntos: un módulo por materia{sufijo}", not malos, malos[:2])
+        comprobar(f"y se crearon exactamente los que faltaban{sufijo}",
+                  len(d.cursos) - antes == faltaban, (len(d.cursos) - antes, faltaban))
+
+
+def e2_por_http(veces: int) -> None:
+    """Lo mismo, de punta a punta: dos `GET /api/cursos` a la vez."""
+    grupo("Módulos: dos GET /api/cursos a la vez, por HTTP")
+
+    from .cliente import como, crear_cliente
+
+    intentos = 40 * veces
+    malos: list[str] = []
+    distintas = 0
+    for persona, materias in ((DOCENTE, [113, 118]), (ADMINISTRADORA, [113, 114, 115, 116, 117, 118, 119])):
+        como(persona)
+        clientes = [crear_cliente(), crear_cliente()]
+        with hilos_que_se_alternan():
+            for _ in range(intentos):
+                escenario.cargar()
+                respuestas, errores = en_paralelo(2, lambda n: clientes[n].get("/api/cursos"))
+                malos += errores
+                malos += [f"estado {r.status_code}" for r in respuestas if r.status_code != 200]
+                malos += _problemas_de_modulos(materias)
+                if len(respuestas) == 2:
+                    a, b = ({c["id"] for c in r.json()} for r in respuestas)
+                    distintas += a != b
+    como(None)
+    comprobar(
+        f"docente y secretaría: un solo módulo por materia ({2 * intentos} pares de pedidos)",
+        not malos,
+        f"{len(malos)} problemas, p. ej. {malos[:2]}",
+    )
+    comprobar("el menú y la grilla reciben la misma lista", distintas == 0, f"{distintas} veces no")
+
+
+def e2_sin_carrera() -> None:
+    """Lo de siempre, de a uno: que el arreglo no cambie qué se crea."""
+    grupo("Módulos: de a uno, como siempre")
+
+    escenario.cargar()
+    antes = len(d.cursos)
+    tope = max(c["id"] for c in d.cursos)
+    faltaban = _con_catedra_sin_modulo()
+    modulos.modulos_con_catedra()
+    nuevos = d.cursos[antes:]
+    comprobar("crea uno por cada materia con cátedra", len(nuevos) == len(faltaban),
+              (len(nuevos), len(faltaban)))
+    comprobar("con los ids de siempre: el más alto + 1, en orden",
+              [c["id"] for c in nuevos] == list(range(tope + 1, tope + 1 + len(nuevos))))
+    comprobar("una segunda vez no crea nada", (modulos.modulos_con_catedra(), len(d.cursos))[1]
+              == antes + len(nuevos))
+    materia = d.buscar_materia(113)
+    comprobar("el que ya existe se devuelve tal cual",
+              modulos.modulo_para(materia) is d.buscar_curso(materia["cursoId"]))
+
+
 # ===================== Correr =====================
 def correr() -> None:
     parser = argparse.ArgumentParser()
@@ -461,6 +612,11 @@ def correr() -> None:
     guardados_que_se_cruzan()
     la_red_sin_candado()
     guardados_simultaneos(veces)
+
+    e2_sin_carrera()
+    e2_el_docente_abre_modulos(veces)
+    e2_todos_los_caminos(veces)
+    e2_por_http(veces)
 
     print("\n" + "-" * 52)
     total = pasadas + len(fallas)
