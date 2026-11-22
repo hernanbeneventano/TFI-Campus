@@ -822,12 +822,291 @@ def e4_sin_carrera() -> None:
     como(None)
 
 
+# ===================== Punto 4: los cupos =====================
+# Acá no se fuerzan cambios de hilo cada microsegundo, que cargan la máquina:
+# se **ensancha la ventana**. Entre «mirar el estado» y «anotar» se mete una
+# pausa de 2 ms, como la de un pedido que tarda. Dormir no usa CPU, y la
+# carrera aparece igual porque la pausa cae exactamente en el hueco. Si la
+# comprobación y la escritura van bajo el mismo candado, la pausa queda
+# adentro y la carrera no puede pasar.
+CUPO_CHICO = 5
+TITULAR_DE_LA_MESA = 11  # dicta 107, la materia de la mesa 1
+
+
+@contextlib.contextmanager
+def ventana(modulo, nombre: str, segundos: float = 0.002):
+    original = getattr(modulo, nombre)
+
+    def lenta(*args, **kwargs):
+        resultado = original(*args, **kwargs)
+        time.sleep(segundos)
+        return resultado
+
+    setattr(modulo, nombre, lenta)
+    try:
+        yield
+    finally:
+        setattr(modulo, nombre, original)
+
+
+def _codigo(funcion) -> int:
+    """Lo que contestaría la ruta: el estado de su HTTPException, o 500."""
+    from fastapi import HTTPException
+
+    try:
+        funcion()
+        return 201
+    except HTTPException as error:
+        return error.status_code
+    except Exception as error:  # noqa: BLE001 - un 500 de verdad
+        print(f"         500: {error!r}")
+        return 500
+
+
+def _alumno(numero: int, **extra) -> int:
+    persona_id = 6000 + numero
+    d.personas.append({"id": persona_id, "nombre": f"Alumno {numero}", "correo": f"a{numero}@campus.test",
+                       "roles": ["Estudiante"], "accesoHaceMin": 1, "estado": "activa", **extra})
+    return persona_id
+
+
+def _mesa_abierta(cupo: int | None, alumnos: int) -> tuple[dict, list[int]]:
+    """La mesa 1 con la inscripción abierta, sin inscriptos y con `alumnos`
+    regulares en su materia, listos para anotarse."""
+    from datetime import timedelta
+
+    escenario.cargar()
+    ahora = d.ahora()
+    mesa = d.buscar_mesa(1)
+    mesa.update(cupo=cupo, estado="programada", actaCerrada=False,
+                inscripcionDesde=d.iso(ahora - timedelta(days=1)),
+                inscripcionHasta=d.iso(ahora + timedelta(days=3)),
+                fecha=d.iso(ahora + timedelta(days=10)))
+    d.buscar_materia(mesa["materiaId"])["correlativas"] = {}
+    d.inscripciones_finales[:] = [i for i in d.inscripciones_finales if i["mesaId"] != 1]
+    ids = []
+    for n in range(alumnos):
+        ids.append(_alumno(n))
+        d.historial_academico.append({"personaId": ids[-1], "materiaId": mesa["materiaId"],
+                                      "condicion": "Regular"})
+    return mesa, ids
+
+
+def _activas_de(mesa: dict) -> list[dict]:
+    return [i for i in d.inscripciones_finales if i["mesaId"] == mesa["id"] and i["estado"] == "Inscripto"]
+
+
+def _materia_abierta(cupo: int | None, alumnos: int) -> tuple[dict, list[int]]:
+    """Una materia de primer año con el período abierto, sin inscriptos, y
+    `alumnos` de la carrera listos para anotarse."""
+    from datetime import timedelta
+
+    escenario.cargar()
+    ahora = d.ahora()
+    d.periodo_inscripcion_materias.update(desde=d.iso(ahora - timedelta(days=1)),
+                                          hasta=d.iso(ahora + timedelta(days=1)))
+    base = next(a for a in d.asociaciones_academicas if a["carreraId"] == 1)
+    materia = d.buscar_materia(101)
+    materia.update(cupo=cupo, correlativas={}, activa=True)
+    d.inscripciones_materias[:] = [i for i in d.inscripciones_materias if i["materiaId"] != 101]
+    d.historial_academico[:] = [h for h in d.historial_academico if h["materiaId"] != 101]
+    if d.buscar_curso(materia.get("cursoId")):
+        d.cursos.remove(d.buscar_curso(materia["cursoId"]))
+    materia["cursoId"] = None
+    ids = []
+    for n in range(alumnos):
+        ids.append(_alumno(n))
+        d.asociaciones_academicas.append({**base, "id": 90000 + n, "personaId": ids[-1],
+                                          "legajo": f"PRUEBA-{n}", "comisionId": 1})
+    return materia, ids
+
+
+def _inscriptos_a(materia: dict) -> list[dict]:
+    return [i for i in d.inscripciones_materias if i["materiaId"] == materia["id"]]
+
+
+def cupos_de_mesas(veces: int) -> None:
+    from app.rutas import finales
+    from app.servicios import academico
+
+    grupo("Cupos: inscripciones a una mesa a la vez")
+
+    malos: dict[str, list] = {"misma": [], "cupo": [], "bajas": []}
+    for _ in range(veces):
+        # La misma persona, HILOS veces a la vez: una sola inscripción
+        mesa, ids = _mesa_abierta(cupo=None, alumnos=1)
+        with ventana(academico, "estado_de_mesa"):
+            codigos, _ = en_paralelo(HILOS, lambda _n: _codigo(lambda: finales.inscribirse(1, ids[0])))
+        suyas = [i for i in d.inscripciones_finales if i["mesaId"] == 1 and i["personaId"] == ids[0]]
+        if len(suyas) != 1 or 500 in codigos:
+            malos["misma"].append((len(suyas), sorted(set(codigos))))
+
+        # HILOS personas distintas, cupo chico: no se pasa
+        mesa, ids = _mesa_abierta(cupo=CUPO_CHICO, alumnos=HILOS)
+        with ventana(academico, "estado_de_mesa"):
+            codigos, errores = en_paralelo(HILOS, lambda n: _codigo(lambda: finales.inscribirse(1, ids[n])))
+        entraron = codigos.count(201)
+        if len(_activas_de(mesa)) != CUPO_CHICO or entraron != CUPO_CHICO or 500 in codigos or errores:
+            malos["cupo"].append((len(_activas_de(mesa)), entraron, sorted(set(codigos))))
+
+        # La misma persona se anota y se da de baja a la vez: nunca dos filas
+        mesa, ids = _mesa_abierta(cupo=None, alumnos=1)
+        with ventana(academico, "estado_de_mesa"), ventana(academico, "inscripcion_en_mesa"):
+            codigos, _ = en_paralelo(HILOS, lambda n: _codigo(
+                (lambda: finales.inscribirse(1, ids[0])) if n % 2 else (lambda: finales.cancelar(1, ids[0]))))
+        filas = [i for i in d.inscripciones_finales if i["mesaId"] == 1 and i["personaId"] == ids[0]]
+        if len(filas) > 1 or 500 in codigos:
+            malos["bajas"].append((len(filas), sorted(set(codigos))))
+
+    total = f"{veces} pasada(s) de {HILOS} hilos"
+    comprobar(f"la misma persona: una sola inscripción ({total})", not malos["misma"], malos["misma"][:3])
+    comprobar(f"cupo de {CUPO_CHICO}: entran {CUPO_CHICO} y ni uno más, sin 500 ({total})",
+              not malos["cupo"], malos["cupo"][:3])
+    comprobar(f"altas y bajas de la misma persona: nunca dos filas ({total})",
+              not malos["bajas"], malos["bajas"][:3])
+
+
+def _cuerpo_de(mesa: dict, **cambios) -> dict:
+    local = lambda iso: d.desde_iso(iso).astimezone().date().isoformat()  # noqa: E731
+    return {"llamado": mesa["llamado"], "fecha": local(mesa["fecha"]), "desde": mesa["desde"],
+            "hasta": mesa["hasta"], "modalidad": mesa["modalidad"], "instancia": mesa["instancia"],
+            "lugar": mesa["lugar"], "inscripcionDesde": local(mesa["inscripcionDesde"]),
+            "inscripcionHasta": local(mesa["inscripcionHasta"]), "cupo": mesa["cupo"],
+            "tribunal": mesa["tribunal"], **cambios}
+
+
+def cupos_que_cambia_la_catedra(veces: int) -> None:
+    from app.rutas import finales, gestion_finales
+    from app.servicios import academico
+
+    grupo("Cupos: la cátedra achica el cupo o cancela mientras se inscriben")
+    achicar, cancelar = [], []
+    for _ in range(veces):
+        # Achicar el cupo a 10 mientras se anotan los demás
+        mesa, ids = _mesa_abierta(cupo=40, alumnos=HILOS - 1)
+        titular = d.buscar_persona(TITULAR_DE_LA_MESA)
+        cuerpo = _cuerpo_de(mesa, cupo=10)
+        with ventana(academico, "estado_de_mesa"), ventana(gestion_finales, "_validar_datos_mesa"):
+            codigos, _ = en_paralelo(HILOS, lambda n: _codigo(
+                (lambda: gestion_finales.editar_mesa(1, cuerpo, titular)) if n == 0
+                else (lambda: finales.inscribirse(1, ids[n - 1]))))
+        activas = len(_activas_de(mesa))
+        # Las respuestas no vienen en orden: se cuentan, y se descuenta la del cupo
+        altas = sum(1 for c in codigos if c == 201) - (1 if mesa["cupo"] == 10 else 0)
+        if (mesa["cupo"] is not None and activas > mesa["cupo"]) or activas != altas or 500 in codigos:
+            achicar.append((mesa["cupo"], activas, altas, sorted(set(codigos))))
+
+        # Cancelar mientras se anotan: nadie queda anotado sin enterarse
+        mesa, ids = _mesa_abierta(cupo=None, alumnos=HILOS - 1)
+        avisados: list[int] = []
+        original = d.avisar_por_mensaje
+        d.avisar_por_mensaje = lambda _de, para, _texto: avisados.append(para)
+        try:
+            with ventana(academico, "estado_de_mesa"), ventana(gestion_finales, "_ya_se_tomo"):
+                codigos, _ = en_paralelo(HILOS, lambda n: _codigo(
+                    (lambda: gestion_finales.cancelar_mesa(1, {"motivo": "Paro"}, titular)) if n == 0
+                    else (lambda: finales.inscribirse(1, ids[n - 1]))))
+        finally:
+            d.avisar_por_mensaje = original
+        anotados = {i["personaId"] for i in _activas_de(mesa)}
+        sin_aviso = anotados - set(avisados)
+        if mesa["estado"] != "cancelada" or sin_aviso or 500 in codigos:
+            cancelar.append((mesa["estado"], len(sin_aviso), sorted(set(codigos))))
+
+    total = f"{veces} pasada(s) de {HILOS} hilos"
+    comprobar(f"achicar el cupo: nunca quedan más inscriptos que cupo, y ninguna alta se pierde ({total})",
+              not achicar, achicar[:3])
+    comprobar(f"cancelar: nadie queda inscripto en una mesa cancelada sin el aviso ({total})",
+              not cancelar, cancelar[:3])
+
+
+def cupos_de_materias(veces: int) -> None:
+    from app.rutas import inscripciones, institucion
+    from app.servicios import academico
+
+    grupo("Cupos: inscripciones a una materia a la vez")
+    misma, cupo, comision, modulo = [], [], [], []
+    for _ in range(veces):
+        materia, ids = _materia_abierta(cupo=None, alumnos=1)
+        with ventana(academico, "estado_de_materia"):
+            codigos, _ = en_paralelo(HILOS, lambda _n: _codigo(lambda: inscripciones.inscribirse(101, ids[0])))
+        if len(_inscriptos_a(materia)) != 1 or 500 in codigos:
+            misma.append((len(_inscriptos_a(materia)), sorted(set(codigos))))
+
+        materia, ids = _materia_abierta(cupo=CUPO_CHICO, alumnos=HILOS)
+        with ventana(academico, "estado_de_materia"):
+            codigos, _ = en_paralelo(HILOS, lambda n: _codigo(lambda: inscripciones.inscribirse(101, ids[n])))
+        if len(_inscriptos_a(materia)) != CUPO_CHICO or codigos.count(201) != CUPO_CHICO or 500 in codigos:
+            cupo.append((len(_inscriptos_a(materia)), codigos.count(201), sorted(set(codigos))))
+
+        # La comisión lo inscribe mientras él se anota solo: una fila
+        materia, ids = _materia_abierta(cupo=None, alumnos=1)
+        with ventana(academico, "estado_de_materia"), ventana(d, "dictados_de_comision"):
+            codigos, _ = en_paralelo(2, lambda n: _codigo(
+                (lambda: inscripciones.inscribirse(101, ids[0])) if n
+                else (lambda: institucion._vincular_con_las_materias(ids[0], 1))))
+        suyas = [i for i in _inscriptos_a(materia) if i["personaId"] == ids[0]]
+        if len(suyas) != 1 or 500 in codigos:
+            comision.append((len(suyas), sorted(set(codigos))))
+
+        # Uno se da de baja (y se llevaría el módulo) mientras otro se anota:
+        # el que queda inscripto tiene que tener dónde cursar
+        materia, ids = _materia_abierta(cupo=None, alumnos=HILOS)
+        inscripciones.inscribirse(101, ids[0])
+        with ventana(academico, "inscriptos_en_materia"), ventana(academico, "estado_de_materia"):
+            codigos, _ = en_paralelo(HILOS, lambda n: _codigo(
+                (lambda: inscripciones.dar_de_baja(101, ids[0])) if n == 0
+                else (lambda: inscripciones.inscribirse(101, ids[n]))))
+        quedan = _inscriptos_a(materia)
+        if (quedan and not d.buscar_curso(materia.get("cursoId"))) or 500 in codigos:
+            modulo.append((len(quedan), materia.get("cursoId"), sorted(set(codigos))))
+
+    total = f"{veces} pasada(s) de {HILOS} hilos"
+    comprobar(f"la misma persona: una sola inscripción ({total})", not misma, misma[:3])
+    comprobar(f"cupo de {CUPO_CHICO}: entran {CUPO_CHICO} y ni uno más, sin 500 ({total})", not cupo, cupo[:3])
+    comprobar(f"la comisión y el alumno a la vez: una sola inscripción ({total})", not comision, comision[:3])
+    comprobar(f"una baja no le borra el módulo a quien se acaba de anotar ({total})", not modulo, modulo[:3])
+
+
+def cupos_sin_carrera() -> None:
+    """De a uno, las respuestas son las de siempre."""
+    from app.rutas import finales, gestion_finales, inscripciones
+
+    grupo("Cupos: de a uno, como siempre")
+    mesa, ids = _mesa_abierta(cupo=2, alumnos=3)
+    codigos = [_codigo(lambda p=p: finales.inscribirse(1, p)) for p in ids]
+    comprobar("mesa con cupo 2: 201, 201 y el tercero 403", codigos == [201, 201, 403], codigos)
+    comprobar("la misma persona otra vez: 409", _codigo(lambda: finales.inscribirse(1, ids[0])) == 409)
+    comprobar("darse de baja: 201 y queda cancelada", _codigo(lambda: finales.cancelar(1, ids[0])) == 201
+              and len(_activas_de(mesa)) == 1)
+    comprobar("y volver a anotarse reutiliza la fila", _codigo(lambda: finales.inscribirse(1, ids[0])) == 201
+              and len([i for i in d.inscripciones_finales if i["mesaId"] == 1 and i["personaId"] == ids[0]]) == 1)
+    titular = d.buscar_persona(TITULAR_DE_LA_MESA)
+    comprobar("achicar el cupo por debajo de los inscriptos: 400",
+              _codigo(lambda: gestion_finales.editar_mesa(1, _cuerpo_de(mesa, cupo=1), titular)) == 400)
+    comprobar("cancelar sin motivo: 400",
+              _codigo(lambda: gestion_finales.cancelar_mesa(1, {}, titular)) == 400)
+    comprobar("cancelar: 201, y otra vez 409",
+              _codigo(lambda: gestion_finales.cancelar_mesa(1, {"motivo": "x"}, titular)) == 201
+              and _codigo(lambda: gestion_finales.cancelar_mesa(1, {"motivo": "x"}, titular)) == 409)
+    comprobar("anotarse a una cancelada: 403", _codigo(lambda: finales.inscribirse(1, ids[2])) == 403)
+
+    materia, ids = _materia_abierta(cupo=1, alumnos=2)
+    codigos = [_codigo(lambda p=p: inscripciones.inscribirse(101, p)) for p in ids]
+    comprobar("materia con cupo 1: 201 y el segundo 403", codigos == [201, 403], codigos)
+    comprobar("y el módulo se creó", bool(d.buscar_curso(materia.get("cursoId"))))
+    comprobar("darse de baja siendo el último se lleva el módulo",
+              _codigo(lambda: inscripciones.dar_de_baja(101, ids[0])) == 201 and materia["cursoId"] is None)
+
+
 # ===================== Correr =====================
 def correr() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--veces", type=int, default=1)
     parser.add_argument("--intensivo", action="store_true",
                         help="ráfagas de 200 hilos en vez de 50 (carga bastante la máquina)")
+    parser.add_argument("--solo", default="",
+                        help="solo los grupos cuyo nombre contenga este texto (guardado, modulos, ids, cupos)")
     argumentos = parser.parse_args()
     veces = argumentos.veces
     global HILOS
@@ -839,22 +1118,19 @@ def correr() -> None:
 
     logging.disable(logging.ERROR)
 
-    guardado_sin_carrera()
-    e3_la_fotografia(veces)
-    guardados_que_se_cruzan()
-    la_red_sin_candado()
-    guardados_simultaneos(veces)
-
-    e2_sin_carrera()
-    e2_el_docente_abre_modulos(veces)
-    e2_todos_los_caminos(veces)
-    e2_por_http(veces)
-
-    e4_sin_carrera()
-    e1_los_contadores(veces)
-    e4_legajos_de_carrera(veces)
-    e4_altas_de_cuentas(veces)
-    e4_publicaciones_del_tablero(veces)
+    grupos = [
+        ("guardado", lambda: (guardado_sin_carrera(), e3_la_fotografia(veces), guardados_que_se_cruzan(),
+                              la_red_sin_candado(), guardados_simultaneos(veces))),
+        ("modulos", lambda: (e2_sin_carrera(), e2_el_docente_abre_modulos(veces),
+                             e2_todos_los_caminos(veces), e2_por_http(veces))),
+        ("ids y legajos", lambda: (e4_sin_carrera(), e1_los_contadores(veces), e4_legajos_de_carrera(veces),
+                                   e4_altas_de_cuentas(veces), e4_publicaciones_del_tablero(veces))),
+        ("cupos", lambda: (cupos_sin_carrera(), cupos_de_mesas(veces),
+                           cupos_que_cambia_la_catedra(veces), cupos_de_materias(veces))),
+    ]
+    for nombre, correr_grupo in grupos:
+        if argumentos.solo in nombre:
+            correr_grupo()
 
     print("\n" + "-" * 52)
     total = pasadas + len(fallas)

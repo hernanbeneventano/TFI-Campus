@@ -124,28 +124,31 @@ def inscribirse(id_mesa: int, yo: int = IdUsuarioActual):
     if not mesa:
         raise HTTPException(404, "La mesa de examen no existe")
 
-    estado = ac.estado_de_mesa(yo, mesa)
-    if estado["estado"] == ac.MESA_INSCRIPTO:
-        raise HTTPException(409, "Ya estás inscripto en esta mesa")
-    if not estado["puedeInscribirse"]:
-        raise HTTPException(403, estado["motivo"] or "No podés inscribirte a esta mesa")
+    # Mirar el estado (cupo, si ya está, si se canceló) y anotar van juntos:
+    # ver `academico.inscripciones_a_mesas`.
+    with ac.inscripciones_a_mesas:
+        estado = ac.estado_de_mesa(yo, mesa)
+        if estado["estado"] == ac.MESA_INSCRIPTO:
+            raise HTTPException(409, "Ya estás inscripto en esta mesa")
+        if not estado["puedeInscribirse"]:
+            raise HTTPException(403, estado["motivo"] or "No podés inscribirte a esta mesa")
 
-    # Si había una baja anterior se reutiliza el registro, así no quedan dos
-    # filas de la misma persona en la misma mesa.
-    previa = ac.cancelacion_en_mesa(yo, id_mesa)
-    if previa:
-        previa["estado"] = ac.MESA_INSCRIPTO
-        previa["fecha"] = d.iso(d.ahora())
-    else:
-        d.inscripciones_finales.append(
-            {
-                "id": d.nuevo_id_inscripcion_final(),
-                "personaId": yo,
-                "mesaId": id_mesa,
-                "fecha": d.iso(d.ahora()),
-                "estado": ac.MESA_INSCRIPTO,
-            }
-        )
+        # Si había una baja anterior se reutiliza el registro, así no quedan dos
+        # filas de la misma persona en la misma mesa.
+        previa = ac.cancelacion_en_mesa(yo, id_mesa)
+        if previa:
+            previa["estado"] = ac.MESA_INSCRIPTO
+            previa["fecha"] = d.iso(d.ahora())
+        else:
+            d.inscripciones_finales.append(
+                {
+                    "id": d.nuevo_id_inscripcion_final(),
+                    "personaId": yo,
+                    "mesaId": id_mesa,
+                    "fecha": d.iso(d.ahora()),
+                    "estado": ac.MESA_INSCRIPTO,
+                }
+            )
 
     materia = d.buscar_materia(mesa["materiaId"])
     auditoria.registrar(
@@ -174,18 +177,19 @@ def cancelar(id_mesa: int, yo: int = IdUsuarioActual):
     if not mesa:
         raise HTTPException(404, "La mesa de examen no existe")
 
-    inscripcion = ac.inscripcion_en_mesa(yo, id_mesa)
-    if not inscripcion:
-        raise HTTPException(409, "No estás inscripto en esta mesa")
+    with ac.inscripciones_a_mesas:
+        inscripcion = ac.inscripcion_en_mesa(yo, id_mesa)
+        if not inscripcion:
+            raise HTTPException(409, "No estás inscripto en esta mesa")
 
-    ahora = d.ahora()
-    if not (
-        d.desde_iso(mesa["inscripcionDesde"]) <= ahora <= d.desde_iso(mesa["inscripcionHasta"])
-    ):
-        raise HTTPException(403, "El período de inscripción está cerrado: no se puede dar de baja")
+        ahora = d.ahora()
+        if not (
+            d.desde_iso(mesa["inscripcionDesde"]) <= ahora <= d.desde_iso(mesa["inscripcionHasta"])
+        ):
+            raise HTTPException(403, "El período de inscripción está cerrado: no se puede dar de baja")
 
-    inscripcion["estado"] = ac.MESA_CANCELADO
-    inscripcion["canceladaEl"] = d.iso(ahora)
+        inscripcion["estado"] = ac.MESA_CANCELADO
+        inscripcion["canceladaEl"] = d.iso(ahora)
 
     materia = d.buscar_materia(mesa["materiaId"])
     auditoria.registrar(

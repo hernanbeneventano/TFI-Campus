@@ -537,19 +537,25 @@ def editar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dic
     mesa = _buscar_mesa(id_mesa, yo)
     if not _puede_administrar(yo, mesa):
         raise HTTPException(403, "Solo el docente a cargo de la materia puede modificar la mesa")
-    if mesa["estado"] == "cancelada":
-        raise HTTPException(409, "La mesa está cancelada")
-    if mesa["actaCerrada"]:
-        raise HTTPException(409, "El acta ya está cerrada")
-    if _ya_se_tomo(mesa):
-        raise HTTPException(409, "La mesa ya se tomó: no se puede modificar")
+    # Comprobar el estado y el cupo contra los inscriptos, y cambiar la mesa,
+    # van juntos: si no, alguien se anota en el medio y queda más gente que
+    # cupo. Ver `academico.inscripciones_a_mesas`. El historial, la auditoría
+    # y los avisos van afuera, con los inscriptos de ese momento.
+    with ac.inscripciones_a_mesas:
+        if mesa["estado"] == "cancelada":
+            raise HTTPException(409, "La mesa está cancelada")
+        if mesa["actaCerrada"]:
+            raise HTTPException(409, "El acta ya está cerrada")
+        if _ya_se_tomo(mesa):
+            raise HTTPException(409, "La mesa ya se tomó: no se puede modificar")
 
-    datos = _validar_datos_mesa(cuerpo, yo, mesa)
-    antes = _como_se_toma(mesa)
-    clave = ("fecha", "desde", "hasta", "lugar", "modalidad")
-    reprogramada = any(mesa[k] != datos[k] for k in clave)
+        datos = _validar_datos_mesa(cuerpo, yo, mesa)
+        antes = _como_se_toma(mesa)
+        clave = ("fecha", "desde", "hasta", "lugar", "modalidad")
+        reprogramada = any(mesa[k] != datos[k] for k in clave)
 
-    mesa.update(datos)
+        mesa.update(datos)
+        inscriptos = _activas(mesa)
 
     if reprogramada:
         ahora_es = _como_se_toma(mesa)
@@ -567,7 +573,7 @@ def editar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dic
             despues={"cuando": ahora_es},
             detalle="Reprogramó la mesa y avisó a los inscriptos",
         )
-        for inscripcion in _activas(mesa):
+        for inscripcion in inscriptos:
             d.avisar_por_mensaje(
                 yo["id"],
                 inscripcion["personaId"],
@@ -586,24 +592,30 @@ def cancelar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: d
     mesa = _buscar_mesa(id_mesa, yo)
     if not _puede_administrar(yo, mesa):
         raise HTTPException(403, "Solo el docente a cargo de la materia puede cancelar la mesa")
-    if mesa["estado"] == "cancelada":
-        raise HTTPException(409, "La mesa ya estaba cancelada")
-    if _ya_se_tomo(mesa) or mesa["actaCerrada"]:
-        raise HTTPException(409, "La mesa ya se tomó: no se puede cancelar")
+    # Comprobar y cancelar van juntos, y los inscriptos a avisar se toman en
+    # ese mismo momento: si alguien se anotaba en el medio quedaba inscripto
+    # en una mesa cancelada sin enterarse. Ver `academico.inscripciones_a_mesas`.
+    with ac.inscripciones_a_mesas:
+        if mesa["estado"] == "cancelada":
+            raise HTTPException(409, "La mesa ya estaba cancelada")
+        if _ya_se_tomo(mesa) or mesa["actaCerrada"]:
+            raise HTTPException(409, "La mesa ya se tomó: no se puede cancelar")
 
-    # Sin motivo, quien estaba inscripto no sabe qué hacer
-    motivo = str(cuerpo.get("motivo") or "").strip()
-    if not motivo:
-        raise HTTPException(400, "Contá el motivo: les llega a los inscriptos")
-    if len(motivo) > 500:
-        raise HTTPException(400, "El motivo es demasiado largo")
+        # Sin motivo, quien estaba inscripto no sabe qué hacer
+        motivo = str(cuerpo.get("motivo") or "").strip()
+        if not motivo:
+            raise HTTPException(400, "Contá el motivo: les llega a los inscriptos")
+        if len(motivo) > 500:
+            raise HTTPException(400, "El motivo es demasiado largo")
 
-    mesa["estado"] = "cancelada"
-    mesa["motivoCancelacion"] = motivo
+        mesa["estado"] = "cancelada"
+        mesa["motivoCancelacion"] = motivo
+        inscriptos = _activas(mesa)
+
     _registrar(mesa, yo, "Canceló la mesa", motivo)
 
     materia = d.buscar_materia(mesa["materiaId"])
-    for inscripcion in _activas(mesa):
+    for inscripcion in inscriptos:
         d.avisar_por_mensaje(
             yo["id"],
             inscripcion["personaId"],

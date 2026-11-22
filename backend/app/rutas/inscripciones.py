@@ -119,20 +119,23 @@ def inscribirse(id_materia: int, yo: int = IdUsuarioActual):
     if not periodo["abierto"]:
         raise HTTPException(403, "El período de inscripción está cerrado")
 
-    estado = ac.estado_de_materia(yo, materia)
-    if estado["estado"] == ac.INSCRIPTO:
-        raise HTTPException(409, "Ya estás inscripto a esta materia")
-    if not estado["puedeInscribirse"]:
-        raise HTTPException(403, estado["motivo"] or "No podés inscribirte a esta materia")
+    # Mirar el estado (cupo, si ya está) y anotar van juntos: ver
+    # `academico.inscripciones_a_materias`. El módulo se crea afuera.
+    with ac.inscripciones_a_materias:
+        estado = ac.estado_de_materia(yo, materia)
+        if estado["estado"] == ac.INSCRIPTO:
+            raise HTTPException(409, "Ya estás inscripto a esta materia")
+        if not estado["puedeInscribirse"]:
+            raise HTTPException(403, estado["motivo"] or "No podés inscribirte a esta materia")
 
-    d.inscripciones_materias.append(
-        {
-            "id": d.nuevo_id_inscripcion_materia(),
-            "personaId": yo,
-            "materiaId": id_materia,
-            "fecha": d.iso(d.ahora()),
-        }
-    )
+        d.inscripciones_materias.append(
+            {
+                "id": d.nuevo_id_inscripcion_materia(),
+                "personaId": yo,
+                "materiaId": id_materia,
+                "fecha": d.iso(d.ahora()),
+            }
+        )
 
     auditoria.registrar(
         yo,
@@ -178,18 +181,19 @@ def dar_de_baja(id_materia: int, yo: int = IdUsuarioActual):
     if not ac.periodo_materias()["abierto"]:
         raise HTTPException(403, "El período de inscripción está cerrado")
 
-    inscripcion = next(
-        (
-            i
-            for i in d.inscripciones_materias
-            if i["personaId"] == yo and i["materiaId"] == id_materia
-        ),
-        None,
-    )
-    if not inscripcion:
-        raise HTTPException(409, "No estás inscripto a esta materia")
+    with ac.inscripciones_a_materias:
+        inscripcion = next(
+            (
+                i
+                for i in d.inscripciones_materias
+                if i["personaId"] == yo and i["materiaId"] == id_materia
+            ),
+            None,
+        )
+        if not inscripcion:
+            raise HTTPException(409, "No estás inscripto a esta materia")
 
-    d.inscripciones_materias.remove(inscripcion)
+        d.inscripciones_materias.remove(inscripcion)
 
     carrera = d.carrera_de(yo) or {}
     auditoria.registrar(
@@ -215,14 +219,18 @@ def dar_de_baja(id_materia: int, yo: int = IdUsuarioActual):
     # alumno, pero si después se anotaron otros ya no es suyo. Borrarlo al
     # darse de baja lo haría desaparecer de la pantalla de todos los demás.
     # Lo mismo si la cátedra tiene docente a cargo: ese módulo es de ella.
-    curso = d.buscar_curso(materia.get("cursoId"))
-    if (
-        curso
-        and curso.get("creadoPorInscripcion")
-        and not curso.get("docenteId")
-        and ac.inscriptos_en_materia(id_materia) == 0
-    ):
-        d.cursos.remove(curso)
-        materia["cursoId"] = None
+    #
+    # «¿Queda alguien?» y borrar van juntos: si no, otro se anota en el medio
+    # y queda inscripto sin módulo donde cursar.
+    with ac.inscripciones_a_materias:
+        curso = d.buscar_curso(materia.get("cursoId"))
+        if (
+            curso
+            and curso.get("creadoPorInscripcion")
+            and not curso.get("docenteId")
+            and ac.inscriptos_en_materia(id_materia) == 0
+        ):
+            d.cursos.remove(curso)
+            materia["cursoId"] = None
 
     return _materia_con_estado(yo, materia)

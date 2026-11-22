@@ -37,7 +37,30 @@ y aprobar la materia son dos cosas distintas.
 
 from __future__ import annotations
 
+import threading
+
 from .. import datos as d
+
+# ===================== De a uno =====================
+# Anotarse es «mirar el estado → anotar», y el estado incluye el cupo y si la
+# persona ya está. Dos pedidos a la vez miraban el mismo estado y anotaban
+# los dos: la misma persona quedaba dos veces y el cupo se pasaba
+# (`pruebas/concurrencia.py`). Lo mismo cuando la cátedra achica el cupo o
+# cancela la mesa en el medio de una inscripción.
+#
+# Un candado por lista, porque mesas y materias no comparten nada:
+#
+# - `inscripciones_a_mesas`: anotarse, darse de baja, y lo que la cátedra le
+#   cambia a la mesa (cupo, fechas, cancelación). Es el estado entero de la
+#   mesa lo que se mira, así que lo que lo cambia va con el mismo candado.
+# - `inscripciones_a_materias`: anotarse, darse de baja (con el módulo que se
+#   lleva) y lo que inscribe la comisión.
+#
+# Adentro, **solo memoria**: comprobar y escribir. La auditoría, los avisos
+# por mensaje y la creación del módulo van afuera, y ninguno de los dos se
+# toma con el otro ni con otro candado tomado.
+inscripciones_a_mesas = threading.Lock()
+inscripciones_a_materias = threading.Lock()
 
 # ===================== Estados =====================
 # Los de una materia en la pantalla de inscripción.

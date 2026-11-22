@@ -152,24 +152,28 @@ def _vincular_con_las_materias(persona_id: int, comision_id: int | None) -> list
             continue
         if not materia.get("activa", True):
             continue
-        # Ya inscripto, o ya cursada: no se toca
-        if any(
-            i["personaId"] == persona_id and i["materiaId"] == materia["id"]
-            for i in d.inscripciones_materias
-        ):
-            continue
-        if d.condicion_en(persona_id, materia["id"]):
-            continue
+        # «¿Ya está?» y anotar van juntos: el alumno se puede estar anotando
+        # solo a la misma materia en ese momento. Ver
+        # `academico.inscripciones_a_materias`.
+        with ac.inscripciones_a_materias:
+            # Ya inscripto, o ya cursada: no se toca
+            if any(
+                i["personaId"] == persona_id and i["materiaId"] == materia["id"]
+                for i in d.inscripciones_materias
+            ):
+                continue
+            if d.condicion_en(persona_id, materia["id"]):
+                continue
 
-        d.inscripciones_materias.append(
-            {
-                "id": d.nuevo_id_inscripcion_materia(),
-                "personaId": persona_id,
-                "materiaId": materia["id"],
-                "fecha": d.iso(d.ahora()),
-                "porComision": comision_id,
-            }
-        )
+            d.inscripciones_materias.append(
+                {
+                    "id": d.nuevo_id_inscripcion_materia(),
+                    "personaId": persona_id,
+                    "materiaId": materia["id"],
+                    "fecha": d.iso(d.ahora()),
+                    "porComision": comision_id,
+                }
+            )
         # Y la materia entra a Módulos, igual que cuando el estudiante se
         # anota por su cuenta. Sin esto quedaba inscripto a seis materias y
         # su pantalla de Módulos vacía: la inscripción existía pero el módulo
