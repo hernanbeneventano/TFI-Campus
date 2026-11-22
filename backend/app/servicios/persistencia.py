@@ -40,8 +40,10 @@ Cuándo está apagado
 
 from __future__ import annotations
 
+import copy
 import json
 import os
+import threading
 from datetime import timedelta
 from typing import Any, Callable
 
@@ -222,10 +224,13 @@ def _documentos() -> dict[tuple[str, str], Any]:
     """Todo lo que hay en memoria, como pares (colección, documento) → valor."""
     salida: dict[tuple[str, str], Any] = {}
 
+    # Se recorre una copia de cada lista, nunca la lista viva: ver «Dos
+    # peticiones a la vez», más abajo. Copiar una lista o los pares de un
+    # diccionario es una sola operación que ningún otro hilo puede partir.
     for coleccion, (atributo, clave) in REGISTROS.items():
         if coleccion in SOLO_AGREGAR:
             continue  # se guardan aparte: ver SOLO_AGREGAR
-        for item in getattr(d, atributo):
+        for item in list(getattr(d, atributo)):
             try:
                 salida[(coleccion, clave(item))] = item
             except (KeyError, TypeError):
@@ -234,7 +239,7 @@ def _documentos() -> dict[tuple[str, str], Any]:
                 print(f"[persistencia] {coleccion}: registro sin clave, no se guarda")
 
     for coleccion, atributo in POR_CURSO.items():
-        for curso_id, lista in getattr(d, atributo).items():
+        for curso_id, lista in list(getattr(d, atributo).items()):
             salida[(coleccion, str(curso_id))] = {"items": lista}
 
     for nombre in CONFIGURACION:
@@ -403,15 +408,85 @@ def _lo_nuevo_que_solo_crece() -> list[tuple[str, str, Any]]:
     for coleccion in SOLO_AGREGAR:
         atributo, clave = REGISTROS[coleccion]
         escritos = _ya_escritos.setdefault(coleccion, set())
-        for item in getattr(d, atributo):
+        for item in list(getattr(d, atributo)):
             try:
                 id_doc = clave(item)
             except (KeyError, TypeError):
                 print(f"[persistencia] {coleccion}: registro sin clave, no se guarda")
                 continue
             if id_doc not in escritos:
-                nuevos.append((coleccion, id_doc, _para_firestore(item)))
+                nuevos.append((coleccion, id_doc, _para_firestore(_copia(item))))
     return nuevos
+
+
+# ===================== Dos peticiones a la vez =====================
+# El servidor atiende varias peticiones al mismo tiempo, cada una en su hilo,
+# y cada una guarda al terminar. Sin cuidado pasaban tres cosas, las tres
+# reproducidas en `pruebas/concurrencia.py`:
+#
+# 1. **La fotografía salía incompleta.** Se recorrían las listas vivas por
+#    posición: si otra petición insertaba o sacaba algo, los registros se
+#    corrían y uno quedaba sin ver. Y lo que no se ve se toma como baja: se
+#    **borraba de Firestore** un registro que existía.
+# 2. **El guardado explotaba** con «dictionary changed size during iteration»
+#    si un diccionario crecía mientras se lo recorría, y la petición —que ya
+#    había hecho su trabajo— contestaba 500.
+# 3. **Dos guardados se cruzaban en la red.** Cada uno anotaba sus huellas al
+#    terminar, y el último en terminar no es necesariamente el de la
+#    fotografía más nueva. Alcanzaba con desmarcar un favorito y volver a
+#    marcarlo: la base se quedaba sin él y las huellas decían que estaba, así
+#    que no se reescribía nunca.
+#
+# Lo que se hace
+# --------------
+# - **Se recorren copias.** Copiar una lista, o los pares de un diccionario,
+#   es una sola operación: ningún otro hilo la puede partir al medio. Cada
+#   colección sale entera, tal como estaba en un instante.
+# - **Lo que se escribe es una copia profunda**, y la huella se anota de esa
+#   misma copia. Firestore arma el documento al recibirlo, y si recibiera el
+#   diccionario vivo podría escribir algo distinto de lo que dice la huella.
+# - **Una sola vuelta de guardado a la vez** (`_turno`). Una vuelta saca la
+#   fotografía, compara, escribe y anota las huellas; la siguiente no
+#   arranca hasta que la anterior terminó, así que las huellas siempre dicen
+#   lo que hay en la base.
+#
+# Lo que **no** se hace es frenar a todo el campus mientras se guarda. El
+# candado de `_turno` solo se toma para mirar y cambiar tres números; la
+# fotografía, la comparación y la red van **afuera**. Mientras una vuelta
+# escribe, las peticiones siguen atendiéndose; las que terminan en ese rato
+# esperan (sin candado: `wait()` lo suelta) y **una sola** vuelta las cubre a
+# todas, porque saca su fotografía después de que todas terminaron.
+#
+# Por qué no una fotografía coherente de todo el campus a la vez
+# --------------------------------------------------------------
+# Sería sacarla mientras ninguna petición está escribiendo, y eso es frenar
+# a todas: el candado global que se descartó. No hace falta. Una petición que
+# está a mitad de camino —tocó una lista y todavía no la otra— puede quedar
+# guardada a medias en esta vuelta, pero al terminar pide la suya, que saca la
+# fotografía cuando ya está todo y escribe lo que faltaba. Es la misma
+# ventana que existía siempre entre que una ruta escribe y su guardado
+# termina: si el servidor se cae justo ahí, eso se pierde, con candado o sin.
+#
+# Lo que no se puede es que una fotografía vieja **pise** a una más nueva, y
+# eso es lo que impide el turno.
+_turno = threading.Condition()
+_pedidos = 0  # cuántas peticiones pidieron guardar, desde que arrancó
+_cubiertos = 0  # hasta qué pedido cubre la última vuelta terminada
+_escribiendo = False  # si hay una vuelta en curso
+
+
+def _copia(valor: Any) -> Any:
+    """Una copia profunda, aunque otra petición esté cambiando el original.
+
+    Si el diccionario cambia de tamaño mientras se lo copia, se vuelve a
+    intentar: es un instante, y la próxima vuelta lo encuentra quieto.
+    """
+    for _ in range(20):
+        try:
+            return copy.deepcopy(valor)
+        except RuntimeError:
+            continue
+    return copy.deepcopy(valor)
 
 
 def guardar_cambios() -> int:
@@ -420,10 +495,40 @@ def guardar_cambios() -> int:
     Si Firestore falla, **se avisa y no se actualizan las huellas**: en la
     próxima petición se vuelve a intentar el mismo cambio. Dar por guardado
     algo que no se guardó es justamente lo que no puede pasar.
+
+    Si ya hay una vuelta en curso, se espera a que termine (sin candado) y se
+    hace una sola vuelta para todas las que esperaban. La que no la hizo
+    devuelve 0: lo suyo lo escribió otra.
     """
     if not _activo:
         return 0
 
+    global _pedidos, _cubiertos, _escribiendo
+    with _turno:
+        _pedidos += 1
+        mio = _pedidos
+        while _escribiendo and _cubiertos < mio:
+            _turno.wait()
+        if _cubiertos >= mio:
+            # Una vuelta que arrancó después de que esta petición terminó ya
+            # sacó su fotografía, así que ya guardó lo que esta hizo.
+            return 0
+        _escribiendo = True
+        hasta = _pedidos
+
+    try:
+        return _una_vuelta()
+    finally:
+        with _turno:
+            # Aunque Firestore haya fallado: las huellas quedaron como
+            # estaban y el próximo pedido reintenta, como siempre.
+            _cubiertos = max(_cubiertos, hasta)
+            _escribiendo = False
+            _turno.notify_all()
+
+
+def _una_vuelta() -> int:
+    """Fotografía, comparación y escritura. Corre de a una (ver `_turno`)."""
     global _huellas
     actuales = _documentos()
     nuevas: dict[tuple[str, str], str] = {}
@@ -431,9 +536,13 @@ def guardar_cambios() -> int:
 
     for clave, valor in actuales.items():
         huella = _huella(valor)
-        nuevas[clave] = huella
         if _huellas.get(clave) != huella:
+            # Lo que cambió se copia, y se anota la huella **de la copia**:
+            # es lo que va a llegar a la base.
+            valor = _copia(valor)
+            huella = _huella(valor)
             cambios.append((clave[0], clave[1], _para_firestore(valor)))
+        nuevas[clave] = huella
 
     bajas = [clave for clave in _huellas if clave not in actuales]
 
