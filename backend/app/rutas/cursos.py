@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import datos as d
@@ -206,6 +208,14 @@ def obtener_modulo(id_curso: int, yo: dict = UsuarioActual):
 # la base. Un tablero al que no se puede escribir no es un tablero.
 MAXIMO_PUBLICACION = 1000
 
+# El id de una publicación es «el más alto de ese tablero + 1», así que
+# elegirlo y anotarla van juntos: dos consultas a la vez sacaban el mismo id
+# (`pruebas/concurrencia.py`). No sirven los contadores de `datos.py`: la
+# numeración es de cada tablero, y pasar a un contador del campus cambiaría
+# los ids. Un solo candado para todos los tableros alcanza: lo que cubre es
+# una suma y un `append`, en memoria.
+_publicando = threading.Lock()
+
 
 def _tablero_de(curso: dict, id_item: str) -> dict:
     """El tablero vivo, el de `datos.contenidos`.
@@ -256,23 +266,24 @@ def publicar_en_tablero(
     if columna is None:
         raise HTTPException(404, "Ese tablero no tiene esa columna")
 
-    columna.setdefault("publicaciones", [])
-    usados = [
-        p["id"]
-        for c in tablero["columnas"]
-        for p in (c.get("publicaciones") or [])
-        if isinstance(p.get("id"), int)
-    ]
-    publicacion = {
-        "id": max(usados, default=0) + 1,
-        "autor": yo["nombre"],
-        # El id además del nombre: el nombre se puede repetir y además cambia
-        # si alguien corrige cómo se escribe.
-        "autorId": yo["id"],
-        "fecha": d.iso(d.ahora()),
-        "texto": texto,
-    }
-    columna["publicaciones"].append(publicacion)
+    with _publicando:
+        columna.setdefault("publicaciones", [])
+        usados = [
+            p["id"]
+            for c in tablero["columnas"]
+            for p in (c.get("publicaciones") or [])
+            if isinstance(p.get("id"), int)
+        ]
+        publicacion = {
+            "id": max(usados, default=0) + 1,
+            "autor": yo["nombre"],
+            # El id además del nombre: el nombre se puede repetir y además cambia
+            # si alguien corrige cómo se escribe.
+            "autorId": yo["id"],
+            "fecha": d.iso(d.ahora()),
+            "texto": texto,
+        }
+        columna["publicaciones"].append(publicacion)
     return publicacion
 
 

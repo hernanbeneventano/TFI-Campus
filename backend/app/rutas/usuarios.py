@@ -494,24 +494,37 @@ def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     if not isinstance(roles, list) or any(r not in d.ROLES for r in roles):
         raise HTTPException(400, "Los roles no son válidos")
 
-    persona = {
-        "id": max((p["id"] for p in d.personas), default=0) + 1,
-        "nombre": nombre,
-        "correo": correo,
-        "roles": list(dict.fromkeys(roles)),
-        "accesoHaceMin": 100000,
-        "dni": None,
-        "telefono": None,
-        "fechaNacimiento": None,
-        "foto": None,
-        "estado": "pendiente",
-        "creada": d.iso(d.ahora()),
-    }
-    # Docentes, supervisores y administración llevan legajo del campus: en un
-    # acta o en el registro de auditoría el nombre no identifica a nadie.
-    legajos.asegurar_institucional(persona)
-    # El acceso de verdad: sin esto la cuenta existe en el padrón pero la
-    # persona no puede entrar, que es lo que pasaba antes.
+    # Comprobar el correo, numerar y anotar van juntos: dos altas a la vez
+    # sacaban el mismo id y el mismo legajo, y el mismo correo mandado dos
+    # veces pasaba dos veces por «no hay otra cuenta» (ver `legajos.padron`).
+    #
+    # La persona entra al padrón **antes** de pedirle el acceso a Firebase,
+    # y no después: así el candado se suelta antes de la red. Mientras
+    # Firebase contesta figura como «pendiente», que es justamente lo que es.
+    with legajos.padron:
+        if any(p.get("correo", "").lower() == correo.lower() for p in d.personas):
+            raise HTTPException(409, "Ya hay una cuenta con ese correo")
+        persona = {
+            "id": max((p["id"] for p in d.personas), default=0) + 1,
+            "nombre": nombre,
+            "correo": correo,
+            "roles": list(dict.fromkeys(roles)),
+            "accesoHaceMin": 100000,
+            "dni": None,
+            "telefono": None,
+            "fechaNacimiento": None,
+            "foto": None,
+            "estado": "pendiente",
+            "creada": d.iso(d.ahora()),
+        }
+        # Docentes, supervisores y administración llevan legajo del campus: en un
+        # acta o en el registro de auditoría el nombre no identifica a nadie.
+        legajos.asegurar_institucional(persona)
+        d.personas.append(persona)
+
+    # El acceso de verdad, ya sin candado: es la red. Sin esto la cuenta
+    # existe en el padrón pero la persona no puede entrar, que es lo que
+    # pasaba antes.
     provisoria = None
     if cuentas.hay_firebase():
         try:
@@ -524,7 +537,6 @@ def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
             provisoria = None
             persona["notaAcceso"] = f"No se pudo crear el acceso: {e}"
 
-    d.personas.append(persona)
     _anotar(yo, "cuenta creada", f"{nombre} ({', '.join(persona['roles'])})", persona["id"])
 
     return {

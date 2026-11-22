@@ -848,29 +848,33 @@ def crear_asignacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
         if comision["carreraId"] != carrera["id"] or comision["sedeId"] != sede["id"]:
             raise HTTPException(400, "Esa comisión no es de esa carrera y sede")
 
-    # Una persona no se inscribe dos veces a la misma carrera
-    if any(
-        a["personaId"] == persona["id"] and a["carreraId"] == carrera["id"]
-        for a in d.asociaciones_academicas
-    ):
-        raise HTTPException(409, "Esa persona ya está inscripta en esa carrera")
+    # Comprobar, numerar y anotar van juntos (ver `legajos.py`): dos
+    # inscripciones a la vez sacaban el mismo legajo, y la misma persona
+    # mandada dos veces pasaba dos veces por «todavía no está inscripta».
+    with legajos.inscripciones_a_carrera:
+        # Una persona no se inscribe dos veces a la misma carrera
+        if any(
+            a["personaId"] == persona["id"] and a["carreraId"] == carrera["id"]
+            for a in d.asociaciones_academicas
+        ):
+            raise HTTPException(409, "Esa persona ya está inscripta en esa carrera")
 
-    asociacion = {
-        "id": d.nuevo_id_asociacion(),
-        "personaId": persona["id"],
-        "carreraId": carrera["id"],
-        "sedeId": sede["id"],
-        "comisionId": comision["id"] if comision else None,
-        "planId": plan["id"],
-        # Si no lo escriben, lo arma el sistema: es un contador por carrera
-        # y nadie que carga tiene cómo saber cuál fue el último.
-        "legajo": _texto(cuerpo.get("legajo"), "el legajo", 40, obligatorio=False)
-        or legajos.proximo_de_carrera(carrera["id"], d.ahora().year),
-        "estado": "activa",
-        "desde": d.iso(d.ahora()),
-        "ingreso": d.ahora().year,
-    }
-    d.asociaciones_academicas.append(asociacion)
+        asociacion = {
+            "id": d.nuevo_id_asociacion(),
+            "personaId": persona["id"],
+            "carreraId": carrera["id"],
+            "sedeId": sede["id"],
+            "comisionId": comision["id"] if comision else None,
+            "planId": plan["id"],
+            # Si no lo escriben, lo arma el sistema: es un contador por carrera
+            # y nadie que carga tiene cómo saber cuál fue el último.
+            "legajo": _texto(cuerpo.get("legajo"), "el legajo", 40, obligatorio=False)
+            or legajos.proximo_de_carrera(carrera["id"], d.ahora().year),
+            "estado": "activa",
+            "desde": d.iso(d.ahora()),
+            "ingreso": d.ahora().year,
+        }
+        d.asociaciones_academicas.append(asociacion)
 
     # Pertenecer a la comisión es cursar sus materias: no hace falta
     # inscribirlo a una por una.

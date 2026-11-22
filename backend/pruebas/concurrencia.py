@@ -21,6 +21,10 @@ tráfico real.
 Uso (desde backend/):
     python -m pruebas.concurrencia             # una pasada
     python -m pruebas.concurrencia --veces 5   # repetida, para ver que no es suerte
+    python -m pruebas.concurrencia --intensivo # ráfagas de 200 hilos en vez de 50
+
+Las ráfagas van de a 50 hilos por defecto. Con 200 la carrera aparece igual,
+pero la máquina se arrastra mientras corre: quedan para cuando se las pide.
 """
 
 from __future__ import annotations
@@ -41,6 +45,9 @@ from . import escenario
 
 pasadas = 0
 fallas: list[str] = []
+
+# Cuántos pedidos salen juntos en cada ráfaga. `--intensivo` lo sube a 200.
+HILOS = 50
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:
@@ -524,7 +531,7 @@ def e2_todos_los_caminos(veces: int) -> None:
         f"{len(malos)} problemas, p. ej. {malos[:2]}",
     )
 
-    # Doscientos a la vez sobre el mismo campus, repartidos entre los caminos
+    # Una ráfaga sobre el mismo campus, repartidos entre los caminos
     for repeticion in range(veces):
         escenario.cargar()
         antes = len(d.cursos)
@@ -537,10 +544,10 @@ def e2_todos_los_caminos(veces: int) -> None:
             lambda: modulos.modulos_que_dicta(7),
         ]
         with hilos_que_se_alternan():
-            _, errores = en_paralelo(200, lambda n: caminos[n % len(caminos)]())
+            _, errores = en_paralelo(HILOS, lambda n: caminos[n % len(caminos)]())
         malos = errores + _problemas_de_modulos([113, 114, 115, 116, 117, 118, 119])
         sufijo = f" (pasada {repeticion + 1})" if veces > 1 else ""
-        comprobar(f"200 pedidos juntos: un módulo por materia{sufijo}", not malos, malos[:2])
+        comprobar(f"{HILOS} pedidos juntos: un módulo por materia{sufijo}", not malos, malos[:2])
         comprobar(f"y se crearon exactamente los que faltaban{sufijo}",
                   len(d.cursos) - antes == faltaban, (len(d.cursos) - antes, faltaban))
 
@@ -556,11 +563,11 @@ def e2_por_http(veces: int) -> None:
     distintas = 0
     for persona, materias in ((DOCENTE, [113, 118]), (ADMINISTRADORA, [113, 114, 115, 116, 117, 118, 119])):
         como(persona)
-        clientes = [crear_cliente(), crear_cliente()]
+        cliente = crear_cliente()
         with hilos_que_se_alternan():
             for _ in range(intentos):
                 escenario.cargar()
-                respuestas, errores = en_paralelo(2, lambda n: clientes[n].get("/api/cursos"))
+                respuestas, errores = en_paralelo(2, lambda _n: cliente.get("/api/cursos"))
                 malos += errores
                 malos += [f"estado {r.status_code}" for r in respuestas if r.status_code != 200]
                 malos += _problemas_de_modulos(materias)
@@ -597,11 +604,236 @@ def e2_sin_carrera() -> None:
               modulos.modulo_para(materia) is d.buscar_curso(materia["cursoId"]))
 
 
+# ===================== Punto 3: identificadores y legajos =====================
+SECRETARIA = 18
+DOCENTE_DEL_TABLERO = 2  # Programación II (módulo 1) tiene el tablero 1-10
+
+
+@contextlib.contextmanager
+def sin_freno():
+    """Las ráfagas salen todas de la misma sesión: sin esto, el freno de 120
+    escrituras por minuto contestaría 429 antes de llegar a la carrera."""
+    from app.servicios import frenos
+
+    anterior = frenos.MAXIMO_ESCRITURAS
+    frenos.MAXIMO_ESCRITURAS = 10**9
+    frenos.olvidar_todo()
+    try:
+        yield
+    finally:
+        frenos.MAXIMO_ESCRITURAS = anterior
+        frenos.olvidar_todo()
+
+
+@contextlib.contextmanager
+def firebase_lento():
+    """Firebase de mentira, que tarda como el de verdad en dar un acceso.
+
+    Es la espera que hay en el medio de un alta de cuenta: el real tarda
+    unos 250 ms. Se reemplazan las tres funciones que usa el alta; ninguna
+    llega a Firebase.
+    """
+    from app.servicios import cuentas
+
+    originales = (cuentas.hay_firebase, cuentas.crear_acceso, cuentas.contrasena_provisoria)
+    cuentas.hay_firebase = lambda: True
+    cuentas.crear_acceso = lambda *_a: time.sleep(random.uniform(0.005, 0.03)) or "uid-falso"
+    cuentas.contrasena_provisoria = lambda: "provisoria"
+    try:
+        yield
+    finally:
+        cuentas.hay_firebase, cuentas.crear_acceso, cuentas.contrasena_provisoria = originales
+
+
+def _repetidos(valores: list) -> list:
+    return sorted({v for v in valores if valores.count(v) > 1})
+
+
+def _rafaga(persona: int, cantidad: int, pedir) -> tuple[list, list[str]]:
+    """`cantidad` pedidos a la vez, todos con el mismo cliente: el cliente en
+    proceso arma su propio canal por pedido, así que no hace falta uno por hilo."""
+    from .cliente import como, crear_cliente
+
+    como(persona)
+    cliente = crear_cliente()
+    try:
+        with sin_freno(), hilos_que_se_alternan():
+            return en_paralelo(cantidad, lambda n: pedir(cliente, n))
+    finally:
+        como(None)
+
+
+def e1_los_contadores(veces: int) -> None:
+    grupo("Identificadores: los contadores de datos.py (E1)")
+
+    escenario.cargar()
+    with hilos_que_se_alternan():
+        resultados, errores = en_paralelo(8, lambda _n: [d.nuevo_id_mensaje() for _ in range(3000 * veces)])
+    todos = [i for lista in resultados for i in lista]
+    comprobar(f"{len(todos)} ids pedidos a la vez, ninguno repetido",
+              not errores and len(todos) == len(set(todos)),
+              f"{len(todos) - len(set(todos))} repetidos")
+    comprobar("y no se saltea ninguno", sorted(todos) == list(range(min(todos), min(todos) + len(todos))))
+
+
+def e4_legajos_de_carrera(veces: int) -> None:
+    grupo("Legajos: inscripciones a la misma carrera a la vez (E4)")
+
+    for repeticion in range(veces):
+        escenario.cargar()
+        nuevos = [
+            {"id": 5000 + i, "nombre": f"Ingresante {i}", "correo": f"i{i}@campus.test",
+             "roles": ["Estudiante"], "accesoHaceMin": 100000, "estado": "activa"}
+            for i in range(HILOS)
+        ]
+        d.personas.extend(nuevos)
+
+        def inscribir(cliente, n):
+            return cliente.post("/api/institucion/asignaciones", json={
+                "personaId": 5000 + n, "carreraId": 1, "sedeId": 1, "planId": 1,
+            })
+
+        respuestas, errores = _rafaga(SECRETARIA, HILOS, inscribir)
+        legajos_dados = [r.json()["asociacion"]["legajo"] for r in respuestas if r.status_code == 201]
+        ids = [a["id"] for a in d.asociaciones_academicas]
+        sufijo = f" (pasada {repeticion + 1})" if veces > 1 else ""
+        comprobar(f"{HILOS} inscripciones juntas: las {HILOS} entran{sufijo}",
+                  not errores and len(legajos_dados) == HILOS,
+                  (len(legajos_dados), errores[:1], {r.status_code for r in respuestas}))
+        comprobar(f"ningún legajo repetido{sufijo}", not _repetidos(legajos_dados),
+                  _repetidos(legajos_dados)[:3])
+        comprobar(f"ningún id de inscripción repetido{sufijo}", not _repetidos(ids))
+
+    # La misma persona dos veces a la vez: tiene que entrar una sola
+    malos = 0
+    for _ in range(50 * veces):
+        escenario.cargar()
+        d.personas.append({"id": 5000, "nombre": "Ingresante", "correo": "i@campus.test",
+                           "roles": ["Estudiante"], "accesoHaceMin": 100000, "estado": "activa"})
+        respuestas, _ = _rafaga(SECRETARIA, 2, lambda c, _n: c.post(
+            "/api/institucion/asignaciones",
+            json={"personaId": 5000, "carreraId": 1, "sedeId": 1, "planId": 1}))
+        codigos = sorted(r.status_code for r in respuestas)
+        suyas = [a for a in d.asociaciones_academicas if a["personaId"] == 5000]
+        malos += codigos != [201, 409] or len(suyas) != 1
+    comprobar(f"la misma persona dos veces a la vez: una entra y la otra recibe 409 "
+              f"({50 * veces} intentos)", malos == 0, f"{malos} veces no")
+
+
+def e4_altas_de_cuentas(veces: int) -> None:
+    grupo("Cuentas: altas a la vez, con la espera de Firebase en el medio")
+
+    for repeticion in range(veces):
+        escenario.cargar()
+        antes = len(d.personas)
+
+        def dar_de_alta(cliente, n):
+            return cliente.post("/api/usuarios", json={
+                "nombre": f"Docente {n}", "correo": f"docente{n}@campus.test", "roles": ["Docente"],
+            })
+
+        with firebase_lento():
+            respuestas, errores = _rafaga(SECRETARIA, HILOS, dar_de_alta)
+        creadas = [r.json()["usuario"] for r in respuestas if r.status_code == 201]
+        ids = [p["id"] for p in d.personas]
+        legajos_personal = [p["legajo"] for p in d.personas if str(p.get("legajo", "")).startswith("FAC-")]
+        sufijo = f" (pasada {repeticion + 1})" if veces > 1 else ""
+        comprobar(f"{HILOS} altas juntas: las {HILOS} entran{sufijo}",
+                  not errores and len(creadas) == HILOS and len(d.personas) - antes == HILOS,
+                  (len(creadas), len(d.personas) - antes, errores[:1]))
+        comprobar(f"ningún id de persona repetido{sufijo}", not _repetidos(ids), _repetidos(ids)[:3])
+        comprobar(f"ningún legajo del personal repetido{sufijo}", not _repetidos(legajos_personal),
+                  _repetidos(legajos_personal)[:3])
+        comprobar(f"todas quedan activas, como con Firebase de verdad{sufijo}",
+                  all(p["estado"] == "activa" for p in d.personas[antes:]))
+
+    # El mismo correo dos veces a la vez: una cuenta sola
+    malos = 0
+    for _ in range(50 * veces):
+        escenario.cargar()
+        with firebase_lento():
+            respuestas, _ = _rafaga(SECRETARIA, 2, lambda c, _n: c.post(
+                "/api/usuarios",
+                json={"nombre": "Repetida", "correo": "repetida@campus.test", "roles": ["Docente"]}))
+        codigos = sorted(r.status_code for r in respuestas)
+        mismas = [p for p in d.personas if p.get("correo") == "repetida@campus.test"]
+        malos += codigos != [201, 409] or len(mismas) != 1
+    comprobar(f"el mismo correo dos veces a la vez: una cuenta y un 409 ({50 * veces} intentos)",
+              malos == 0, f"{malos} veces no")
+
+
+def e4_publicaciones_del_tablero(veces: int) -> None:
+    grupo("Tablero: publicaciones a la vez en el mismo tablero")
+
+    for repeticion in range(veces):
+        escenario.cargar()
+
+        def publicar(cliente, n):
+            return cliente.post("/api/cursos/1/tableros/1-10/publicaciones",
+                                json={"columna": "Preguntas", "texto": f"consulta {n}"})
+
+        respuestas, errores = _rafaga(DOCENTE_DEL_TABLERO, HILOS, publicar)
+        dadas = [r.json()["id"] for r in respuestas if r.status_code in (200, 201)]
+        tablero = next(i for c in d.contenidos[1] for i in c["items"] if i["id"] == "1-10")
+        guardadas = [p["id"] for col in tablero["columnas"] for p in col.get("publicaciones") or []]
+        sufijo = f" (pasada {repeticion + 1})" if veces > 1 else ""
+        comprobar(f"{HILOS} publicaciones juntas: las {HILOS} entran{sufijo}",
+                  not errores and len(dadas) == HILOS, (len(dadas), errores[:1]))
+        comprobar(f"ningún id de publicación repetido{sufijo}", not _repetidos(guardadas),
+                  _repetidos(guardadas)[:3])
+
+
+def e4_sin_carrera() -> None:
+    """De a uno, los números son los de siempre."""
+    grupo("Identificadores y legajos: de a uno, como siempre")
+
+    from .cliente import como, crear_cliente
+
+    escenario.cargar()
+    cliente = crear_cliente()
+    como(SECRETARIA)
+    d.personas.append({"id": 5000, "nombre": "Ingresante", "correo": "i@campus.test",
+                       "roles": ["Estudiante"], "accesoHaceMin": 100000, "estado": "activa"})
+    anio = d.ahora().year
+    previa = cliente.get("/api/institucion/legajo-siguiente", params={"carreraId": 1}).json()["legajo"]
+    r = cliente.post("/api/institucion/asignaciones",
+                     json={"personaId": 5000, "carreraId": 1, "sedeId": 1, "planId": 1})
+    comprobar("el legajo es el de la vista previa", r.json()["asociacion"]["legajo"] == previa,
+              (previa, r.json()["asociacion"]["legajo"]))
+    comprobar("con el formato de siempre", previa.startswith(f"LSI-{anio}-"))
+
+    tope = max(p["id"] for p in d.personas)
+    r = cliente.post("/api/usuarios", json={"nombre": "Nueva", "correo": "nueva@campus.test",
+                                            "roles": ["Docente"]})
+    usuario = r.json()["usuario"]
+    comprobar("la persona nueva lleva el id más alto + 1", usuario["id"] == tope + 1,
+              (usuario["id"], tope + 1))
+    comprobar("sin Firebase queda pendiente, como siempre",
+              d.buscar_persona(usuario["id"])["estado"] == "pendiente")
+    comprobar("y con legajo del personal", str(d.buscar_persona(usuario["id"]).get("legajo")).startswith("FAC-"))
+    r = cliente.post("/api/usuarios", json={"nombre": "Otra", "correo": "nueva@campus.test"})
+    comprobar("un correo repetido sigue dando 409", r.status_code == 409, r.status_code)
+
+    como(DOCENTE_DEL_TABLERO)
+    r1 = cliente.post("/api/cursos/1/tableros/1-10/publicaciones", json={"columna": "Preguntas", "texto": "a"})
+    r2 = cliente.post("/api/cursos/1/tableros/1-10/publicaciones", json={"columna": "Comentarios", "texto": "b"})
+    comprobar("las publicaciones siguen numerándose de a una", r2.json()["id"] == r1.json()["id"] + 1,
+              (r1.json().get("id"), r2.json().get("id")))
+    como(None)
+
+
 # ===================== Correr =====================
 def correr() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--veces", type=int, default=1)
-    veces = parser.parse_args().veces
+    parser.add_argument("--intensivo", action="store_true",
+                        help="ráfagas de 200 hilos en vez de 50 (carga bastante la máquina)")
+    argumentos = parser.parse_args()
+    veces = argumentos.veces
+    global HILOS
+    if argumentos.intensivo:
+        HILOS = 200
+    print(f"Ráfagas de {HILOS} hilos, {veces} pasada(s).")
 
     import logging
 
@@ -617,6 +849,12 @@ def correr() -> None:
     e2_el_docente_abre_modulos(veces)
     e2_todos_los_caminos(veces)
     e2_por_http(veces)
+
+    e4_sin_carrera()
+    e1_los_contadores(veces)
+    e4_legajos_de_carrera(veces)
+    e4_altas_de_cuentas(veces)
+    e4_publicaciones_del_tablero(veces)
 
     print("\n" + "-" * 52)
     total = pasadas + len(fallas)
