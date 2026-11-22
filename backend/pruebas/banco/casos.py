@@ -144,6 +144,37 @@ def con_parametros() -> list[Caso]:
             Paso("HEAD", "/api/calendario", SANTIAGO),
             Paso("DELETE", "/api/calendario", None),
         ]),
+        # El panel lo ven quien administra y quien supervisa, y no ven lo
+        # mismo: la actividad de quien supervisa no trae el módulo `usuarios`.
+        Caso("El panel, a fondo", [
+            _ver("/api/panel", SECRETARIA),
+            _ver("/api/panel/alertas", SECRETARIA),
+            _ver("/api/panel", CLAUDIA),
+            _ver("/api/panel/alertas", CLAUDIA),
+            # Los demás: 403
+            _ver("/api/panel", MARIA),
+            _ver("/api/panel/alertas", SANTIAGO),
+            # Algo de usuarios y algo académico: el administrador ve los dos en
+            # la actividad, el supervisor solo el segundo
+            Paso("POST", "/api/usuarios", SECRETARIA,
+                 {"nombre": "Alguien del panel", "correo": "panel@campus.test"}),
+            Paso("POST", "/api/institucion/eventos", CLAUDIA,
+                 {"titulo": "Jornada del panel", "fecha": "2027-06-10", "tipo": "evento"}),
+            _ver("/api/panel", SECRETARIA),
+            _ver("/api/panel", CLAUDIA),
+            _ver("/api/panel/alertas", SECRETARIA),
+            # Sin sesión: 401, y antes que el 403
+            _ver("/api/panel", None),
+            _ver("/api/panel/alertas", None),
+            # Parámetros que no usa, la barra final, lo que no existe y los métodos
+            _ver("/api/panel?desde=2026-01-01&x=ñ", SECRETARIA),
+            _ver("/api/panel/", SECRETARIA),
+            _ver("/api/panel/alertas/", SECRETARIA),
+            _ver("/api/panel/otra-cosa", SECRETARIA),
+            Paso("POST", "/api/panel", SECRETARIA, {}),
+            Paso("HEAD", "/api/panel/alertas", SECRETARIA),
+            Paso("DELETE", "/api/panel", None),
+        ]),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),

@@ -23,8 +23,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi import HTTPException
+
 from .. import datos as d
 from . import asistencias as asis
+from . import auditoria
 
 # Cuántas filas devuelve una distribución larga: una lista de cincuenta
 # comisiones no es un gráfico, es una tabla disfrazada.
@@ -422,3 +425,62 @@ def alertas(persona: dict) -> list[dict]:
         salida.append({**alerta, "cantidad": cantidad, "items": (items or [])[:6]})
 
     return sorted(salida, key=lambda a: orden[a["nivel"]])
+
+
+# ===================== Las dos respuestas =====================
+# Lo que contestan las dos rutas del panel, con su control de acceso. Viven
+# acá y no en la ruta para que FastAPI y Django contesten **con la misma
+# función** mientras dure la migración: cada framework solo la llama.
+
+# Lo que ve de la actividad quien supervisa sin administrar: lo académico.
+# `usuarios` —roles y cuentas suspendidas— es del administrador.
+MODULOS_DE_SUPERVISION = {
+    "academico", "asistencias", "calificaciones", "finales", "biblioteca", "modulos",
+}
+
+
+def exigir_acceso(yo: dict) -> None:
+    if not es_supervisor(yo):
+        raise HTTPException(
+            403, "El panel de control es para la administración y la supervisión"
+        )
+
+
+def tablero(yo: dict) -> dict:
+    """Los números, las distribuciones, lo próximo y la actividad reciente.
+
+    Todo en una sola consulta: son ocho cuentas chicas sobre datos que ya
+    están en memoria, y partirlo en cinco llamadas solo multiplicaría los
+    estados de carga de la pantalla.
+    """
+    exigir_acceso(yo)
+
+    return {
+        "indicadores": indicadores(),
+        "distribuciones": distribuciones(),
+        "proximos": _proximos_examenes()[:6],
+        # La actividad reciente sale del registro central de auditoría, no de
+        # una lista aparte: es el mismo dato mirado desde el panel.
+        "actividad": [
+            auditoria.con_nombres(e)
+            for e in auditoria.buscar({}, None if es_administrador(yo) else
+                                      MODULOS_DE_SUPERVISION)[:8]
+        ],
+        "esAdministrador": es_administrador(yo),
+    }
+
+
+def resumen_de_alertas(yo: dict) -> dict:
+    """Las alertas, con cuántos casos suman y cuántos son urgentes.
+
+    Las que no tienen nada que atender no vienen: un tablero lleno de ceros
+    en verde enseña a no mirarlo.
+    """
+    exigir_acceso(yo)
+    lista = alertas(yo)
+
+    return {
+        "alertas": lista,
+        "cuantas": sum(a["cantidad"] for a in lista),
+        "urgentes": sum(a["cantidad"] for a in lista if a["nivel"] == "alta"),
+    }

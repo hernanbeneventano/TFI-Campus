@@ -70,6 +70,7 @@ from app.main import app as fastapi  # noqa: E402
 # Volver atrás es sacar la línea: la ruta de FastAPI sigue en su lugar.
 MIGRADOS: tuple[str, ...] = (
     "/api/calendario",
+    "/api/panel",
 )
 
 
