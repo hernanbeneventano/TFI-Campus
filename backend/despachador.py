@@ -1,0 +1,141 @@
+"""El punto de entrada del servidor: reparte cada petición entre FastAPI y Django.
+
+Es lo que permite migrar de a un módulo por vez. El frontend sigue pegándole
+a `/api/...` como siempre, y acá se decide quién contesta. Pasar un módulo a
+Django es agregar su prefijo a `MIGRADOS`; volver atrás es sacarlo.
+
+**En la fase 0 la lista está vacía: todo lo atiende FastAPI**, exactamente
+como antes de que existiera este archivo. Para las peticiones de FastAPI esto
+es un pasamanos: no las mira, no las toca y no les agrega nada.
+
+Un solo proceso, a propósito
+----------------------------
+FastAPI y Django corren acá adentro, juntos. Nunca en dos servidores: serían
+dos copias de la memoria del campus y dos procesos guardando por diferencia
+sobre el mismo Firestore, y el último en escribir pisaría al otro sin que
+nada fallara. Con un proceso hay una sola memoria, un solo freno y un solo
+guardado.
+
+Lo que pasa con una petición que va a Django
+--------------------------------------------
+No se le arma una pila nueva: **se usa la de FastAPI**. Mismos middlewares
+—el freno, la auditoría, el guardado, el CORS—, en el mismo orden, con los
+mismos manejadores de error, construidos con el mismo código con el que los
+construye Starlette (`Starlette.build_middleware_stack`). Lo único que cambia
+es lo que va en el centro: Django en vez del router de FastAPI.
+
+    ServerErrorMiddleware      el 500, con el manejador del campus
+      freno                    \
+      guardado                  | los de app/main.py, los mismos objetos
+      auditoría (IP)            |
+      CORS                     /
+        ExceptionMiddleware    el 400, el 401, el 404… con el manejador del campus
+          Django               solo enruta y ejecuta la vista
+
+Así el formato de un error, las cabeceras de CORS o el 413 del freno son los
+mismos por construcción, no por imitación. Y si mañana alguien le agrega un
+middleware a FastAPI, las rutas de Django lo heredan solas.
+
+El freno tiene además una razón propia para estar afuera: Django lee el
+cuerpo entero antes de llegar a cualquier middleware suyo. Un pedido que
+anuncia 40 MB quedaría esperando bytes que no van a llegar, en vez de recibir
+el 413 en el acto.
+
+El arranque
+-----------
+Lo hace FastAPI, como siempre: el `lifespan` —conectar Firestore, traer el
+campus, asignar legajos, conectar R2— y el guardado al cerrar. El despachador
+le pasa esos mensajes sin tocarlos, así corren una sola vez.
+"""
+
+from __future__ import annotations
+
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "campus_django.settings")
+
+from starlette.middleware import Middleware  # noqa: E402
+from starlette.middleware.errors import ServerErrorMiddleware  # noqa: E402
+from starlette.middleware.exceptions import ExceptionMiddleware  # noqa: E402
+
+from app.main import app as fastapi  # noqa: E402
+
+# ===================== Qué atiende Django =====================
+# Prefijos completos: «/api/foro» atiende «/api/foro» y «/api/foro/...», pero
+# no «/api/forobar». Vacío en la fase 0.
+MIGRADOS: tuple[str, ...] = ()
+
+
+def es_de_django(camino: str) -> bool:
+    return any(camino == p or camino.startswith(p + "/") for p in MIGRADOS)
+
+
+# ===================== La pila de FastAPI, con Django en el centro =====================
+def pila_de(referencia, interior):
+    """Lo mismo que `Starlette.build_middleware_stack`, con otro centro.
+
+    Se copia la lógica de Starlette línea por línea y se leen los middlewares
+    y los manejadores **del propio FastAPI**, así no puede haber diferencias
+    entre las dos pilas.
+    """
+    debug = referencia.debug
+    manejador_500 = None
+    manejadores = {}
+    for clave, valor in referencia.exception_handlers.items():
+        if clave in (500, Exception):
+            manejador_500 = valor
+        else:
+            manejadores[clave] = valor
+
+    capas = (
+        [Middleware(ServerErrorMiddleware, handler=manejador_500, debug=debug)]
+        + referencia.user_middleware
+        + [Middleware(ExceptionMiddleware, handlers=manejadores, debug=debug)]
+    )
+
+    aplicacion = interior
+    for cls, args, kwargs in reversed(capas):
+        aplicacion = cls(aplicacion, *args, **kwargs)
+    return aplicacion
+
+
+_django = None
+
+
+def django():
+    """Django con la pila de FastAPI alrededor. Se arma la primera vez que se
+    necesita: mientras no haya nada migrado, Django ni siquiera se carga."""
+    global _django
+    if _django is None:
+        from django.core.asgi import get_asgi_application
+
+        pila = pila_de(fastapi, get_asgi_application())
+
+        async def con_pila(scope, receive, send):
+            # Lo mismo que hace `Starlette.__call__` antes de entrar a la pila
+            scope["app"] = fastapi
+            await pila(scope, receive, send)
+
+        _django = con_pila
+    return _django
+
+
+# ===================== El reparto =====================
+async def aplicacion(scope, receive, send):
+    """El ASGI del servidor.
+
+    Solo las peticiones HTTP de un módulo migrado van a Django. Todo lo demás
+    —incluido el `lifespan`, que es el arranque y el cierre— va a FastAPI tal
+    cual llegó.
+    """
+    if scope["type"] == "http" and es_de_django(scope["path"]):
+        await django()(scope, receive, send)
+        return
+    await fastapi(scope, receive, send)
+
+
+# Con algo migrado, Django se arma al arrancar y no con la primera petición:
+# una configuración rota tiene que impedir que el servidor levante, no
+# aparecer cuando un alumno abre el foro.
+if MIGRADOS:
+    django()

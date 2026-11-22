@@ -52,17 +52,45 @@ def fastapi() -> Aplicacion:
     return Aplicacion("FastAPI", TestClient(app), rutas)
 
 
+def despachador() -> Aplicacion:
+    """El servidor tal como corre de verdad: el despachador del frente.
+
+    Es la comparación que importa mientras dure la migración. Contra FastAPI
+    tiene que dar **cero diferencias** en todo momento: lo que esté migrado lo
+    contesta Django y lo que no, FastAPI, y el que pide no tiene que poder
+    notarlo. En la fase 0 no hay nada migrado, así que prueba que el
+    despachador es un pasamanos de verdad.
+
+    El cliente se arma **sin `with`**, a propósito: con `with` se dispararía el
+    `lifespan`, que conecta Firestore y R2 de verdad. El banco trabaja solo
+    sobre la memoria.
+    """
+    from fastapi.testclient import TestClient
+
+    import despachador as modulo
+
+    base = fastapi()
+    return Aplicacion("despachador", TestClient(modulo.aplicacion), base.rutas)
+
+
 def django() -> Aplicacion:
-    """La que todavía no existe."""
-    raise NotImplementedError(
-        "El backend en Django todavía no existe. El banco está listo para "
-        "recibirlo: cuando esté, esta función tiene que devolver un cliente "
-        "con la misma forma que el de FastAPI —.get/.post/.put/.patch/.delete "
-        "y .request(metodo, camino, json=...)— y la lista de sus rutas."
-    )
+    """Django solo, con la pila de FastAPI alrededor.
+
+    Contesta únicamente lo que esté en `campus_django/urls.py`; lo demás es
+    un 404. En la fase 0 no hay nada, así que contra FastAPI da diferencias
+    en todo: es la forma de ver cuánto falta, módulo por módulo, con
+    `--solo`. La comparación que tiene que dar cero es la del despachador.
+    """
+    from fastapi.testclient import TestClient
+
+    import despachador as modulo
+
+    base = fastapi()
+    return Aplicacion("Django", TestClient(modulo.django()), base.rutas)
 
 
 DISPONIBLES: dict[str, Callable[[], Aplicacion]] = {
     "fastapi": fastapi,
+    "despachador": despachador,
     "django": django,
 }

@@ -293,8 +293,13 @@ def arrancar() -> None:
     # decirlo a propósito, no que pase por olvido.
     host = (os.environ.get("HOST") or "127.0.0.1").strip()
 
+    # Se sirve el despachador y no `app` directo: es el que reparte cada
+    # petición entre FastAPI y Django durante la migración. Mientras su lista
+    # de módulos migrados esté vacía, le pasa todo a esta misma `app` sin
+    # tocarlo —incluido el `lifespan` de arriba—, así que el campus se
+    # comporta exactamente igual. Ver `backend/despachador.py`.
     uvicorn.run(
-        "app.main:app",
+        "despachador:aplicacion",
         host=host,
         port=int(os.environ.get("PORT") or 3000),
         reload=recarga,

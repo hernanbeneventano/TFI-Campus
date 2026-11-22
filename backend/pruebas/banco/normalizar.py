@@ -98,6 +98,13 @@ CABECERAS: tuple[str, ...] = (
     "content-security-policy",
     "cache-control",
     "retry-after",
+    # A dónde lleva un 307: FastAPI saca la barra final con una dirección
+    # absoluta, y Django por omisión haría otra cosa.
+    "location",
+    # El cuerpo se compara interpretado, así que dos JSON que se leen igual
+    # pasan aunque uno tenga espacios o los acentos escapados. El largo los
+    # delata: es la única forma de ver una diferencia de bytes desde acá.
+    "content-length",
 )
 
 
