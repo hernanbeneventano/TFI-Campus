@@ -2,7 +2,14 @@ import { Link } from 'react-router-dom';
 import { IconoBuscar, IconoGrilla, IconoLista, IconoInscribirse } from './Iconos.jsx';
 import Desplegable from './Desplegable.jsx';
 
-// Barra sobre los módulos: tipo de vista, búsqueda, filtro por fecha y apartados especiales
+const ORDINAL = { 1: '1.er', 2: '2.º', 3: '3.er', 4: '4.º', 5: '5.º', 6: '6.º', 7: '7.º' };
+
+function nombreDeAnio(anio) {
+  return anio ? `${ORDINAL[anio] ?? `${anio}.º`} año` : 'Sin año asignado';
+}
+
+// Barra sobre los módulos: tipo de vista, búsqueda, filtro por fecha, año y
+// apartados especiales
 export default function BarraHerramientas({
   vista,
   onVista,
@@ -11,6 +18,9 @@ export default function BarraHerramientas({
   periodos,
   periodo,
   onPeriodo,
+  anios,
+  anio,
+  onAnio,
   apartado,
   onApartado,
   // Un docente no se inscribe a materias: la acción no va en su barra
@@ -59,6 +69,23 @@ export default function BarraHerramientas({
           ...periodos.map((p) => ({ valor: p, nombre: p })),
         ]}
       />
+
+      {/* El año va al lado de la fecha porque filtran lo mismo —cuándo se
+          cursa— y porque con un plan de cinco años la grilla entera no entra
+          en la pantalla. Si hay un solo año no se muestra: un filtro con una
+          sola opción no filtra nada. */}
+      {anios.length > 1 && (
+        <Desplegable
+          className="barra-select"
+          etiqueta="Filtrar por año"
+          valor={anio}
+          onCambiar={onAnio}
+          opciones={[
+            { valor: '', nombre: 'Todos los años' },
+            ...anios.map((a) => ({ valor: String(a), nombre: nombreDeAnio(a) })),
+          ]}
+        />
+      )}
 
       <Desplegable
         className="barra-select"

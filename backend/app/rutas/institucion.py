@@ -20,12 +20,16 @@ un historial que ya no se puede leer.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import datos as d
+from ..servicios import academico as ac
+from ..servicios import legajos
 from ..servicios import auditoria
+from ..servicios import modulos as mod
 from ..servicios.autenticacion import UsuarioActual
 
 router = APIRouter(prefix="/api/institucion", tags=["Institución"])
@@ -58,7 +62,45 @@ def _exigir_supervisor(yo: dict) -> None:
         raise HTTPException(403, "Solo el supervisor puede asignar estudiantes.")
 
 
+def _exigir_que_administre_lo_academico(yo: dict) -> None:
+    """El período de inscripción, el mínimo de asistencia y los eventos.
+
+    Los cambia **quien supervisa**, no solo quien administra. Abrir y cerrar
+    el cuatrimestre, cargar las jornadas y fijar el mínimo es el trabajo
+    diario de la secretaría: dejarlo del lado del administrador obligaba a
+    pedirle a otra persona que apretara el botón, y la fecha se termina
+    cambiando igual, tarde y por otro camino.
+
+    La estructura —carreras, planes, materias— sigue siendo del
+    administrador: eso define qué es la facultad, no cuándo abre.
+    """
+    if not es_supervisor(yo):
+        raise HTTPException(
+            403,
+            "Solo la administración de la facultad cambia la configuración académica.",
+        )
+
+
 # ===================== Validación =====================
+def _fecha_de(valor, que: str):
+    """Una fecha que mandó la pantalla, o un error que diga cuál falta.
+
+    Acepta tanto la fecha sola (`2026-03-01`, que es lo que manda un
+    `<input type="date">`) como una fecha con hora. La primera se toma como
+    el comienzo del día: un período que abre el 1 de marzo abre a las 00:00,
+    no a las 00:00 de mañana.
+    """
+    texto = str(valor or "").strip()
+    if not texto:
+        raise HTTPException(400, f"Falta {que}")
+    try:
+        if len(texto) == 10:  # AAAA-MM-DD
+            return d.desde_iso(texto + "T00:00:00").astimezone()
+        return d.desde_iso(texto)
+    except (ValueError, TypeError):
+        raise HTTPException(400, f"{que.capitalize()} no es una fecha válida")
+
+
 def _sin_tildes(texto) -> str:
     """Para buscar sin que importen las tildes ni las mayúsculas."""
     sin = unicodedata.normalize("NFD", str(texto or ""))
@@ -92,10 +134,13 @@ def _vincular_con_las_materias(persona_id: int, comision_id: int | None) -> list
     tiene su cuadro de materias armado, pertenecer a la comisión *es* cursar
     esas materias.
 
-    Dos cuidados: no duplica lo que ya tenía, y **no toca lo que el alumno ya
+    Tres cuidados: no duplica lo que ya tenía, **no toca lo que el alumno ya
     cursó o aprobó** —si tiene condición en el historial, esa materia no se
-    vuelve a inscribir—. Devuelve los nombres de lo que agregó, para poder
-    decírselo a quien hizo la asignación.
+    vuelve a inscribir— y **saltea las materias dadas de baja**. Esto último
+    importa: la comisión conserva su cuadro de materias aunque una se dé de
+    baja, y sin esta comprobación una materia que el campus ya no ofrece
+    volvería a aparecer en el plan de cada estudiante nuevo. Devuelve los
+    nombres de lo que agregó, para poder decírselo a quien hizo la asignación.
     """
     if not comision_id:
         return []
@@ -104,6 +149,8 @@ def _vincular_con_las_materias(persona_id: int, comision_id: int | None) -> list
     for dictado in d.dictados_de_comision(comision_id):
         materia = d.buscar_materia(dictado["materiaId"])
         if not materia:
+            continue
+        if not materia.get("activa", True):
             continue
         # Ya inscripto, o ya cursada: no se toca
         if any(
@@ -123,6 +170,15 @@ def _vincular_con_las_materias(persona_id: int, comision_id: int | None) -> list
                 "porComision": comision_id,
             }
         )
+        # Y la materia entra a Módulos, igual que cuando el estudiante se
+        # anota por su cuenta. Sin esto quedaba inscripto a seis materias y
+        # su pantalla de Módulos vacía: la inscripción existía pero el módulo
+        # donde cursarla, no.
+        #
+        # Va sin `por_inscripcion`: lo armó la institución al ponerlo en la
+        # comisión, así que es la cursada de la cátedra y no se borra porque
+        # un estudiante se dé de baja.
+        mod.modulo_para(materia)
         agregadas.append(materia["nombre"])
     return agregadas
 
@@ -593,6 +649,10 @@ def configurar_dictado(
             }
         )
 
+    # El módulo tiene que seguir al dictado, o quien dejó la materia la sigue
+    # viendo y quien la tomó no la ve aparecer.
+    mod.sincronizar_docente(materia)
+
     despues = {"docentes": nombres(docentes), "horario": horario}
     _anotar(
         yo,
@@ -626,6 +686,8 @@ def quitar_dictado(id_comision: int, id_materia: int, yo: dict = UsuarioActual):
         raise HTTPException(404, "Esa materia no se dicta en esta comisión")
     d.dictados.remove(dictado)
     materia = d.buscar_materia(id_materia)
+    if materia:
+        mod.sincronizar_docente(materia)
     _anotar(
         yo,
         "dictado eliminado",
@@ -732,6 +794,30 @@ def asignaciones(
     }
 
 
+@router.get("/legajo-siguiente", summary="El legajo que le tocaría a quien se inscriba")
+def legajo_siguiente(carreraId: int | None = None, yo: dict = UsuarioActual):
+    """Para mostrarlo en el formulario **antes** de inscribir.
+
+    Quien carga ve el número que le va a quedar, en vez de un campo vacío
+    que dice «se genera solo»: el legajo es con lo que después se busca a esa
+    persona, y saberlo recién al final obliga a volver a buscarla.
+
+    Es una **vista previa, no una reserva**. El legajo definitivo lo arma el
+    servidor al guardar, con los datos de ese momento: si entre que se abre
+    el formulario y se aprieta Inscribir alguien más se anota, el número que
+    se vio ya no es el libre, y el bueno es el del final. Por eso la pantalla
+    lo muestra y no lo manda de vuelta.
+    """
+    _exigir_supervisor(yo)
+    carrera = _referencia(d.carreras_institucion, carreraId, "La carrera")
+    anio = d.ahora().year
+    return {
+        "legajo": legajos.proximo_de_carrera(carrera["id"], anio),
+        "carrera": carrera["nombre"],
+        "anio": anio,
+    }
+
+
 @router.post("/asignaciones", status_code=201, summary="Inscribir a un estudiante")
 def crear_asignacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     """Mete a un estudiante en una carrera, con su sede, comisión y plan.
@@ -776,7 +862,10 @@ def crear_asignacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
         "sedeId": sede["id"],
         "comisionId": comision["id"] if comision else None,
         "planId": plan["id"],
-        "legajo": _texto(cuerpo.get("legajo"), "el legajo", 40, obligatorio=False),
+        # Si no lo escriben, lo arma el sistema: es un contador por carrera
+        # y nadie que carga tiene cómo saber cuál fue el último.
+        "legajo": _texto(cuerpo.get("legajo"), "el legajo", 40, obligatorio=False)
+        or legajos.proximo_de_carrera(carrera["id"], d.ahora().year),
         "estado": "activa",
         "desde": d.iso(d.ahora()),
         "ingreso": d.ahora().year,
@@ -901,3 +990,580 @@ def historial(yo: dict = UsuarioActual):
             for e in eventos[:200]
         ]
     }
+
+
+# ===================== Materias =====================
+# Una materia es del **plan**, no de la comisión: el plan dice qué hay que
+# cursar y en qué orden, y la comisión dice quién la dicta y cuándo. Por eso
+# las correlatividades viven acá y no en el dictado.
+
+
+def _grupo_de_correlativas(cuerpo, clave: str, materia_id, plan_id) -> dict:
+    """Valida y arma uno de los dos grupos de requisitos.
+
+    Las reglas son las de cualquier plan de estudios:
+
+    - **Una materia no puede ser correlativa de sí misma.** Nadie podría
+      cursarla nunca.
+    - **Del mismo plan.** Pedir una materia de otro plan deja al estudiante
+      con un requisito que no puede cumplir desde su carrera.
+    - **Sin ciclos.** Si A pide B y B pide A, ninguna de las dos se puede
+      cursar jamás. Se comprueba el camino entero, no solo el paso directo.
+    """
+    grupo = (cuerpo.get("correlativas") or {}).get(clave) or {}
+    modo = grupo.get("modo") or "todas"
+    if modo not in d.MODOS_CORRELATIVA:
+        raise HTTPException(400, "Ese modo de correlatividad no existe")
+
+    salida = []
+    vistos = set()
+    for r in grupo.get("requisitos") or []:
+        try:
+            otra_id = int(r.get("materiaId"))
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Una correlativa no tiene materia")
+
+        condicion = r.get("condicion") or "Aprobada"
+        if condicion not in d.CONDICIONES_CORRELATIVA:
+            raise HTTPException(400, f"La condición «{condicion}» no existe")
+
+        if materia_id is not None and otra_id == materia_id:
+            raise HTTPException(400, "Una materia no puede ser correlativa de sí misma")
+
+        otra = d.buscar_materia(otra_id)
+        if not otra:
+            raise HTTPException(400, "Una de las correlativas no existe")
+        if otra.get("planId") != plan_id:
+            raise HTTPException(
+                400,
+                f"«{otra['nombre']}» es de otro plan de estudio: no puede ser correlativa",
+            )
+
+        if otra_id in vistos:
+            continue  # la misma materia dos veces en el grupo es una sola
+        vistos.add(otra_id)
+        salida.append({"materiaId": otra_id, "condicion": condicion})
+
+    if materia_id is not None:
+        for r in salida:
+            if _hay_ciclo(materia_id, r["materiaId"], clave):
+                otra = d.buscar_materia(r["materiaId"])
+                raise HTTPException(
+                    400,
+                    f"«{otra['nombre']}» ya depende de esta materia: quedarían encadenadas "
+                    "y ninguna de las dos se podría cursar.",
+                )
+
+    return {"modo": modo, "requisitos": salida}
+
+
+def _hay_ciclo(materia_id: int, desde_id: int, clave: str) -> bool:
+    """Si llegando desde `desde_id` se vuelve a `materia_id`."""
+    por_ver = [desde_id]
+    vistos = set()
+    while por_ver:
+        actual = por_ver.pop()
+        if actual == materia_id:
+            return True
+        if actual in vistos:
+            continue
+        vistos.add(actual)
+        otra = d.buscar_materia(actual)
+        if not otra:
+            continue
+        for r in ac.requisitos_de(otra, clave)["requisitos"]:
+            por_ver.append(r.get("materiaId"))
+    return False
+
+
+def _leer_materia(cuerpo: dict, materia_id=None) -> dict:
+    nombre = _texto(cuerpo.get("nombre"), "el nombre de la materia")
+    codigo = _texto(cuerpo.get("codigo"), "el código", MAX_CODIGO)
+
+    carrera = _referencia(d.carreras_institucion, cuerpo.get("carreraId"), "La carrera")
+    plan = _referencia(d.planes_estudio, cuerpo.get("planId"), "El plan de estudio")
+    if plan.get("carreraId") != carrera["id"]:
+        raise HTTPException(400, "Ese plan no es de la carrera elegida")
+
+    # El código identifica a la materia dentro de su plan: repetido, dos
+    # materias distintas se confunden en los listados y en las actas.
+    repetido = any(
+        m["id"] != materia_id
+        and m.get("planId") == plan["id"]
+        and (m.get("codigo") or "").lower() == codigo.lower()
+        for m in d.materias_plan
+    )
+    if repetido:
+        raise HTTPException(409, "Ya hay una materia con ese código en este plan")
+
+    anio = cuerpo.get("anio")
+    if not isinstance(anio, int) or not 1 <= anio <= 7:
+        raise HTTPException(400, "El año de cursado va de 1 a 7")
+
+    cuatrimestre = cuerpo.get("cuatrimestre")
+    if cuatrimestre not in (1, 2, 3):
+        raise HTTPException(400, "El cuatrimestre es 1, 2 o 3 (anual)")
+
+    horas = cuerpo.get("cargaHoraria")
+    if horas is not None and (not isinstance(horas, int) or not 1 <= horas <= 1000):
+        raise HTTPException(400, "La carga horaria no es válida")
+
+    modalidad = cuerpo.get("modalidad") or d.MODALIDADES_MATERIA[0]
+    if modalidad not in d.MODALIDADES_MATERIA:
+        raise HTTPException(400, "Esa modalidad no existe")
+
+    # Vacío es **sin límite**, la misma regla que el cupo de una mesa: poner
+    # un número por defecto sería inventar un tope que nadie configuró.
+    cupo = cuerpo.get("cupo")
+    if cupo is not None and (not isinstance(cupo, int) or not 1 <= cupo <= 1000):
+        raise HTTPException(400, "El cupo va de 1 a 1000")
+
+    return {
+        "nombre": nombre,
+        "codigo": codigo,
+        "descripcion": _texto(cuerpo.get("descripcion"), "la descripción", 600, False),
+        "carreraId": carrera["id"],
+        "planId": plan["id"],
+        "anio": anio,
+        "cuatrimestre": cuatrimestre,
+        "cargaHoraria": horas,
+        "modalidad": modalidad,
+        "cupo": cupo,
+        "activa": bool(cuerpo.get("activa", True)),
+        "correlativas": {
+            "cursar": _grupo_de_correlativas(cuerpo, "cursar", materia_id, plan["id"]),
+            "rendir": _grupo_de_correlativas(cuerpo, "rendir", materia_id, plan["id"]),
+        },
+    }
+
+
+def _actividad_de_materia(materia: dict) -> dict:
+    """Qué tiene colgando una materia. Decide si se puede borrar o solo dar
+    de baja: la información académica no se tira."""
+    curso_id = materia.get("cursoId")
+    return {
+        "inscriptos": sum(
+            1 for i in d.inscripciones_materias if i["materiaId"] == materia["id"]
+        ),
+        "historial": sum(
+            1 for h in d.historial_academico if h["materiaId"] == materia["id"]
+        ),
+        "mesas": sum(1 for m in d.mesas_examen if m["materiaId"] == materia["id"]),
+        "dictados": len(d.dictados_de_materia(materia["id"])),
+        "esCorrelativaDe": [
+            m["nombre"]
+            for m in d.materias_plan
+            if m["id"] != materia["id"]
+            and any(
+                r.get("materiaId") == materia["id"]
+                for clave in ("cursar", "rendir")
+                for r in ac.requisitos_de(m, clave)["requisitos"]
+            )
+        ],
+        "tieneModulo": bool(d.buscar_curso(curso_id)),
+    }
+
+
+def _materia_completa(materia: dict) -> dict:
+    """La ficha para el panel: la materia con todo lo que cuelga de ella."""
+    carrera = d.buscar_en(d.carreras_institucion, materia.get("carreraId"))
+    plan = d.buscar_en(d.planes_estudio, materia.get("planId"))
+    comisiones = []
+    for dictado in d.dictados_de_materia(materia["id"]):
+        comision = d.buscar_en(d.comisiones, dictado["comisionId"])
+        if not comision:
+            continue
+        comisiones.append(
+            {
+                "id": comision["id"],
+                "nombre": comision["nombre"],
+                "turno": comision.get("turno"),
+                "docentes": [
+                    p["nombre"]
+                    for p in (d.buscar_persona(i) for i in dictado.get("docentes") or [])
+                    if p
+                ],
+            }
+        )
+
+    return {
+        **ac.materia_publica(materia),
+        "carrera": carrera["nombre"] if carrera else None,
+        "plan": plan["nombre"] if plan else None,
+        "comisiones": comisiones,
+        "actividad": _actividad_de_materia(materia),
+    }
+
+
+# ===================== La configuración académica =====================
+# Dos valores que la facultad decide y que hasta ahora solo se podían cambiar
+# tocando `datos_iniciales.json`: cuándo se puede uno inscribir a materias y
+# cuánta asistencia se exige. Son decisiones de cada cuatrimestre, no
+# constantes del programa.
+MINIMO_ASISTENCIA_MIN = 0
+MINIMO_ASISTENCIA_MAX = 100
+
+
+def _config_academica(yo: dict) -> dict:
+    """La configuración, siempre con la misma forma.
+
+    `puedeEditar` va acá y no solo en la lectura: la pantalla reemplaza su
+    estado con lo que devuelve cada guardado, y un campo que falta se lee
+    como «no puede». Sin esto, después de guardar el período se
+    deshabilitaban solos los campos de asistencia.
+    """
+    return {
+        "periodoInscripcion": ac.periodo_materias(),
+        "asistencia": dict(d.CONFIG_ASISTENCIA),
+        "puedeEditar": es_supervisor(yo),
+    }
+
+
+@router.get("/configuracion", summary="La configuración académica de la facultad")
+def ver_configuracion(yo: dict = UsuarioActual):
+    """La ve y la cambia quien supervisa: es el calendario de la secretaría.
+
+    El docente y el estudiante no entran acá, pero sí ven el resultado: si
+    la inscripción está abierta, qué mínimo de asistencia se exige y los
+    eventos en el Calendario.
+    """
+    _exigir_supervisor(yo)
+    return _config_academica(yo)
+
+
+@router.put("/configuracion/periodo", summary="Abrir o cerrar la inscripción a materias")
+def cambiar_periodo(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    """Las dos fechas del período de inscripción.
+
+    **No se valida contra hoy.** Un período que ya pasó es un dato legítimo
+    —la facultad registra lo que hizo— y uno que todavía no empezó es lo
+    normal al planificar el cuatrimestre que viene. Lo único que no puede
+    pasar es que termine antes de empezar.
+    """
+    _exigir_que_administre_lo_academico(yo)
+
+    desde = _fecha_de(cuerpo.get("desde"), "la fecha de apertura")
+    hasta = _fecha_de(cuerpo.get("hasta"), "la fecha de cierre")
+    if hasta < desde:
+        raise HTTPException(400, "La inscripción no puede cerrar antes de abrir")
+
+    antes = dict(d.periodo_inscripcion_materias)
+    d.periodo_inscripcion_materias["desde"] = d.iso(desde)
+    d.periodo_inscripcion_materias["hasta"] = d.iso(hasta)
+
+    _anotar(
+        yo,
+        "período de inscripción",
+        f"del {desde:%d/%m/%Y} al {hasta:%d/%m/%Y}",
+        antes=antes,
+        despues=dict(d.periodo_inscripcion_materias),
+    )
+    return _config_academica(yo)
+
+
+@router.put("/configuracion/asistencia", summary="El mínimo de asistencia exigido")
+def cambiar_asistencia(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    """El porcentaje que la facultad exige para regularizar.
+
+    Cambiarlo **no recalcula nada hacia atrás**: la condición de cada alumno
+    se calcula al mirarla, así que subir el mínimo a mitad de cuatrimestre
+    deja a gente por debajo de un día para el otro. Es una decisión de la
+    facultad y el campus la obedece, pero conviene saberlo.
+    """
+    _exigir_que_administre_lo_academico(yo)
+
+    minimo = cuerpo.get("minimoPorDefecto")
+    if not isinstance(minimo, int) or not MINIMO_ASISTENCIA_MIN <= minimo <= MINIMO_ASISTENCIA_MAX:
+        raise HTTPException(400, "El mínimo de asistencia va de 0 a 100")
+
+    descuenta = cuerpo.get("justificadaDescuenta")
+    if not isinstance(descuenta, bool):
+        raise HTTPException(400, "Hay que decir si la falta justificada descuenta")
+
+    antes = dict(d.CONFIG_ASISTENCIA)
+    d.CONFIG_ASISTENCIA["minimoPorDefecto"] = minimo
+    d.CONFIG_ASISTENCIA["justificadaDescuenta"] = descuenta
+
+    _anotar(
+        yo,
+        "configuración de asistencia",
+        f"mínimo {minimo} %"
+        + (", la justificada descuenta" if descuenta else ", la justificada no descuenta"),
+        antes=antes,
+        despues=dict(d.CONFIG_ASISTENCIA),
+    )
+    return _config_academica(yo)
+
+
+# ===================== Los eventos de la facultad =====================
+# Lo que pasa en el campus y no es una clase, una entrega ni un examen: una
+# jornada, un acto, una suspensión de actividades. Estaban en el calendario
+# pero no había forma de cargarlos, así que la colección iba a quedar vacía
+# para siempre y uno de los cuatro tipos del calendario no se podía usar.
+TIPOS_EVENTO = ("evento", "examen")
+MAX_LUGAR = 120
+
+
+def _hora_de(valor, que: str) -> str | None:
+    """Una hora "HH:MM", o nada. Las dos son válidas: un acto puede durar
+    todo el día y no tener horario."""
+    texto = str(valor or "").strip()
+    if not texto:
+        return None
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", texto):
+        raise HTTPException(400, f"{que.capitalize()} tiene que ser una hora como 09:00")
+    return texto
+
+
+def _leer_evento(cuerpo: dict) -> dict:
+    tipo = str(cuerpo.get("tipo") or "evento").strip()
+    if tipo not in TIPOS_EVENTO:
+        raise HTTPException(400, "Ese tipo de evento no existe")
+
+    fecha = _fecha_de(cuerpo.get("fecha"), "la fecha del evento")
+    desde = _hora_de(cuerpo.get("desde"), "la hora de inicio")
+    hasta = _hora_de(cuerpo.get("hasta"), "la hora de fin")
+    if desde and hasta and hasta < desde:
+        raise HTTPException(400, "El evento no puede terminar antes de empezar")
+
+    # Un evento puede ser de un módulo —un parcial— o de toda la facultad.
+    curso_id = cuerpo.get("cursoId")
+    if curso_id is not None:
+        curso = d.buscar_curso(curso_id)
+        if not curso:
+            raise HTTPException(400, "Ese módulo no existe")
+        curso_id = curso["id"]
+
+    return {
+        "tipo": tipo,
+        "titulo": _texto(cuerpo.get("titulo"), "el título del evento", MAX_NOMBRE),
+        "fecha": d.iso(fecha),
+        "desde": desde,
+        "hasta": hasta,
+        "lugar": _texto(cuerpo.get("lugar"), "el lugar", MAX_LUGAR, obligatorio=False),
+        "cursoId": curso_id,
+    }
+
+
+def _evento_publico(evento: dict) -> dict:
+    curso = d.buscar_curso(evento.get("cursoId")) if evento.get("cursoId") else None
+    return {**evento, "curso": curso["nombre"] if curso else None}
+
+
+@router.get("/eventos", summary="Los eventos del calendario académico")
+def listar_eventos(yo: dict = UsuarioActual):
+    """Los ve quien supervisa. El resto del campus los ve en el Calendario,
+    que es donde sirven."""
+    _exigir_supervisor(yo)
+    eventos = sorted(d.eventos, key=lambda e: e["fecha"], reverse=True)
+    return {
+        "eventos": [_evento_publico(e) for e in eventos],
+        "tipos": list(TIPOS_EVENTO),
+        "puedeEditar": es_supervisor(yo),
+    }
+
+
+@router.post("/eventos", status_code=201, summary="Agregar un evento")
+def crear_evento(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    _exigir_que_administre_lo_academico(yo)
+    evento = {"id": d.nuevo_id_evento(), **_leer_evento(cuerpo)}
+    d.eventos.append(evento)
+
+    _anotar(
+        yo,
+        "evento agregado",
+        f"{evento['titulo']} · {evento['fecha'][:10]}",
+        elemento_id=evento["id"],
+        despues={k: evento[k] for k in ("titulo", "fecha", "tipo")},
+    )
+    return _evento_publico(evento)
+
+
+@router.put("/eventos/{id_evento}", summary="Modificar un evento")
+def editar_evento(id_evento: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    _exigir_que_administre_lo_academico(yo)
+    evento = d.buscar_en(d.eventos, id_evento)
+    if not evento:
+        raise HTTPException(404, "Ese evento no existe")
+
+    antes = {k: evento.get(k) for k in ("titulo", "fecha", "tipo", "lugar")}
+    evento.update(_leer_evento({**evento, **cuerpo}))
+
+    _anotar(
+        yo,
+        "evento modificado",
+        f"{evento['titulo']} · {evento['fecha'][:10]}",
+        elemento_id=evento["id"],
+        antes=antes,
+        despues={k: evento.get(k) for k in ("titulo", "fecha", "tipo", "lugar")},
+    )
+    return _evento_publico(evento)
+
+
+@router.delete("/eventos/{id_evento}", summary="Quitar un evento")
+def borrar_evento(id_evento: int, yo: dict = UsuarioActual):
+    """Se borra de verdad: un evento no deja historial del que colgarse, al
+    revés que una materia o una comisión."""
+    _exigir_que_administre_lo_academico(yo)
+    evento = d.buscar_en(d.eventos, id_evento)
+    if not evento:
+        raise HTTPException(404, "Ese evento no existe")
+
+    d.eventos.remove(evento)
+    _anotar(
+        yo,
+        "evento quitado",
+        f"{evento['titulo']} · {evento['fecha'][:10]}",
+        elemento_id=id_evento,
+        antes={k: evento.get(k) for k in ("titulo", "fecha", "tipo")},
+    )
+    return {"eliminado": id_evento}
+
+
+@router.get("/materias", summary="Todas las materias del plan de estudios")
+def listar_materias(
+    yo: dict = UsuarioActual,
+    q: str | None = None,
+    carreraId: int | None = None,
+    planId: int | None = None,
+    anio: int | None = None,
+    estado: str | None = None,
+    orden: str | None = None,
+):
+    """El listado del panel.
+
+    Lo lee cualquiera que haya iniciado sesión: un estudiante necesita ver el
+    plan y sus correlatividades para saber qué puede cursar. Crear y editar,
+    en cambio, es solo del administrador.
+    """
+    buscado = _sin_tildes(q)
+    salida = []
+    for m in d.materias_plan:
+        if carreraId and m.get("carreraId") != carreraId:
+            continue
+        if planId and m.get("planId") != planId:
+            continue
+        if anio and m.get("anio") != anio:
+            continue
+        if estado == "activas" and not m.get("activa", True):
+            continue
+        if estado == "inactivas" and m.get("activa", True):
+            continue
+        if buscado and buscado not in _sin_tildes(
+            f"{m['nombre']} {m.get('codigo') or ''}"
+        ):
+            continue
+        salida.append(_materia_completa(m))
+
+    claves = {
+        "nombre": lambda m: m["nombre"].lower(),
+        "codigo": lambda m: (m["codigo"] or "").lower(),
+        "carrera": lambda m: ((m["carrera"] or ""), m["anio"], m["nombre"].lower()),
+    }
+    salida.sort(key=claves.get(orden, lambda m: (m["anio"], m["cuatrimestre"], m["nombre"].lower())))
+
+    return {
+        "materias": salida,
+        "modalidades": d.MODALIDADES_MATERIA,
+        "condiciones": d.CONDICIONES_CORRELATIVA,
+        "modos": d.MODOS_CORRELATIVA,
+        "puedeAdministrar": es_administrador(yo),
+    }
+
+
+@router.post("/materias", status_code=201, summary="Crear una materia")
+def crear_materia(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    _exigir_administrador(yo)
+    datos = _leer_materia(cuerpo)
+
+    materia = {"id": d.nuevo_id_materia(), **datos, "cursoId": None}
+    d.materias_plan.append(materia)
+
+    _anotar(
+        yo,
+        "materia creada",
+        f"{materia['codigo']} · {materia['nombre']}",
+        elemento_id=materia["id"],
+        despues={"nombre": materia["nombre"], "anio": materia["anio"]},
+        carrera_id=materia["carreraId"],
+        materia_id=materia["id"],
+    )
+    return _materia_completa(materia)
+
+
+@router.patch("/materias/{id_materia}", summary="Editar una materia")
+def editar_materia(id_materia: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+    _exigir_administrador(yo)
+    materia = d.buscar_materia(id_materia)
+    if not materia:
+        raise HTTPException(404, "Esa materia no existe")
+
+    antes = {
+        "nombre": materia["nombre"],
+        "codigo": materia.get("codigo"),
+        "anio": materia.get("anio"),
+        "activa": materia.get("activa", True),
+        "correlativas": materia.get("correlativas"),
+    }
+    datos = _leer_materia({**materia, **cuerpo}, materia_id=id_materia)
+    materia.update(datos)
+
+    _anotar(
+        yo,
+        "materia editada",
+        f"{materia['codigo']} · {materia['nombre']}",
+        elemento_id=materia["id"],
+        antes=antes,
+        despues={
+            "nombre": materia["nombre"],
+            "codigo": materia.get("codigo"),
+            "anio": materia.get("anio"),
+            "activa": materia.get("activa", True),
+            "correlativas": materia.get("correlativas"),
+        },
+        carrera_id=materia.get("carreraId"),
+        materia_id=materia["id"],
+    )
+    return _materia_completa(materia)
+
+
+@router.delete("/materias/{id_materia}", summary="Dar de baja o eliminar una materia")
+def borrar_materia(id_materia: int, yo: dict = UsuarioActual):
+    """Si la materia tiene actividad académica **no se elimina**: se da de baja.
+
+    Borrarla dejaría historiales apuntando a una materia que no existe, actas
+    sin materia y correlatividades rotas. Una materia dada de baja deja de
+    ofrecerse pero conserva todo lo que pasó.
+    """
+    _exigir_administrador(yo)
+    materia = d.buscar_materia(id_materia)
+    if not materia:
+        raise HTTPException(404, "Esa materia no existe")
+
+    actividad = _actividad_de_materia(materia)
+    tiene_historia = any(
+        actividad[k] for k in ("inscriptos", "historial", "mesas", "dictados")
+    ) or actividad["esCorrelativaDe"] or actividad["tieneModulo"]
+
+    if tiene_historia:
+        materia["activa"] = False
+        _anotar(
+            yo,
+            "materia dada de baja",
+            f"{materia['codigo']} · {materia['nombre']}",
+            elemento_id=materia["id"],
+            antes={"activa": True},
+            despues={"activa": False},
+            materia_id=materia["id"],
+        )
+        return {"materia": _materia_completa(materia), "eliminada": False}
+
+    d.materias_plan.remove(materia)
+    _anotar(
+        yo,
+        "materia eliminada",
+        f"{materia['codigo']} · {materia['nombre']}",
+        elemento_id=materia["id"],
+        antes={"nombre": materia["nombre"]},
+    )
+    return {"eliminada": True, "id": id_materia}

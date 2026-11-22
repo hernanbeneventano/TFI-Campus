@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import datos as d
 from ..servicios import academico as ac
+from ..servicios import modulos as mod
 from ..servicios import auditoria
 from ..servicios.autenticacion import IdUsuarioActual
 
@@ -24,43 +25,10 @@ router = APIRouter(prefix="/api/inscripciones", tags=["Inscripciones"])
 
 # Los mismos tonos de la familia que ya usan los módulos: oscuros, con
 # contraste de sobra contra el texto blanco de la banda.
-COLORES = ["#2E4057", "#8A1C3B", "#3F5E7A", "#6B2E4A", "#44506B", "#A4193D"]
-
-ORDINAL = {1: "1.er", 2: "2.º"}
-
-
-def _periodo_de(materia: dict) -> str:
-    """"2026 – 1.er cuatrimestre", con el mismo formato que los módulos."""
-    anio = d.ahora().year
-    return f"{anio} – {ORDINAL.get(materia['cuatrimestre'], '1.er')} cuatrimestre"
-
-
-def _modulo_para(materia: dict) -> dict:
-    """El módulo de la materia. Si no existe, se crea.
-
-    Queda marcado con `creadoPorInscripcion` para poder darlo de baja si el
-    alumno se arrepiente: los módulos que ya venían en los datos no se tocan.
-    """
-    existente = d.buscar_curso(materia.get("cursoId"))
-    if existente:
-        return existente
-
-    docentes = d.docentes_de_materia(materia["id"])
-    docente = d.buscar_persona(docentes[0]) if docentes else None
-    nuevo = {
-        "id": max((c["id"] for c in d.cursos), default=0) + 1,
-        "codigo": materia["codigo"],
-        "nombre": materia["nombre"],
-        "docente": docente["nombre"] if docente else "Sin asignar",
-        "docenteId": docentes[0] if docentes else None,
-        "periodo": _periodo_de(materia),
-        "color": COLORES[materia["id"] % len(COLORES)],
-        "favorito": False,
-        "creadoPorInscripcion": True,
-    }
-    d.cursos.append(nuevo)
-    materia["cursoId"] = nuevo["id"]
-    return nuevo
+# Crear el módulo de una materia es cosa de `servicios/modulos.py`: lo
+# necesitan también los módulos del docente, y dos copias de la misma función
+# terminan dando dos módulos distintos para la misma materia.
+_periodo_de = mod.periodo_de
 
 
 def _materia_con_estado(persona_id: int, materia: dict) -> dict:
@@ -91,6 +59,17 @@ def listar_materias(yo: int = IdUsuarioActual):
         if m.get("carreraId") == carrera.get("carreraId")
         and m.get("planId") == carrera.get("planId")
     ]
+    # Una materia dada de baja se sigue mostrando **si al alumno le toca**:
+    # la cursó, la aprobó o está anotado. Si no tuvo nada que ver con ella,
+    # no tiene por qué verla: ya no se ofrece y solo haría ruido en el plan.
+    del_plan = [
+        m
+        for m in del_plan
+        if m.get("activa", True)
+        or d.condicion_en(yo, m["id"])
+        or ac.esta_inscripto_en_materia(yo, m["id"])
+    ]
+
     del_plan.sort(key=lambda m: (m["anio"], m["cuatrimestre"], m["codigo"]))
 
     materias = [_materia_con_estado(yo, m) for m in del_plan]
@@ -128,6 +107,8 @@ def inscribirse(id_materia: int, yo: int = IdUsuarioActual):
     materia = d.buscar_materia(id_materia)
     if not materia:
         raise HTTPException(404, "La materia no existe")
+    if not materia.get("activa", True):
+        raise HTTPException(403, "Esa materia está dada de baja: no se ofrece este período")
     if (
         materia.get("carreraId") != carrera.get("carreraId")
         or materia.get("planId") != carrera.get("planId")
@@ -170,7 +151,7 @@ def inscribirse(id_materia: int, yo: int = IdUsuarioActual):
     )
 
     # La materia entra a Módulos en el acto
-    modulo = _modulo_para(materia)
+    modulo = mod.modulo_para(materia, por_inscripcion=True)
 
     # El historial no se toca: queda "Inscripto", no "En curso". Pasar a
     # cursada es un acto de la institución cuando arranca el cuatrimestre,
@@ -229,8 +210,18 @@ def dar_de_baja(id_materia: int, yo: int = IdUsuarioActual):
 
     # Si el módulo lo creó esta inscripción, se va con ella. Los que ya venían
     # en los datos no se tocan.
+    #
+    # Y solo si **no queda nadie más**: el módulo lo pudo haber creado este
+    # alumno, pero si después se anotaron otros ya no es suyo. Borrarlo al
+    # darse de baja lo haría desaparecer de la pantalla de todos los demás.
+    # Lo mismo si la cátedra tiene docente a cargo: ese módulo es de ella.
     curso = d.buscar_curso(materia.get("cursoId"))
-    if curso and curso.get("creadoPorInscripcion"):
+    if (
+        curso
+        and curso.get("creadoPorInscripcion")
+        and not curso.get("docenteId")
+        and ac.inscriptos_en_materia(id_materia) == 0
+    ):
         d.cursos.remove(curso)
         materia["cursoId"] = None
 

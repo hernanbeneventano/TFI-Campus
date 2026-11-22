@@ -1,28 +1,57 @@
-// Recursos que el alumno marcó como completados, y las cuentas de avance.
-// Por ahora se guardan en el navegador: cuando haya base de datos y login,
-// esto pasa a ser una llamada al backend con el progreso de cada usuario.
+// Qué material marcó el alumno como visto, y las cuentas de avance.
+//
+// **Vive en el servidor**, no en el navegador. Antes era `localStorage`, y
+// eso tenía dos problemas: el alumno perdía su avance al cambiar de equipo o
+// de navegador, y el docente —que mira esto para saber cómo viene el curso—
+// veía siempre cero, porque el dato nunca salía de la máquina del alumno.
+//
+// Lo que queda acá son las cuentas, que son puras: no hablan con nadie.
 
-const CLAVE = 'campustfi:completados';
+import { obtenerMiProgreso, importarMiProgreso } from './api.js';
 
-export function leerCompletados() {
-  try {
-    const guardado = JSON.parse(localStorage.getItem(CLAVE));
-    return Array.isArray(guardado) ? guardado : [];
-  } catch {
-    return [];
-  }
+const CLAVE_VIEJA = 'campustfi:completados';
+
+/** Lo marcado, de todos los módulos. */
+export async function leerCompletados() {
+  const { completados } = await obtenerMiProgreso();
+  return completados ?? [];
 }
 
-export function guardarCompletados(ids) {
+/**
+ * Sube una sola vez lo que había quedado guardado en este navegador.
+ *
+ * Es para no hacerle perder al alumno lo que ya tenía marcado cuando esto
+ * vivía en `localStorage`. Se corre al entrar, se borra la clave vieja y no
+ * vuelve a pasar: si falla, se deja la clave para reintentarlo la próxima.
+ */
+export async function migrarProgresoDelNavegador() {
+  let viejos;
   try {
-    localStorage.setItem(CLAVE, JSON.stringify(ids));
+    viejos = JSON.parse(localStorage.getItem(CLAVE_VIEJA));
   } catch {
-    // Si el navegador no deja guardar (modo privado), el progreso vive
-    // solo mientras la pantalla esté abierta.
+    viejos = null;
   }
+  if (!Array.isArray(viejos) || viejos.length === 0) {
+    try {
+      localStorage.removeItem(CLAVE_VIEJA);
+    } catch {
+      /* en ventana privada no se puede; tampoco hay nada que migrar */
+    }
+    return null;
+  }
+
+  const { completados } = await importarMiProgreso(viejos);
+  try {
+    localStorage.removeItem(CLAVE_VIEJA);
+  } catch {
+    /* si no se puede borrar, la próxima vez se vuelve a subir lo mismo y el
+       servidor lo ignora: no duplica */
+  }
+  return completados;
 }
 
 // Las tareas no se marcan a mano: se dan por completadas cuando se entregan.
+// La misma regla la aplica el servidor en `datos.es_marcable`.
 export function esMarcable(item) {
   return item.tipo !== 'tarea';
 }

@@ -29,6 +29,17 @@ const TIPOS = [
 
 const FORMATOS = ['PDF', 'Video', 'Documento', 'Presentación', 'Planilla', 'Imagen', 'Enlace'];
 
+// Lo que el servidor acepta alojar: documentos de lectura e imágenes. Nada
+// que el navegador pueda ejecutar.
+const EXTENSIONES = '.pdf,.docx,.epub,.png,.jpg,.jpeg';
+const MAX_MB = 15;
+
+function pesoLegible(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 // El <input type="datetime-local"> quiere "AAAA-MM-DDTHH:MM" en hora local
 function paraElCampo(iso) {
   if (!iso) return '';
@@ -57,6 +68,21 @@ export default function FormularioElemento({ elemento, onGuardar, onCancelar, tr
   );
   const [formato, setFormato] = useState(elemento?.formato ?? 'PDF');
   const [tamano, setTamano] = useState(elemento?.tamano ?? '');
+  // El archivo elegido, que se sube después de guardar el elemento
+  const [archivo, setArchivo] = useState(null);
+  const [errorArchivo, setErrorArchivo] = useState(null);
+
+  function elegirArchivo(e) {
+    const elegido = e.target.files?.[0];
+    setErrorArchivo(null);
+    if (!elegido) return setArchivo(null);
+    if (elegido.size > MAX_MB * 1024 * 1024) {
+      setErrorArchivo(`El archivo supera los ${MAX_MB} MB.`);
+      e.target.value = '';
+      return setArchivo(null);
+    }
+    setArchivo(elegido);
+  }
   const [fechaLimite, setFechaLimite] = useState(
     elemento?.fechaLimite ? paraElCampo(elemento.fechaLimite) : porDefecto()
   );
@@ -118,7 +144,7 @@ export default function FormularioElemento({ elemento, onGuardar, onCancelar, tr
         }));
       }
     }
-    onGuardar(datos);
+    onGuardar(datos, archivo);
   }
 
   const esCuestionario =
@@ -189,30 +215,56 @@ export default function FormularioElemento({ elemento, onGuardar, onCancelar, tr
       )}
 
       {tipo === 'archivo' && (
-        <div className="editor-fila">
-          <label>
-            <span>Formato</span>
-            <select value={formato} onChange={(e) => setFormato(e.target.value)}>
-              {FORMATOS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
+        <>
+          <label className="campo-archivo">
             <span>
-              Tamaño o duración <small>opcional</small>
+              El archivo {elemento?.archivo && <small>ya tiene uno subido</small>}
             </span>
-            <input
-              type="text"
-              value={tamano}
-              maxLength={30}
-              placeholder="420 KB · 45 min"
-              onChange={(e) => setTamano(e.target.value)}
-            />
+            <input type="file" accept={EXTENSIONES} onChange={elegirArchivo} />
+            {archivo ? (
+              <small className="texto-suave">
+                {archivo.name} · {pesoLegible(archivo.size)}
+              </small>
+            ) : elemento?.archivo ? (
+              <small className="texto-suave">
+                Ahora: {elemento.archivo.nombre} · elegí otro para reemplazarlo
+              </small>
+            ) : (
+              <small className="texto-suave">
+                PDF, Word, EPUB o imagen, hasta {MAX_MB} MB. El PDF y el Word se ven desde
+                acá sin bajarlos.
+              </small>
+            )}
+            {errorArchivo && <small className="aviso-error">{errorArchivo}</small>}
           </label>
-        </div>
+
+          {/* Si no se sube nada, el elemento queda como una referencia: sirve
+              para un video o un enlace que vive en otro lado. */}
+          <div className="editor-fila">
+            <label>
+              <span>Formato</span>
+              <select value={formato} onChange={(e) => setFormato(e.target.value)}>
+                {FORMATOS.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>
+                Tamaño o duración <small>opcional</small>
+              </span>
+              <input
+                type="text"
+                value={tamano}
+                maxLength={30}
+                placeholder="420 KB · 45 min"
+                onChange={(e) => setTamano(e.target.value)}
+              />
+            </label>
+          </div>
+        </>
       )}
 
       {tipo === 'tarea' && (

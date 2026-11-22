@@ -332,6 +332,33 @@ export const IconoSubir = (p) => (
   </svg>
 );
 
+// Los del visor de documentos: imprimir y pantalla completa.
+export const IconoImprimir = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M7 9V3h10v6" />
+    <path d="M7 19H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+    <path d="M7 15h10v6H7z" />
+  </svg>
+);
+
+export const IconoPantallaCompleta = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M9 4H4v5" />
+    <path d="M15 4h5v5" />
+    <path d="M15 20h5v-5" />
+    <path d="M9 20H4v-5" />
+  </svg>
+);
+
+export const IconoSalirPantallaCompleta = (p) => (
+  <svg {...base} width={18} height={18} {...p}>
+    <path d="M4 9h5V4" />
+    <path d="M20 9h-5V4" />
+    <path d="M20 15h-5v5" />
+    <path d="M4 15h5v5" />
+  </svg>
+);
+
 export const IconoEnlaceExterno = (p) => (
   <svg {...base} width={18} height={18} {...p}>
     <path d="M14 4h6v6" />

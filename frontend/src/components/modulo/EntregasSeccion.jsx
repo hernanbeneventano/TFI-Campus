@@ -19,6 +19,14 @@ import {
   IconoNotas,
 } from '../Iconos.jsx';
 
+/** "320 KB", al lado del nombre del archivo. */
+function pesoDe(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function Alumno({ alumno, onCorregir }) {
   const [abierto, setAbierto] = useState(alumno.sinCorregir > 0);
 
@@ -64,8 +72,26 @@ function Alumno({ alumno, onCorregir }) {
                 <strong>{t.titulo}</strong>
                 {t.entregado ? (
                   <small className={t.atrasada ? 'atrasada' : ''}>
-                    <IconoArchivo width={13} height={13} />
-                    {t.archivo ?? 'entrega sin archivo'} · {hace(t.fecha)}
+                    {t.archivo?.url ? (
+                      <a
+                        className="entrega-archivo"
+                        href={t.archivo.url}
+                        download={t.archivo.nombre}
+                        title={`Bajar ${t.archivo.nombre}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <IconoArchivo width={13} height={13} />
+                        {t.archivo.nombre}
+                        {t.archivo.tamano ? ` · ${pesoDe(t.archivo.tamano)}` : ''}
+                      </a>
+                    ) : (
+                      <>
+                        <IconoArchivo width={13} height={13} />
+                        {t.archivo?.nombre ?? 'entrega sin archivo'}
+                      </>
+                    )}
+                    {' · '}
+                    {hace(t.fecha)}
                     {t.atrasada && ' · fuera de término'}
                   </small>
                 ) : (

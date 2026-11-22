@@ -8,6 +8,9 @@ import {
   borrarSeccion,
   moverSeccion,
   crearElemento,
+  subirArchivoDeElemento,
+  agregarDiaDeClase,
+  quitarDiaDeClase,
   editarElemento,
   borrarElemento,
   moverElemento,
@@ -21,10 +24,16 @@ import {
   guardarNota,
   fijarCierre,
   obtenerMisNotas,
+  marcarVisto,
+  desmarcarVisto,
 } from '../services/api.js';
 import { avisar } from '../services/avisos.js';
 import useArrastre from '../hooks/useArrastre.js';
-import { leerCompletados, guardarCompletados, calcularAvance } from '../services/progreso.js';
+import {
+  leerCompletados,
+  migrarProgresoDelNavegador,
+  calcularAvance,
+} from '../services/progreso.js';
 import { hace } from '../services/fechas.js';
 import CarpetaModulo from '../components/CarpetaModulo.jsx';
 import PestanasModulo from '../components/PestanasModulo.jsx';
@@ -54,6 +63,7 @@ import {
   IconoCheckCirculo,
   IconoPresente,
 } from '../components/Iconos.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 function formatearFecha(iso) {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
@@ -164,7 +174,7 @@ function Participantes({ participantes, yo }) {
             className={`docente-avatar avatar-estado ${p.estado}`}
             title={textoEstado[p.estado]}
           >
-            {p.rol === 'Estudiante' ? <IconoEstudiante /> : <IconoUsuario />}
+            <Avatar persona={p} tamano={26} />
           </span>
           <div>
             <strong>{p.nombre}</strong>
@@ -211,8 +221,10 @@ export default function Modulo() {
   const [abiertas, setAbiertas] = useState([]);
   const [viendo, setViendo] = useState(null);
 
-  // Recursos marcados como completados (se guardan en el navegador)
-  const [completados, setCompletados] = useState(leerCompletados);
+  // El material que ya vio, según el servidor. Arranca vacío y se pide al
+  // abrir: hasta que llegue, las barras muestran cero, que es preferible a
+  // mostrar un avance que después cambia.
+  const [completados, setCompletados] = useState([]);
 
   // --- Administración (solo el docente a cargo) ---
   // `editando` es el modo editor: se enciende con el botón y es lo único que
@@ -231,6 +243,11 @@ export default function Modulo() {
   // El detalle de entregas de una sección, y la corrección abierta desde ahí
   const [entregas, setEntregas] = useState(null);
   const [corrigiendo, setCorrigiendo] = useState(null);
+  // Sube de a uno con cada nota guardada. El visor de un trabajo lo mira
+  // para volver a pedir sus entregas: la nota recién puesta es justo lo que
+  // esa lista muestra, y sin esto queda diciendo «Corregir» al lado de algo
+  // que ya tiene nota.
+  const [versionNotas, setVersionNotas] = useState(0);
 
   const puedeGestionar = Boolean(datos?.puedeGestionar);
 
@@ -238,16 +255,40 @@ export default function Modulo() {
     obtenerSeguimiento(id).then(setSeguimiento).catch(() => setSeguimiento(null));
   }, [id]);
 
+  // Lo que el alumno ya marcó. Se pide una vez al entrar al módulo, no por
+  // carpeta: son los identificadores de todo el campus y pesan nada.
+  //
+  // De paso sube lo que hubiera quedado en este navegador de cuando el
+  // progreso vivía ahí. Es por única vez: después la clave se borra.
   useEffect(() => {
+    let vigente = true;
+    migrarProgresoDelNavegador()
+      .then((tras) => (tras ? tras : leerCompletados()))
+      .catch(() => leerCompletados())
+      .then((lista) => vigente && setCompletados(lista ?? []))
+      .catch(() => vigente && setCompletados([]));
+    return () => {
+      vigente = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    // Hasta que no llega el módulo no se sabe quién es quien mira, y
+    // `puedeGestionar` arranca en false: sin esta guarda, el docente —y
+    // quien administra— pedía primero las notas del alumno y se llevaba un
+    // 403 por un módulo que no cursa.
+    if (!datos) return;
+
     if (!puedeGestionar) {
       setSeguimiento(null);
       setNotas(null);
       obtenerMisNotas(id).then(setMisNotas).catch(() => setMisNotas(null));
       return;
     }
+    setMisNotas(null);
     traerSeguimiento();
     obtenerNotas(id).then(setNotas).catch(() => setNotas(null));
-  }, [puedeGestionar, id, traerSeguimiento]);
+  }, [datos, puedeGestionar, id, traerSeguimiento]);
 
   // Al salir del módulo se apaga el modo editor: volver y encontrarlo
   // encendido sin haberlo pedido confunde.
@@ -261,6 +302,28 @@ export default function Modulo() {
    * devuelve. Todas las rutas de contenido mandan las carpetas enteras, así
    * que no hace falta volver a pedir el módulo completo.
    */
+  /**
+   * Guarda el elemento y, si hay archivo, lo sube después.
+   *
+   * Son dos pasos porque el archivo necesita un elemento al que colgarse: el
+   * servidor comprueba los permisos una vez al crearlo y la subida ya sabe a
+   * qué pertenece. Es el mismo camino que usa la Biblioteca.
+   */
+  async function guardarElemento(seccion, elemento, valores, archivo) {
+    const respuesta = elemento
+      ? await editarElemento(id, seccion.id, elemento.id, valores)
+      : await crearElemento(id, seccion.id, valores);
+
+    if (!archivo) return respuesta;
+
+    // Al crear, el elemento nuevo es el último de su sección
+    const laSeccion = respuesta.carpetas?.find((c) => c.id === seccion.id);
+    const destino = elemento?.id ?? laSeccion?.items?.[laSeccion.items.length - 1]?.id;
+    if (!destino) return respuesta;
+
+    return subirArchivoDeElemento(id, seccion.id, destino, archivo);
+  }
+
   async function administrar(accion, exito) {
     setTrabajando(true);
     try {
@@ -315,6 +378,7 @@ export default function Modulo() {
         setEntregas(await obtenerEntregasDeSeccion(id, entregas.seccion.id));
       }
       traerSeguimiento();
+      setVersionNotas((v) => v + 1);
       setCorrigiendo(null);
       avisar('Nota guardada.');
     } catch (e) {
@@ -385,14 +449,24 @@ export default function Modulo() {
     [datos, completados]
   );
 
-  function alternarCompletado(idItem) {
-    setCompletados((lista) => {
-      const siguiente = lista.includes(idItem)
-        ? lista.filter((x) => x !== idItem)
-        : [...lista, idItem];
-      guardarCompletados(siguiente);
-      return siguiente;
-    });
+  // Se marca en la pantalla antes de que conteste el servidor: tildar algo
+  // tiene que sentirse inmediato. Si el servidor rechaza, se vuelve atrás y
+  // se avisa; dejarlo tildado sería mentir.
+  async function alternarCompletado(idItem) {
+    const estaba = completados.includes(idItem);
+    const antes = completados;
+    setCompletados((lista) =>
+      estaba ? lista.filter((x) => x !== idItem) : [...lista, idItem]
+    );
+    try {
+      const r = estaba
+        ? await desmarcarVisto(id, idItem)
+        : await marcarVisto(id, idItem);
+      setCompletados(r.completados);
+    } catch (e) {
+      setCompletados(antes);
+      avisar(e.message, 'error');
+    }
   }
 
   function alternarCarpeta(idCarpeta) {
@@ -438,6 +512,22 @@ export default function Modulo() {
           curso={curso}
           carpeta={viendo.carpeta}
           item={viendo.item}
+          gestionando={puedeGestionar}
+          versionNotas={versionNotas}
+          onCorregir={(alumno, trabajo) =>
+            setCorrigiendo({
+              alumno,
+              trabajo: { id: trabajo.id, titulo: trabajo.titulo },
+              nota:
+                alumno.nota === null && !alumno.estado
+                  ? null
+                  : {
+                      nota: alumno.nota,
+                      estado: alumno.estado,
+                      comentario: alumno.devolucion,
+                    },
+            })
+          }
           onCerrar={() => setViendo(null)}
         />
       )}
@@ -519,17 +609,15 @@ export default function Modulo() {
                   elemento={formulario.elemento}
                   trabajando={trabajando}
                   onCancelar={() => setFormulario(null)}
-                  onGuardar={(valores) =>
+                  onGuardar={(valores, archivo) =>
                     administrar(
                       () =>
-                        formulario.elemento
-                          ? editarElemento(
-                              id,
-                              formulario.seccion.id,
-                              formulario.elemento.id,
-                              valores
-                            )
-                          : crearElemento(id, formulario.seccion.id, valores),
+                        guardarElemento(
+                          formulario.seccion,
+                          formulario.elemento,
+                          valores,
+                          archivo
+                        ),
                       formulario.elemento ? 'Elemento actualizado.' : 'Elemento agregado.'
                     )
                   }
@@ -537,7 +625,38 @@ export default function Modulo() {
               )}
 
               {carpetasVisibles.length === 0 ? (
-                <p className="texto-suave">No hay nada que coincida con la búsqueda.</p>
+                <div className="modulo-vacio">
+                  {buscando ? (
+                    <p className="texto-suave">No hay nada que coincida con la búsqueda.</p>
+                  ) : puedeGestionar ? (
+                    <>
+                      <p className="texto-suave">
+                        Este módulo todavía está vacío. Armá la primera sección y después
+                        agregale adentro las páginas, los archivos y los trabajos.
+                      </p>
+                      {/* El botón también va acá: antes vivía solo al final de
+                          la lista de secciones, así que en un módulo sin
+                          ninguna no había forma de crear la primera. */}
+                      {!formulario && (
+                        <button
+                          type="button"
+                          className="boton-principal"
+                          onClick={() => {
+                            setEditando(true);
+                            setFormulario({ que: 'seccion' });
+                          }}
+                        >
+                          <IconoMas width={16} height={16} />
+                          Agregar la primera sección
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="texto-suave">
+                      Todavía no hay material cargado en este módulo.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <div className={sueltas.arrastrando ? 'carpetas moviendo' : 'carpetas'}>
                   {carpetasVisibles.map((carpeta, i) => (
@@ -736,6 +855,16 @@ export default function Modulo() {
           proximas={proximas}
           avance={avance}
           seguimiento={puedeGestionar ? seguimiento : null}
+          puedeGestionar={puedeGestionar}
+          onAgregarClase={(datos) =>
+            administrar(() => agregarDiaDeClase(id, datos), 'Día de clase agregado.')
+          }
+          onQuitarClase={(clase) =>
+            administrar(
+              () => quitarDiaDeClase(id, clase.diaNumero, clase.desde),
+              'Día de clase quitado.'
+            )
+          }
         />
       </div>
 

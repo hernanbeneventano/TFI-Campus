@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   leerMenuCerrado,
   guardarMenuCerrado,
@@ -11,6 +11,8 @@ import {
   guardarFinalesDesplegados,
 } from '../services/preferencias.js';
 import { obtenerCursos } from '../services/api.js';
+import { salir } from '../services/sesion.js';
+import { avisar } from '../services/avisos.js';
 import usePresencia from '../hooks/usePresencia.js';
 import usePreferencia from '../hooks/usePreferencia.js';
 import {
@@ -20,8 +22,6 @@ import {
   IconoCalendario,
   IconoForo,
   IconoMensajes,
-  IconoUsuario,
-  IconoEstudiante,
   IconoPanel,
   IconoAjustes,
   IconoSalir,
@@ -34,6 +34,7 @@ import {
   IconoInscribirse,
   IconoPresente,
 } from './Iconos.jsx';
+import Avatar from './Avatar.jsx';
 
 const textoEstado = {
   conectado: 'Conectado',
@@ -138,6 +139,21 @@ export default function MenuLateral({ usuario, contadores }) {
   );
   const submenuFinales = esDocente ? SUBMENU_FINALES_DOCENTE : SUBMENU_FINALES;
   const estado = usePresencia();
+  const navegar = useNavigate();
+  const [saliendo, setSaliendo] = useState(false);
+
+  async function cerrarSesion() {
+    setSaliendo(true);
+    try {
+      await salir();
+      // Al cerrar la sesión de Firebase, `alCambiarSesion` de App.jsx se
+      // entera y vuelve a preguntar quién es: el menú se rearma solo.
+      navegar('/login', { replace: true });
+    } catch (e) {
+      avisar(e.message, 'error');
+      setSaliendo(false);
+    }
+  }
 
   // Los módulos se listan colgando de su opción, para saltar de uno a otro
   // sin pasar por la grilla.
@@ -221,8 +237,6 @@ export default function MenuLateral({ usuario, contadores }) {
     setCerrado(enModulo ? true : leerMenuCerrado());
   }, [enModulo]);
 
-  // Los alumnos llevan la silueta con birrete; los docentes, la genérica
-  const Avatar = usuario?.rol === 'Estudiante' ? IconoEstudiante : IconoUsuario;
   const nombreCompleto = usuario ? `${usuario.nombre} ${usuario.apellido}` : '…';
 
   function alternar() {
@@ -461,12 +475,11 @@ export default function MenuLateral({ usuario, contadores }) {
       </nav>
 
       {/* Al pasar el mouse (o al llegar con el teclado) el nombre y el rol se
-          desvanecen y en su lugar aparecen Ajustes y Cerrar sesión. Todavía
-          no hacen nada: faltan esas pantallas y el login. */}
+          desvanecen y en su lugar aparecen Ajustes y Cerrar sesión. */}
       <div className="menu-usuario-caja">
         <div className="menu-usuario" title={`${nombreCompleto} · ${textoEstado[estado]}`}>
           <span className={`menu-avatar avatar-estado ${estado}`}>
-            <Avatar />
+            <Avatar persona={usuario} tamano={22} />
           </span>
 
           <div className="menu-datos menu-etiqueta">
@@ -478,10 +491,11 @@ export default function MenuLateral({ usuario, contadores }) {
             <Link to="/ajustes" title="Ajustes" aria-label="Ajustes">
               <IconoAjustes />
             </Link>
-            {/* Todavía no hace nada: llega con el login */}
             <button
               type="button"
-              title="Cerrar sesión (disponible cuando esté el login)"
+              onClick={cerrarSesion}
+              disabled={saliendo}
+              title="Cerrar sesión"
               aria-label="Cerrar sesión"
             >
               <IconoSalir />
