@@ -103,6 +103,7 @@ MIGRADOS_EXACTOS: tuple[str, ...] = (
 MODULOS: tuple[str, ...] = (
     "salud",
     "mensajes",
+    "foro",
 )
 
 # Rutas sueltas de un módulo que no se migra entero: (módulo, camino de FastAPI)
