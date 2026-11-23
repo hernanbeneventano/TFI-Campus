@@ -23,9 +23,12 @@ comprobar la sesión, que es el orden en que lo hace FastAPI.
 
 from __future__ import annotations
 
+from .adaptadores import como_starlette
 from . import archivos, auditoria, calendario, finales, general, inscripciones, panel, tareas
 
-urlpatterns: list = [
+# `como_starlette`: cuando un camino coincide con dos rutas de métodos
+# distintos, se elige como FastAPI (ver `adaptadores.como_starlette`).
+urlpatterns: list = como_starlette([
     *calendario.urlpatterns,
     *panel.urlpatterns,
     *tareas.urlpatterns,
@@ -34,6 +37,6 @@ urlpatterns: list = [
     *finales.urlpatterns,
     *archivos.urlpatterns,
     *general.urlpatterns,
-]
+])
 
 handler404 = "campus_django.vistas.no_encontrada"

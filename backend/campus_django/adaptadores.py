@@ -229,3 +229,51 @@ def rutas(**vistas: Callable) -> Callable:
 
     atender.por_metodo = por_metodo
     return atender
+
+
+# ===================== Elegir la ruta como Starlette =====================
+def como_starlette(patrones: list) -> list:
+    """Las rutas, eligiendo entre ellas como lo hace Starlette.
+
+    Cuando un mismo camino coincide con dos rutas que aceptan métodos
+    distintos, los dos frameworks eligen distinto:
+
+    - **Starlette** busca primero una ruta que coincida en camino **y** en
+      método. Solo si no hay ninguna, contesta 405 con el `Allow` de la
+      primera que coincidió en camino.
+    - **Django** se queda con la primera que coincide en camino, y ahí
+      `rutas()` contesta 405 si el método no es de ella.
+
+    Pasa con las rutas de nombre fijo y las que toman un identificador:
+    `GET /api/mensajes/contactos` y `POST /api/mensajes/{id}`. A un
+    `POST /api/mensajes/contactos` FastAPI lo manda a la segunda («contactos»
+    no es un número: 400), y Django contestaba 405.
+
+    Esto envuelve cada ruta para que, si el método no es suyo, busque entre
+    **las que vienen después** una que coincida en camino y en método. Las de
+    antes no hace falta mirarlas: si alguna coincidiera en camino, Django ya
+    la habría elegido a ella.
+    """
+    from django.urls.resolvers import URLPattern
+
+    salida = []
+    for posicion, patron in enumerate(patrones):
+        vista = patron.callback
+        siguientes = patrones[posicion + 1 :]
+
+        def envuelta(request, *args, _vista=vista, _siguientes=siguientes, **kwargs):
+            metodo = request.method.upper()
+            if metodo not in getattr(_vista, "por_metodo", {}):
+                camino = request.path_info.lstrip("/")
+                for otra in _siguientes:
+                    if metodo not in getattr(otra.callback, "por_metodo", {}):
+                        continue
+                    encontrada = otra.resolve(camino)
+                    if encontrada:
+                        return otra.callback(request, *encontrada.args, **encontrada.kwargs)
+            return _vista(request, *args, **kwargs)
+
+        # Lo que miran las pruebas (los métodos y si lleva sesión)
+        envuelta.por_metodo = getattr(vista, "por_metodo", {})
+        salida.append(URLPattern(patron.pattern, envuelta, patron.default_args, patron.name))
+    return salida

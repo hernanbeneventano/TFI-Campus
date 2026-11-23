@@ -38,6 +38,7 @@ from app.servicios import auditoria, frenos, persistencia
 from app.servicios.autenticacion import UsuarioActual
 from campus_django import urls as urls_django
 from campus_django.adaptadores import (
+    como_starlette,
     con_sesion,
     consulta,
     cuerpo,
@@ -150,6 +151,16 @@ def fa_ip(yo: dict = UsuarioActual):
     return {"ip": auditoria.ip_de()}
 
 
+# Dos rutas con el mismo camino y métodos distintos, como `GET /contactos` y
+# `POST /{id}` en Mensajes: `POST /mezcla/fijo` lo atiende la segunda.
+def fa_mezcla_fijo(yo: dict = UsuarioActual):
+    return {"fijo": True}
+
+
+def fa_mezcla_por_id(id_x: int, yo: dict = UsuarioActual):
+    return {"id": id_x}
+
+
 for camino, funcion, metodos, extra in [
     ("/datos", fa_datos, ["GET"], {}),
     ("/lista", fa_lista, ["GET"], {}),
@@ -163,6 +174,8 @@ for camino, funcion, metodos, extra in [
     ("/cuerpo-opcional", fa_cuerpo_opcional, ["POST"], {}),
     ("/cuerpo-que-cambia", fa_cuerpo_que_cambia, ["POST"], {}),
     ("/ip", fa_ip, ["GET"], {}),
+    ("/mezcla/fijo", fa_mezcla_fijo, ["GET"], {}),
+    ("/mezcla/{id_x}", fa_mezcla_por_id, ["POST"], {}),
 ]:
     fastapi.add_api_route(SONDA + camino, funcion, methods=metodos, **extra)
 
@@ -234,6 +247,16 @@ def dj_ip(request, yo):
     return responder({"ip": auditoria.ip_de()})
 
 
+@con_sesion
+def dj_mezcla_fijo(request, yo):
+    return responder({"fijo": True})
+
+
+@con_sesion
+def dj_mezcla_por_id(request, yo, id_x):
+    return responder({"id": entero(id_x)})
+
+
 S = SONDA.lstrip("/")
 urls_django.urlpatterns += [
     path(f"{S}/datos", rutas(get=dj_datos)),
@@ -248,6 +271,10 @@ urls_django.urlpatterns += [
     path(f"{S}/cuerpo-opcional", rutas(post=dj_cuerpo_opcional)),
     path(f"{S}/cuerpo-que-cambia", rutas(post=dj_cuerpo_que_cambia)),
     path(f"{S}/ip", rutas(get=dj_ip)),
+    *como_starlette([
+        path(f"{S}/mezcla/fijo", rutas(get=dj_mezcla_fijo)),
+        path(f"{S}/mezcla/<str:id_x>", rutas(post=dj_mezcla_por_id)),
+    ]),
 ]
 clear_url_caches()
 
@@ -376,6 +403,15 @@ def correr() -> None:
     igual("y la segunda, igual que la primera", "POST", f"{SONDA}/cuerpo-que-cambia")
     igual("opcional con JSON roto", "POST", f"{SONDA}/cuerpo-opcional",
           content=b"[[[", headers={"content-type": "application/json"})
+
+    # Dos rutas con el mismo camino y distinto método. Starlette prefiere la
+    # que coincide en camino **y** método; Django, la primera que coincide en
+    # camino. Lo iguala `como_starlette`.
+    igual("mismo camino: el GET de la ruta fija", "GET", f"{SONDA}/mezcla/fijo")
+    igual("mismo camino: el POST cae en la del id (400)", "POST", f"{SONDA}/mezcla/fijo")
+    igual("mismo camino: el POST con un id", "POST", f"{SONDA}/mezcla/7")
+    igual("ninguna lo acepta: 405 con el Allow de la primera", "DELETE", f"{SONDA}/mezcla/fijo")
+    igual("el GET con un id: 405", "GET", f"{SONDA}/mezcla/7")
 
     # ------------------------------------------------------------------
     grupo("La sesión")
