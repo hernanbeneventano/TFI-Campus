@@ -270,6 +270,57 @@ def con_parametros() -> list[Caso]:
             Paso("DELETE", "/api/auditoria/1", SECRETARIA),
             Paso("HEAD", "/api/auditoria/exportar", SECRETARIA),
         ]),
+        # La inscripción a materias: el primer módulo migrado que escribe. Se
+        # compara además qué quedó guardado: la inscripción, el módulo que se
+        # crea al anotarse y el que se borra al darse de baja.
+        Caso("La inscripción a materias, a fondo", [
+            # Con el período cerrado: el plan se ve y no se puede anotar. Se
+            # cierra a propósito: el escenario lo trae abierto.
+            Paso("PUT", "/api/institucion/configuracion/periodo", CLAUDIA,
+                 {"desde": "2020-01-01", "hasta": "2020-12-31"}),
+            _ver("/api/inscripciones/materias", SANTIAGO),
+            Paso("POST", "/api/inscripciones/materias/113", SANTIAGO),
+            Paso("DELETE", "/api/inscripciones/materias/119", SANTIAGO),
+            # Se abre el período (lo hace la secretaría, todavía en FastAPI)
+            Paso("PUT", "/api/institucion/configuracion/periodo", CLAUDIA,
+                 {"desde": "2020-01-01", "hasta": "2099-12-31"}),
+            _ver("/api/inscripciones/materias", SANTIAGO),
+            # Habilitada: entra, y el módulo aparece en su grilla
+            Paso("POST", "/api/inscripciones/materias/113", SANTIAGO),
+            _ver("/api/cursos", SANTIAGO),
+            # Otra vez: 409. Bloqueada, sin cupo, aprobada: 403. No existe: 404
+            Paso("POST", "/api/inscripciones/materias/113", SANTIAGO),
+            Paso("POST", "/api/inscripciones/materias/114", SANTIAGO),
+            Paso("POST", "/api/inscripciones/materias/116", SANTIAGO),
+            Paso("POST", "/api/inscripciones/materias/101", SANTIAGO),
+            Paso("POST", "/api/inscripciones/materias/99999", SANTIAGO),
+            Paso("POST", "/api/inscripciones/materias/abc", SANTIAGO),
+            # Darse de baja: la recién anotada (se lleva el módulo si era el
+            # único) y la que ya tenía; y una en la que no está: 409
+            Paso("DELETE", "/api/inscripciones/materias/113", SANTIAGO),
+            Paso("DELETE", "/api/inscripciones/materias/119", SANTIAGO),
+            Paso("DELETE", "/api/inscripciones/materias/119", SANTIAGO),
+            Paso("DELETE", "/api/inscripciones/materias/99999", SANTIAGO),
+            _ver("/api/inscripciones/materias", SANTIAGO),
+            _ver("/api/cursos", SANTIAGO),
+            # Otro alumno, el docente y la secretaría (no cursan: 404 y 403)
+            _ver("/api/inscripciones/materias", HERNAN),
+            Paso("POST", "/api/inscripciones/materias/113", HERNAN),
+            _ver("/api/inscripciones/materias", MARIA),
+            Paso("POST", "/api/inscripciones/materias/113", MARIA),
+            Paso("DELETE", "/api/inscripciones/materias/113", SECRETARIA),
+            # Sin sesión (401 antes que el 400), un cuerpo que no se usa,
+            # la barra final y los métodos que no tiene
+            _ver("/api/inscripciones/materias", None),
+            Paso("POST", "/api/inscripciones/materias/abc", None),
+            Paso("POST", "/api/inscripciones/materias/113", SANTIAGO, {"algo": "que no se usa"}),
+            _ver("/api/inscripciones/materias/", SANTIAGO),
+            _ver("/api/inscripciones/materias/113", SANTIAGO),
+            Paso("PUT", "/api/inscripciones/materias/113", SANTIAGO, {}),
+            Paso("POST", "/api/inscripciones/materias", SANTIAGO),
+            _ver("/api/inscripciones", SANTIAGO),
+            Paso("HEAD", "/api/inscripciones/materias", SANTIAGO),
+        ]),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),
