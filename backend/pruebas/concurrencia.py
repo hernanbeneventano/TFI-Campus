@@ -1099,6 +1099,28 @@ def cupos_sin_carrera() -> None:
               _codigo(lambda: inscripciones.dar_de_baja(101, ids[0])) == 201 and materia["cursoId"] is None)
 
 
+# ===================== Abrir una conversación =====================
+def conversaciones_a_la_vez(veces: int) -> None:
+    """«¿Ya hay una conversación con esa persona? → si no, crearla», hecho por
+    dos pedidos juntos: los dos que se escriben a la vez, o un doble clic."""
+    from app.rutas import mensajes
+
+    grupo("Mensajes: abrir la misma conversación a la vez")
+    malos = []
+    for _ in range(veces):
+        escenario.cargar()
+        # Una pareja sin conversación previa
+        d.conversaciones[:] = [c for c in d.conversaciones if not ({1, 7} <= set(c["entre"]))]
+        with ventana(d, "nuevo_id_conversacion"):
+            codigos, _ = en_paralelo(HILOS, lambda n: _codigo(
+                lambda: mensajes.abrir_conversacion({"paraId": 7 if n % 2 else 1}, 1 if n % 2 else 7)))
+        de_la_pareja = [c for c in d.conversaciones if {1, 7} <= set(c["entre"])]
+        if len(de_la_pareja) != 1 or 500 in codigos:
+            malos.append((len(de_la_pareja), sorted(set(codigos))))
+    comprobar(f"los dos a la vez y el doble clic: una sola conversación ({veces} pasada(s) de {HILOS} hilos)",
+              not malos, malos[:3])
+
+
 # ===================== Correr =====================
 def correr() -> None:
     parser = argparse.ArgumentParser()
@@ -1127,6 +1149,7 @@ def correr() -> None:
                                    e4_altas_de_cuentas(veces), e4_publicaciones_del_tablero(veces))),
         ("cupos", lambda: (cupos_sin_carrera(), cupos_de_mesas(veces),
                            cupos_que_cambia_la_catedra(veces), cupos_de_materias(veces))),
+        ("conversaciones", lambda: conversaciones_a_la_vez(veces)),
     ]
     for nombre, correr_grupo in grupos:
         if argumentos.solo in nombre:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import threading
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException
@@ -274,6 +275,9 @@ def fijar_mensaje(id_conversacion: int, id_mensaje: int, yo: int = IdUsuarioActu
     return {"fijado": conversacion.get("fijado")}
 
 
+_abriendo = threading.Lock()
+
+
 @router.post("", summary="Abrir la conversación con alguien, o crearla")
 def abrir_conversacion(cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUsuarioActual):
     try:
@@ -285,16 +289,20 @@ def abrir_conversacion(cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUs
     if not persona or para_id == yo:
         raise HTTPException(400, "No se puede abrir una conversación con esa persona")
 
-    conversacion = next(
-        (c for c in d.conversaciones if _es_mia(c, yo) and para_id in c["entre"]), None
-    )
-    if not conversacion:
-        conversacion = {
-            "id": d.nuevo_id_conversacion(),
-            "entre": [yo, para_id],
-            "mensajes": [],
-        }
-        d.conversaciones.append(conversacion)
+    # «¿Ya hay una? → si no, crearla» va junto: dos que se escriben a la vez,
+    # o un doble clic, creaban dos conversaciones de la misma pareja
+    # (`pruebas/concurrencia.py`). En memoria y sin nada más adentro.
+    with _abriendo:
+        conversacion = next(
+            (c for c in d.conversaciones if _es_mia(c, yo) and para_id in c["entre"]), None
+        )
+        if not conversacion:
+            conversacion = {
+                "id": d.nuevo_id_conversacion(),
+                "entre": [yo, para_id],
+                "mensajes": [],
+            }
+            d.conversaciones.append(conversacion)
 
     return {
         "id": conversacion["id"],
