@@ -118,7 +118,9 @@ def _caso_archivos() -> Caso:
     )
     paquete = io.BytesIO()
     with zipfile.ZipFile(paquete, "w") as z:
-        z.writestr("word/document.xml", "<w:document/>")
+        # Con fecha fija: con la del momento, el mismo Word daba bytes
+        # distintos en cada corrida y no se podía comparar contra una grabación
+        z.writestr(zipfile.ZipInfo("word/document.xml", date_time=(2026, 1, 1, 0, 0, 0)), "<w:document/>")
     docx = paquete.getvalue()
 
     del_pdf = f"entregas/{CURSO}/{TAREA}/{SANTIAGO}/trabajo.pdf"

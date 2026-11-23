@@ -142,6 +142,74 @@ def comparar_caso(
     return resultados
 
 
+# ===================== La grabación =====================
+# Para el día en que FastAPI ya no esté: lo que contestó y lo que guardó,
+# caso por caso, para comparar contra eso en vez de contra la aplicación en
+# vivo. De lo guardado se graba **qué cambió** respecto del campus de partida
+# —no el campus entero, que serían decenas de megas por nada—.
+def _cambios(base: dict, foto: dict) -> list[str]:
+    return [str(c) for c in comparar(estado.comparable(base), estado.comparable(foto), "campus")]
+
+
+def grabar(app: servidores.Aplicacion, lista: list, base: dict, ruta: str) -> int:
+    import gzip
+    import json
+
+    salida = {"rutas": app.rutas, "casos": {}}
+    for caso in lista:
+        corrida = _correr(app, caso, base)
+        salida["casos"][caso.nombre] = {
+            "pasos": corrida[:-1],
+            "cambios": _cambios(base, corrida[-1]["foto"]),
+        }
+    with gzip.open(ruta, "wt", encoding="utf-8") as archivo:
+        json.dump(salida, archivo, ensure_ascii=False, default=str)
+    pedidos = sum(len(c["pasos"]) for c in salida["casos"].values())
+    print(f"Grabados {len(lista)} casos y {pedidos} pedidos de {app.nombre} en {ruta}")
+    return 0
+
+
+def contra_grabado(b: servidores.Aplicacion, ruta: str, solo: str | None, base: dict, detalle: int) -> int:
+    import gzip
+    import json
+
+    with gzip.open(ruta, "rt", encoding="utf-8") as archivo:
+        grabado = json.load(archivo)
+    rutas = [tuple(r) for r in grabado["rutas"]]
+    lista = catalogo.todos(rutas)
+    if solo:
+        lista = [c for c in lista if solo.lower() in c.nombre.lower()]
+    faltan = [c.nombre for c in lista if c.nombre not in grabado["casos"]]
+    if faltan:
+        print(f"Casos que no están en la grabación: {faltan[:5]}")
+        return 2
+    print(f"Banco de comparación: grabación ({ruta}) contra {b.nombre}")
+    print(f"{len(lista)} casos")
+    print()
+
+    resultados: list[Resultado] = []
+    for caso in lista:
+        esperado = grabado["casos"][caso.nombre]
+        cruda = _correr(b, caso, base)
+        foto = cruda[-1]["foto"]
+        # Lo grabado pasó por JSON: se compara contra lo nuevo pasado igual
+        corrida = json.loads(json.dumps(cruda[:-1], default=str))
+        for paso, pa, pb in zip(caso.pasos, esperado["pasos"], corrida):
+            r = Resultado(nombre=caso.nombre, metodo=paso.metodo, camino=paso.camino,
+                          estado_a=pa["estado"], estado_b=pb["estado"],
+                          error_a=pa["error"], error_b=pb["error"])
+            if not (pa["error"] or pb["error"]):
+                r.diferencias = comparar(pa["cuerpo"], pb["cuerpo"])
+                r.cabeceras = comparar(pa["cabeceras"], pb["cabeceras"], "cabeceras")
+            resultados.append(r)
+        cambios = _cambios(base, foto)
+        if cambios != esperado["cambios"] and resultados:
+            faltaron = [c for c in esperado["cambios"] if c not in cambios]
+            sobraron = [c for c in cambios if c not in esperado["cambios"]]
+            resultados[-1].estado_campus = [f"falta: {c}" for c in faltaron] + [f"sobra: {c}" for c in sobraron]
+    return informar(resultados, rutas, detalle)
+
+
 def _patrones(rutas: list[tuple[str, str]]) -> list[tuple[str, str, re.Pattern]]:
     """Cada ruta con la expresión que reconoce sus caminos concretos.
 
@@ -219,6 +287,10 @@ def main() -> int:
     opciones.add_argument("--contra", default="fastapi", choices=sorted(servidores.DISPONIBLES))
     opciones.add_argument("--detalle", type=int, default=6)
     opciones.add_argument("--solo", default=None, help="solo los casos que contengan ese texto")
+    opciones.add_argument("--grabar", default=None,
+                          help="graba lo que contesta y guarda FastAPI, para compararlo sin él")
+    opciones.add_argument("--contra-grabado", default=None, dest="grabado",
+                          help="compara la aplicación de --contra contra una grabación")
     opciones.add_argument("--autoprueba", action="store_true",
                           help="comprueba que el banco encuentre una diferencia cuando la hay")
     args = opciones.parse_args()
@@ -240,7 +312,18 @@ def main() -> int:
         from .autoprueba import correr
         return correr()
 
+    if args.grabado:
+        escenario.cargar()
+        base = estado.tomar()
+        return contra_grabado(servidores.DISPONIBLES[args.contra](), args.grabado, args.solo,
+                              base, args.detalle)
+
     a = servidores.fastapi()
+    if args.grabar:
+        escenario.cargar()
+        base = estado.tomar()
+        lista = catalogo.todos(a.rutas)
+        return grabar(a, lista, base, args.grabar)
     try:
         b = servidores.DISPONIBLES[args.contra]()
     except NotImplementedError as falta:
