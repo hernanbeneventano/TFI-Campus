@@ -52,6 +52,22 @@ def _cuerpo_de(respuesta) -> Any:
             return respuesta.json()
         except ValueError:
             return {"<json ilegible>": respuesta.text[:200]}
+    # Las exportaciones se comparan **enteras**: un archivo que baja con una
+    # columna de menos o un renglón cambiado es justo lo que hay que ver.
+    if tipo.startswith("text/csv"):
+        return {"<csv>": respuesta.text.splitlines()}
+    if "spreadsheetml" in tipo:
+        # Un .xlsx es un ZIP: se compara lo de adentro, archivo por archivo.
+        # Los bytes del ZIP no, porque llevan la hora en que se armó y dos
+        # exportaciones idénticas nunca coincidirían.
+        import io
+        import zipfile
+
+        try:
+            with zipfile.ZipFile(io.BytesIO(respuesta.content)) as paquete:
+                return {"<xlsx>": {n: paquete.read(n).decode("utf-8") for n in sorted(paquete.namelist())}}
+        except (zipfile.BadZipFile, UnicodeDecodeError):
+            return {"<xlsx ilegible>": len(respuesta.content)}
     if tipo.startswith(("image/", "application/pdf", "application/octet-stream")):
         # De un binario se compara el tamaño, no los bytes: un informe con
         # dos megas de diferencia adentro no lo lee nadie.

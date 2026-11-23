@@ -78,6 +78,16 @@ def responder(valor: Any, estado: int = 200, cabeceras: dict | None = None) -> H
     )
 
 
+def descargar(contenido: bytes, tipo: str, cabeceras: dict | None = None) -> HttpResponse:
+    """Un archivo para bajar, con los mismos bytes y cabeceras que FastAPI.
+
+    Se arma con la `Response` de Starlette —la que devuelve la ruta de
+    FastAPI— y se pasa tal cual: así el `content-type` lleva o no su
+    `charset` exactamente igual, y el largo coincide.
+    """
+    return de_starlette(Response(content=contenido, media_type=tipo, headers=cabeceras))
+
+
 # ===================== La validación =====================
 def _invalido() -> RequestValidationError:
     """La misma excepción que lanza FastAPI cuando un dato no valida.
@@ -116,6 +126,16 @@ def consulta(request, nombre: str, tipo: Any = str, defecto: Any = OBLIGATORIO) 
             raise _invalido()
         return defecto
     return convertir(request.GET.get(nombre), tipo)
+
+
+def parametros(request) -> dict[str, str]:
+    """Todos los parámetros de la consulta, como `dict(request.query_params)`.
+
+    Con uno repetido gana el último, igual que en Starlette, y uno vacío
+    (`?q=`) llega como texto vacío. Para las rutas que reciben los filtros
+    sueltos en vez de declararlos uno por uno.
+    """
+    return request.GET.dict()
 
 
 def cuerpo(request, tipo: Any = dict, defecto: Any = OBLIGATORIO) -> Any:

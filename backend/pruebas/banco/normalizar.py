@@ -110,4 +110,12 @@ CABECERAS: tuple[str, ...] = (
 
 def cabeceras_de(respuesta) -> dict[str, str]:
     crudas = {k.lower(): v for k, v in respuesta.headers.items()}
-    return {k: _texto(crudas[k]) for k in CABECERAS if k in crudas}
+    salida = {k: _texto(crudas[k]) for k in CABECERAS if k in crudas}
+    # El largo de un .xlsx cambia solo: va comprimido y adentro lleva la hora
+    # de cada evento, así que un segundo distinto comprime con un byte más o
+    # menos. Se midió: FastAPI contra sí mismo daba 2197 y 2201 en dos
+    # corridas. El contenido sí se compara entero, XML por XML (ver
+    # `__main__._cuerpo_de`), así que el largo no agrega nada y solo mete ruido.
+    if "spreadsheetml" in crudas.get("content-type", "") and "content-length" in salida:
+        salida["content-length"] = MARCA
+    return salida

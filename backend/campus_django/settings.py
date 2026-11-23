@@ -86,6 +86,12 @@ DEBUG_PROPAGATE_EXCEPTIONS = True
 # Django tiene que aceptar exactamente hasta donde el freno deja pasar.
 DATA_UPLOAD_MAX_MEMORY_SIZE = frenos.MAXIMO_BYTES
 
+# Por omisión Django corta con un error una consulta de más de 1000
+# parámetros (`?a=1&b=2…`). FastAPI no tiene ese tope, así que una dirección
+# así contestaba normal en uno y fallaba en el otro. Sin tope, como FastAPI:
+# lo que limita el tamaño es el freno y el servidor, no la cantidad de campos.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
 # La barra final la resuelve `vistas.no_encontrada` como FastAPI: quitándola
 # con un 307. Sin `CommonMiddleware` esto no hace nada, pero queda explícito.
 APPEND_SLASH = False

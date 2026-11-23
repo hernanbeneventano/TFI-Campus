@@ -68,6 +68,7 @@ from app.main import app as fastapi  # noqa: E402
 MIGRADOS: tuple[str, ...] = (
     "/api/calendario",
     "/api/panel",
+    "/api/auditoria",
 )
 
 # Caminos exactos: solo esa dirección, nada que cuelgue de ella. Para las
