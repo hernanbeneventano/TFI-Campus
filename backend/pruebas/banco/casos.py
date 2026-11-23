@@ -914,5 +914,39 @@ def apartados() -> list[Caso]:
     ]
 
 
+# ===================== El barrido =====================
+def barrido(rutas: list[tuple[str, str]]) -> list[Caso]:
+    """Cuatro pedidos a cada ruta que escribe o que lleva parámetros.
+
+    No buscan el camino feliz —para eso están los casos de cada apartado—
+    sino lo que una migración rompe sin que se note: la sesión, la
+    conversión de los parámetros, el cuerpo, los permisos y el orden de los
+    errores. Como administración con un cuerpo vacío, como docente, sin
+    sesión y con un identificador que no es un número.
+
+    Una ruta por caso: el campus se repone entre uno y otro, así que una
+    escritura no arrastra a las demás y la diferencia queda en su ruta.
+    """
+    import re
+
+    salida = []
+    for metodo, camino in sorted(rutas):
+        con_parametros_de_camino = "{" in camino
+        if metodo == "GET" and not con_parametros_de_camino:
+            continue  # ya los mira `automaticos`
+        concreto = re.sub(r"\{[^}]+\}", "1", camino)
+        pasos = [
+            Paso(metodo, concreto, SECRETARIA, {} if metodo != "GET" else None),
+            Paso(metodo, concreto, MARIA, {} if metodo != "GET" else None),
+            Paso(metodo, concreto, None, {} if metodo != "GET" else None),
+        ]
+        if con_parametros_de_camino:
+            no_numero = re.sub(r"\{[^}]+\}", "abc", camino, count=1)
+            pasos.append(Paso(metodo, re.sub(r"\{[^}]+\}", "1", no_numero), MARIA,
+                              {} if metodo != "GET" else None))
+        salida.append(Caso(f"Barrido {metodo} {camino}", pasos))
+    return salida
+
+
 def todos(rutas: list[tuple[str, str]]) -> list[Caso]:
-    return automaticos(rutas) + con_parametros() + escriben() + apartados()
+    return automaticos(rutas) + con_parametros() + escriben() + apartados() + barrido(rutas)
