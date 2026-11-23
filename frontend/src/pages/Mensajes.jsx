@@ -29,6 +29,7 @@ import {
 import Cara from '../components/Avatar.jsx';
 import Confirmacion from '../components/Confirmacion.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 // Lo mismo que exige el servidor (`IMAGENES_MAX_MB` en servicios/archivos.py).
 const MAXIMO_ADJUNTO_MB = 10;
 
@@ -238,6 +239,7 @@ function horaDe(iso) {
 }
 
 export default function Mensajes() {
+  useTitulo('Mensajes');
   // ?con=N llega desde la lista de participantes de un módulo
   const [parametros, setParametros] = useSearchParams();
   const conPersona = parametros.get('con');

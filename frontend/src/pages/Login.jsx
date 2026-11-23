@@ -16,6 +16,7 @@ import {
 } from '../components/Iconos.jsx';
 import Avatar from '../components/Avatar.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 // Lo que gana quien tiene cuenta, en la mitad derecha. No es relleno: quien
 // llega sin cuenta necesita saber a quién pedirla.
 const VENTAJAS = [
@@ -26,6 +27,7 @@ const VENTAJAS = [
 ];
 
 export default function Login() {
+  useTitulo('Iniciar sesión');
   const [correo, setCorreo] = useState('');
   // Las cuentas con las que ya se entró en este equipo. Se leen una sola vez:
   // no cambian mientras la pantalla está abierta, salvo que se borre una.

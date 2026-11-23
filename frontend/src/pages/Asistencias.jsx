@@ -28,6 +28,7 @@ import {
   IconoArchivo,
 } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 const VISTAS = [
   { id: 'panel', nombre: 'Panel', Icono: IconoPresente },
   { id: 'justificaciones', nombre: 'Justificaciones', Icono: IconoNotas },
@@ -310,6 +311,7 @@ const DESCRIPCIONES_DOCENTE = {
 };
 
 export default function Asistencias() {
+  useTitulo('Asistencias');
   const { vista } = useParams();
   const [usuario, setUsuario] = useState(null);
   const [justificaciones, setJustificaciones] = useState(null);

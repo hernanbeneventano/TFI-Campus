@@ -10,6 +10,7 @@ import BarraHerramientas from '../components/BarraHerramientas.jsx';
 import TarjetaModulo from '../components/TarjetaModulo.jsx';
 import PanelTareas from '../components/PanelTareas.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 const ORDINAL = { 1: '1.er', 2: '2.º', 3: '3.er', 4: '4.º', 5: '5.º', 6: '6.º', 7: '7.º' };
 
 /** "2.º año". El 0 es el módulo que no está en ningún plan. */
@@ -27,6 +28,7 @@ function nombreDeCuatrimestre(cuatrimestre) {
 }
 
 export default function Modulos() {
+  useTitulo('Módulos');
   const [modulos, setModulos] = useState(null);
   const [pendientes, setPendientes] = useState(null);
   const [error, setError] = useState(null);

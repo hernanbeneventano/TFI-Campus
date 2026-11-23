@@ -5,6 +5,7 @@ import { leerTiposCalendario, guardarTiposCalendario } from '../services/prefere
 import Encabezado from '../components/Encabezado.jsx';
 import { IconoFlecha, IconoTarea, IconoNotas, IconoModulos, IconoAnuncio } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const iconoPorTipo = {
@@ -144,6 +145,7 @@ function Evento({ evento, conDetalle }) {
 }
 
 export default function Calendario() {
+  useTitulo('Calendario');
   const [vista, setVista] = useState('mes');
   const [ancla, setAncla] = useState(() => new Date());
   const [eventos, setEventos] = useState(null);

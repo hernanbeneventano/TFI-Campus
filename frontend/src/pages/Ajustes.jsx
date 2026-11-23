@@ -10,7 +10,9 @@ import { obtenerMiPerfil } from '../services/api.js';
 import Encabezado from '../components/Encabezado.jsx';
 import MiPerfil from '../components/ajustes/MiPerfil.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 export default function Ajustes() {
+  useTitulo('Ajustes');
   const [perfil, setPerfil] = useState(null);
   const [error, setError] = useState(null);
 
