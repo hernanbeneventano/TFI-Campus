@@ -33,7 +33,7 @@ from .rutas import salud as rutas_salud
 from .servicios import certificados
 from .servicios.autenticacion import identificar
 from .servicios.firestore import inicializar_firestore
-from .servicios import almacenamiento, frenos, legajos, persistencia
+from .servicios import almacenamiento, frenos, general, legajos, persistencia
 
 load_dotenv()
 
@@ -134,24 +134,9 @@ def salud():
 
 @app.get("/api/me", tags=["General"], summary="El usuario que inició sesión")
 def obtener_usuario(persona: dict = Depends(identificar)):
-    """Sale del token de Firebase que manda el navegador.
-
-    Si no llega token y está permitido el usuario de prueba, devuelve ese.
-    """
-    nombre = persona.get("nombre", "")
-    primero, _, resto = nombre.partition(" ")
-    return d.con_presencia(
-        {
-            **persona,
-            # El menú lateral muestra el nombre partido
-            "nombre": primero,
-            "apellido": resto,
-            # La foto la pone `con_presencia`, que la firma a partir de la
-            # clave del archivo. Ponerla también acá la firmaba sobre el
-            # diccionario ya modificado —es decir, sobre la dirección— y la
-            # firma no validaba.
-        }
-    )
+    """Sale del token de Firebase que manda el navegador. Lo atiende Django
+    (ver `MIGRADOS`); esto queda para volver atrás."""
+    return general.yo_mismo(persona)
 
 
 # `PUT /api/me` **se eliminó**. No pedía sesión y escribía sobre
@@ -163,13 +148,9 @@ def obtener_usuario(persona: dict = Depends(identificar)):
 
 @app.get("/api/contadores", tags=["General"], summary="Las campanitas del menú")
 def contadores(persona: dict = Depends(identificar)):
-    """Cuántas cosas nuevas hay en cada apartado, **para quien pregunta**.
-
-    Contaba siempre sobre `d.usuario_actual`, el usuario de prueba: todos
-    veían los mismos números y no eran los suyos. Es de lo poco que se mira
-    en cada pantalla, así que equivocarse ahí se nota en todo el campus.
-    """
-    return d.resumen_de_novedades(persona["id"])
+    """Cuántas cosas nuevas hay en cada apartado, para quien pregunta. Lo
+    atiende Django (ver `MIGRADOS`); esto queda para volver atrás."""
+    return general.contadores(persona)
 
 
 # `GET /api/informacion` y `GET /api/actividad` **se eliminaron**. Ninguna

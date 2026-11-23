@@ -471,6 +471,35 @@ def con_parametros() -> list[Caso]:
             Paso("HEAD", "/api/finales/resultados", SANTIAGO),
         ]),
         _caso_archivos(),
+        # Quién soy y las campanitas: las piden todas las pantallas
+        Caso("La sesión y las campanitas, a fondo", [
+            _ver("/api/me", SANTIAGO),
+            _ver("/api/me", MARIA),
+            _ver("/api/me", SECRETARIA),
+            _ver("/api/me", CLAUDIA),
+            _ver("/api/contadores", SANTIAGO),
+            _ver("/api/contadores", MARIA),
+            _ver("/api/contadores", SECRETARIA),
+            # Algo nuevo para Santiago: un mensaje sin leer y una novedad
+            Paso("POST", "/api/mensajes", MARIA, {"paraId": SANTIAGO}),
+            Paso("POST", f"/api/mensajes/{CONVERSACION}", MARIA, {"texto": "¿Viste la consigna?"}),
+            Paso("POST", "/api/novedades", MARIA,
+                 {"titulo": "Novedad de las campanitas", "cuerpo": "Texto", "ambito": "Programación II"}),
+            _ver("/api/contadores", SANTIAGO),
+            # Leerlo baja la campanita
+            _ver(f"/api/mensajes/{CONVERSACION}", SANTIAGO),
+            _ver("/api/contadores", SANTIAGO),
+            # Sin sesión, parámetros, barras, lo que no existe y los métodos
+            _ver("/api/me", None),
+            _ver("/api/contadores", None),
+            _ver("/api/me?x=1", SANTIAGO),
+            _ver("/api/me/", SANTIAGO),
+            _ver("/api/contadores/", SANTIAGO),
+            _ver("/api/me/otra-cosa", SANTIAGO),
+            Paso("PUT", "/api/me", SANTIAGO, {"nombre": "No va"}),
+            Paso("POST", "/api/contadores", SANTIAGO, {}),
+            Paso("HEAD", "/api/me", SANTIAGO),
+        ]),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),

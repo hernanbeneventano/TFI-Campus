@@ -77,6 +77,8 @@ MIGRADOS: tuple[str, ...] = (
     "/api/finales/proximas",
     "/api/finales/resultados",
     "/api/archivos",
+    "/api/me",
+    "/api/contadores",
 )
 
 # Caminos exactos: solo esa dirección, nada que cuelgue de ella. Para las
