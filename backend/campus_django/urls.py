@@ -43,6 +43,7 @@ urlpatterns: list = como_starlette([
     # Por el puente (ver `puente.py`): la misma función de la ruta de FastAPI
     *rutas_de("main", caminos={"/api/salud"}),
     *rutas_de("salud"),
+    *rutas_de("gestion_modulo"),
     *rutas_de("institucion"),
     *rutas_de("biblioteca"),
     *rutas_de("gestion_finales"),
