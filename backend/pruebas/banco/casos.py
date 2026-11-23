@@ -175,6 +175,36 @@ def con_parametros() -> list[Caso]:
             Paso("HEAD", "/api/panel/alertas", SECRETARIA),
             Paso("DELETE", "/api/panel", None),
         ]),
+        # Las tareas pendientes van a Django por su camino exacto; lo que
+        # cuelga de `/api/tareas/` es de Mi cursada y tiene que seguir igual.
+        Caso("Las tareas pendientes, a fondo", [
+            # Son de cada uno: el alumno ve las suyas, el docente y la secretaría no cursan
+            _ver("/api/tareas/pendientes", SANTIAGO),
+            _ver("/api/tareas/pendientes", HERNAN),
+            _ver("/api/tareas/pendientes", MARIA),
+            _ver("/api/tareas/pendientes", CLAUDIA),
+            # Entregar le saca la tarea de la lista, y retirarla la devuelve
+            Paso("POST", f"/api/tareas/{TAREA}/mi-entrega", SANTIAGO,
+                 {"nombre": "trabajo.pdf", "extension": "pdf", "tipo": "application/pdf",
+                  "contenido": "JVBERi0xLjQKJcOkw7zDtsOfCjEgMCBvYmoKPDw+PgplbmRvYmoKdHJhaWxlcgo8PD4+CiUlRU9G"}),
+            _ver("/api/tareas/pendientes", SANTIAGO),
+            Paso("DELETE", f"/api/tareas/{TAREA}/mi-entrega", SANTIAGO),
+            _ver("/api/tareas/pendientes", SANTIAGO),
+            # Sin sesión, parámetros que no usa, la barra final y los métodos
+            _ver("/api/tareas/pendientes", None),
+            _ver("/api/tareas/pendientes?desde=2026-01-01&x=ñ", SANTIAGO),
+            _ver("/api/tareas/pendientes/", SANTIAGO),
+            Paso("POST", "/api/tareas/pendientes", SANTIAGO, {}),
+            Paso("HEAD", "/api/tareas/pendientes", SANTIAGO),
+            Paso("DELETE", "/api/tareas/pendientes", None),
+            # Lo que cuelga de ella es de Mi cursada (FastAPI): «pendientes» como id
+            _ver("/api/tareas/pendientes/mi-entrega", SANTIAGO),
+            _ver("/api/tareas/pendientes/cuestionario", SANTIAGO),
+            _ver("/api/tareas/pendientes/mi-entrega", None),
+            _ver("/api/tareas/pendientes/otra-cosa", SANTIAGO),
+            _ver(f"/api/tareas/{TAREA}/mi-entrega", SANTIAGO),
+            _ver("/api/tareas", SANTIAGO),
+        ]),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),

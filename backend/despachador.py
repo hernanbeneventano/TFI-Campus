@@ -62,10 +62,7 @@ from app.main import app as fastapi  # noqa: E402
 
 # ===================== Qué atiende Django =====================
 # Prefijos completos: «/api/foro» atiende «/api/foro» y «/api/foro/...», pero
-# no «/api/forobar». Un prefijo que comparten varios archivos de rutas
-# —«/api/cursos», «/api/tareas», «/api/finales», «/api/salud»— se migra con
-# el camino más largo que sea de uno solo («/api/tareas/pendientes»), nunca
-# entero: se llevaría rutas de otro módulo que Django todavía no tiene.
+# no «/api/forobar». Para un apartado que tiene su prefijo para él solo.
 #
 # Volver atrás es sacar la línea: la ruta de FastAPI sigue en su lugar.
 MIGRADOS: tuple[str, ...] = (
@@ -73,9 +70,21 @@ MIGRADOS: tuple[str, ...] = (
     "/api/panel",
 )
 
+# Caminos exactos: solo esa dirección, nada que cuelgue de ella. Para las
+# rutas que viven bajo un prefijo que comparten varios archivos —«/api/cursos»,
+# «/api/tareas», «/api/finales», «/api/salud»—. Con «/api/tareas/pendientes»
+# como prefijo, «/api/tareas/pendientes/mi-entrega» también iría a Django y
+# contestaría 404, cuando hoy la atiende Mi cursada (con «pendientes» como id
+# de tarea: 400). Exacto, todo lo demás sigue en FastAPI por construcción.
+MIGRADOS_EXACTOS: tuple[str, ...] = (
+    "/api/tareas/pendientes",
+)
+
 
 def es_de_django(camino: str) -> bool:
-    return any(camino == p or camino.startswith(p + "/") for p in MIGRADOS)
+    return camino in MIGRADOS_EXACTOS or any(
+        camino == p or camino.startswith(p + "/") for p in MIGRADOS
+    )
 
 
 # ===================== La pila de FastAPI, con Django en el centro =====================
@@ -145,5 +154,5 @@ async def aplicacion(scope, receive, send):
 # Con algo migrado, Django se arma al arrancar y no con la primera petición:
 # una configuración rota tiene que impedir que el servidor levante, no
 # aparecer cuando un alumno abre el foro.
-if MIGRADOS:
+if MIGRADOS or MIGRADOS_EXACTOS:
     django()

@@ -1,81 +1,23 @@
-"""Tareas pendientes y atrasadas."""
+"""Tareas pendientes y atrasadas.
+
+**Lo atiende Django** (`campus_django/tareas.py`, ver `MIGRADOS_EXACTOS` en
+`despachador.py`). Esta ruta queda para volver atrás sin tocar código. Las dos
+llaman a la misma función, `servicios/tareas.pendientes_de`.
+
+Ojo con el prefijo: `/api/tareas/{id}/...` es de `mi_cursada`, que sigue en
+FastAPI. Por eso esta ruta se migra por su camino **exacto**, no por prefijo.
+"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 
-from .. import datos as d
+from ..servicios import tareas
 from ..servicios.autenticacion import UsuarioActual
 
 router = APIRouter(prefix="/api/tareas", tags=["Tareas"])
 
 
-def _apartado_de(curso: dict, tarea_id: int, persona_id=None) -> dict | None:
-    """La carpeta donde vive una tarea, con todo lo que hay que completar
-    adentro.
-
-    El frontend lo usa para mostrar el "1 de 2" del apartado: cuenta los
-    recursos que el alumno marcó más las tareas que ya entregó.
-    """
-    for carpeta in d.carpetas_de_curso(curso, persona_id):
-        if not any(
-            i.get("tipo") == "tarea" and i.get("tareaId") == tarea_id for i in carpeta["items"]
-        ):
-            continue
-        return {
-            "titulo": carpeta["titulo"],
-            "items": [
-                (
-                    {"id": i["id"], "tipo": i["tipo"], "entregada": i.get("entregada")}
-                    if i.get("tipo") == "tarea"
-                    else {"id": i["id"], "tipo": i["tipo"]}
-                )
-                for i in carpeta["items"]
-            ],
-        }
-    return None
-
-
 @router.get("/pendientes", summary="Tareas sin entregar, próximas y atrasadas")
 def listar_pendientes(yo: dict = UsuarioActual):
-    """Las **propias**: las de los módulos que cursa quien pregunta.
-
-    Antes recorría todas las tareas del campus y miraba un booleano del
-    trabajo, igual para todo el curso. Con un módulo y un alumno de prueba no
-    se notaba; con el campus cargado, cada uno veía las entregas de materias
-    que no cursa, y una entrega hecha por otro le desaparecía de la lista.
-    """
-    ahora = d.ahora()
-    mios = {
-        c["id"]
-        for c in d.cursos
-        if any(p["id"] == yo["id"] for p in d.participantes_de_curso(c))
-    }
-
-    pendientes = []
-    for tarea in d.tareas:
-        if tarea["cursoId"] not in mios:
-            continue
-        if d.entrego(yo["id"], tarea):
-            continue
-        curso = d.buscar_curso(tarea["cursoId"])
-        pendientes.append(
-            {
-                **tarea,
-                "entregada": False,
-                "curso": curso["nombre"] if curso else None,
-                "color": curso["color"] if curso else None,
-                "apartado": _apartado_de(curso, tarea["id"], yo["id"]) if curso else None,
-            }
-        )
-
-    por_fecha = lambda t: d.desde_iso(t["fechaLimite"])  # noqa: E731
-
-    recientes = sorted(
-        (t for t in pendientes if d.desde_iso(t["fechaLimite"]) >= ahora), key=por_fecha
-    )
-    atrasadas = sorted(
-        (t for t in pendientes if d.desde_iso(t["fechaLimite"]) < ahora), key=por_fecha
-    )
-
-    return {"recientes": recientes, "atrasadas": atrasadas}
+    return tareas.pendientes_de(yo)
