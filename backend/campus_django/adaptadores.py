@@ -31,6 +31,7 @@ Cómo se escribe una vista
 
 from __future__ import annotations
 
+import copy
 import email.message
 import json
 from functools import wraps
@@ -151,7 +152,9 @@ def cuerpo(request, tipo: Any = dict, defecto: Any = OBLIGATORIO) -> Any:
     if not crudo:
         if defecto is OBLIGATORIO:
             raise _invalido()
-        return defecto
+        # Una copia, como FastAPI (`deepcopy(field.default)`): si la vista
+        # modifica lo que recibió, el pedido siguiente no lo tiene que heredar.
+        return copy.deepcopy(defecto)
 
     valor: Any = crudo
     tipo_contenido = request.headers.get("content-type")
@@ -167,6 +170,11 @@ def cuerpo(request, tipo: Any = dict, defecto: Any = OBLIGATORIO) -> Any:
             valor = json.loads(crudo)
         except ValueError:
             raise _invalido() from None
+        # `null` es «no vino»: FastAPI usa el valor por omisión si la ruta lo
+        # tiene y, si el cuerpo es obligatorio, contesta 400. Sin esto, un
+        # `null` en `Body(default={})` daba 200 en FastAPI y 400 acá.
+        if valor is None and defecto is not OBLIGATORIO:
+            return copy.deepcopy(defecto)
 
     return convertir(valor, tipo)
 

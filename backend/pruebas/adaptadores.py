@@ -139,6 +139,13 @@ def fa_cuerpo_opcional(datos: dict = Body(default={}), yo: dict = UsuarioActual)
     return {"recibido": datos}
 
 
+def fa_cuerpo_que_cambia(datos: dict = Body(default={}), yo: dict = UsuarioActual):
+    # Una ruta que modifica lo que recibió: con el valor por omisión, cada
+    # pedido tiene que recibir uno nuevo y no el que dejó el anterior.
+    datos["veces"] = datos.get("veces", 0) + 1
+    return {"recibido": datos}
+
+
 def fa_ip(yo: dict = UsuarioActual):
     return {"ip": auditoria.ip_de()}
 
@@ -154,6 +161,7 @@ for camino, funcion, metodos, extra in [
     ("/obligatoria", fa_obligatoria, ["GET"], {}),
     ("/cuerpo", fa_cuerpo, ["POST"], {}),
     ("/cuerpo-opcional", fa_cuerpo_opcional, ["POST"], {}),
+    ("/cuerpo-que-cambia", fa_cuerpo_que_cambia, ["POST"], {}),
     ("/ip", fa_ip, ["GET"], {}),
 ]:
     fastapi.add_api_route(SONDA + camino, funcion, methods=metodos, **extra)
@@ -215,6 +223,13 @@ def dj_cuerpo_opcional(request, yo):
 
 
 @con_sesion
+def dj_cuerpo_que_cambia(request, yo):
+    datos = cuerpo(request, dict, defecto={})
+    datos["veces"] = datos.get("veces", 0) + 1
+    return responder({"recibido": datos})
+
+
+@con_sesion
 def dj_ip(request, yo):
     return responder({"ip": auditoria.ip_de()})
 
@@ -231,6 +246,7 @@ urls_django.urlpatterns += [
     path(f"{S}/obligatoria", rutas(get=dj_obligatoria)),
     path(f"{S}/cuerpo", rutas(post=dj_cuerpo)),
     path(f"{S}/cuerpo-opcional", rutas(post=dj_cuerpo_opcional)),
+    path(f"{S}/cuerpo-que-cambia", rutas(post=dj_cuerpo_que_cambia)),
     path(f"{S}/ip", rutas(get=dj_ip)),
 ]
 clear_url_caches()
@@ -349,6 +365,15 @@ def correr() -> None:
           headers={"content-type": "application/vnd.campus+json"})
     igual("opcional y vacío", "POST", f"{SONDA}/cuerpo-opcional")
     igual("opcional con datos", "POST", f"{SONDA}/cuerpo-opcional", json={"x": 1})
+    # `null` es «no vino»: FastAPI usa el valor por omisión si lo hay, y si
+    # el cuerpo es obligatorio, 400. Lo encontró la sonda de los cuerpos.
+    igual("opcional y null", "POST", f"{SONDA}/cuerpo-opcional", content=b"null",
+          headers={"content-type": "application/json"})
+    igual("obligatorio y null", "POST", f"{SONDA}/cuerpo", content=b"null",
+          headers={"content-type": "application/json"})
+    # FastAPI entrega una copia del valor por omisión en cada pedido
+    igual("el valor por omisión, la primera vez", "POST", f"{SONDA}/cuerpo-que-cambia")
+    igual("y la segunda, igual que la primera", "POST", f"{SONDA}/cuerpo-que-cambia")
     igual("opcional con JSON roto", "POST", f"{SONDA}/cuerpo-opcional",
           content=b"[[[", headers={"content-type": "application/json"})
 
