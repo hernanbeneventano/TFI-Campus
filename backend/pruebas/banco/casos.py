@@ -321,6 +321,52 @@ def con_parametros() -> list[Caso]:
             _ver("/api/inscripciones", SANTIAGO),
             Paso("HEAD", "/api/inscripciones/materias", SANTIAGO),
         ]),
+        # Finales, la mitad del alumno. La gestión docente sigue en FastAPI y
+        # se mira al final: lo que hace el alumno tiene que verse igual del
+        # otro lado.
+        Caso("Los finales del alumno, a fondo", [
+            _ver("/api/finales/mesas", SANTIAGO),
+            _ver("/api/finales/proximas", SANTIAGO),
+            _ver("/api/finales/resultados", SANTIAGO),
+            _ver("/api/finales/mesas", HERNAN),
+            _ver("/api/finales/resultados", HERNAN),
+            _ver("/api/finales/mesas", MARIA),
+            _ver("/api/finales/proximas", SECRETARIA),
+            # Disponible: entra; otra vez 409; baja; otra baja 409; vuelve (misma fila)
+            Paso("POST", "/api/finales/mesas/1/inscripcion", SANTIAGO),
+            Paso("POST", "/api/finales/mesas/1/inscripcion", SANTIAGO),
+            _ver("/api/finales/proximas", SANTIAGO),
+            Paso("DELETE", "/api/finales/mesas/1/inscripcion", SANTIAGO),
+            Paso("DELETE", "/api/finales/mesas/1/inscripcion", SANTIAGO),
+            Paso("POST", "/api/finales/mesas/1/inscripcion", SANTIAGO),
+            # La que ya tenía (2), una cancelada (8), una que no abrió (3), una
+            # sin habilitación (7), una que no existe y un id que no es número
+            Paso("DELETE", "/api/finales/mesas/2/inscripcion", SANTIAGO),
+            Paso("POST", "/api/finales/mesas/8/inscripcion", SANTIAGO),
+            Paso("POST", "/api/finales/mesas/3/inscripcion", SANTIAGO),
+            Paso("POST", "/api/finales/mesas/7/inscripcion", SANTIAGO),
+            Paso("DELETE", "/api/finales/mesas/3/inscripcion", SANTIAGO),
+            Paso("POST", "/api/finales/mesas/99999/inscripcion", SANTIAGO),
+            Paso("DELETE", "/api/finales/mesas/abc/inscripcion", SANTIAGO),
+            _ver("/api/finales/mesas", SANTIAGO),
+            # Lo ve la cátedra (gestión, todavía FastAPI): la planilla de la mesa 1.
+            # `/gestion/inscriptos?mesaId=1` no va: se cae con un 500 en los dos
+            # frameworks, porque la inscripción que crea el alumno no trae el
+            # campo `comision` que esa pantalla da por sentado. Es un error de
+            # antes de la migración; se arregla con la gestión docente.
+            _ver("/api/finales/gestion/mesas/1", SECRETARIA),
+            # Sin sesión, un cuerpo que no se usa, la barra final, lo que no existe
+            _ver("/api/finales/mesas", None),
+            Paso("POST", "/api/finales/mesas/abc/inscripcion", None),
+            Paso("POST", "/api/finales/mesas/1/inscripcion", HERNAN, {"no": "se usa"}),
+            _ver("/api/finales/mesas/", SANTIAGO),
+            _ver("/api/finales/mesas/1", SANTIAGO),
+            _ver("/api/finales/mesas/1/inscripcion", SANTIAGO),
+            _ver("/api/finales", SANTIAGO),
+            Paso("PUT", "/api/finales/mesas/1/inscripcion", SANTIAGO, {}),
+            Paso("POST", "/api/finales/proximas", SANTIAGO),
+            Paso("HEAD", "/api/finales/resultados", SANTIAGO),
+        ]),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),

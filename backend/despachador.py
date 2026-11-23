@@ -70,6 +70,12 @@ MIGRADOS: tuple[str, ...] = (
     "/api/panel",
     "/api/auditoria",
     "/api/inscripciones",
+    # Finales del alumno. «/api/finales» entero no: «/api/finales/gestion/…»
+    # es de la cátedra y sigue en FastAPI. Debajo de estos tres no hay nada
+    # de la gestión.
+    "/api/finales/mesas",
+    "/api/finales/proximas",
+    "/api/finales/resultados",
 )
 
 # Caminos exactos: solo esa dirección, nada que cuelgue de ella. Para las

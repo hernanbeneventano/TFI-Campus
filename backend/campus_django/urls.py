@@ -4,8 +4,8 @@ Cada módulo migrado tiene su archivo con su `urlpatterns`, y se suma acá. El
 despachador solo le manda a Django lo que está en `MIGRADOS`: una ruta que
 esté acá y no allá no la ve nadie.
 
-Migrados: el calendario, el panel, las tareas pendientes, la auditoría y la
-inscripción a materias.
+Migrados: el calendario, el panel, las tareas pendientes, la auditoría, la
+inscripción a materias y la mitad del alumno de Finales.
 
 Cuando se migre un módulo, sus rutas se agregan con el **mismo camino y en
 el mismo orden** que en `app/main.py`. El orden importa por dos motivos: las
@@ -22,7 +22,7 @@ comprobar la sesión, que es el orden en que lo hace FastAPI.
 
 from __future__ import annotations
 
-from . import auditoria, calendario, inscripciones, panel, tareas
+from . import auditoria, calendario, finales, inscripciones, panel, tareas
 
 urlpatterns: list = [
     *calendario.urlpatterns,
@@ -30,6 +30,7 @@ urlpatterns: list = [
     *tareas.urlpatterns,
     *auditoria.urlpatterns,
     *inscripciones.urlpatterns,
+    *finales.urlpatterns,
 ]
 
 handler404 = "campus_django.vistas.no_encontrada"
