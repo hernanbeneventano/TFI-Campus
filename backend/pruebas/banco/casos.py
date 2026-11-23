@@ -471,6 +471,20 @@ def con_parametros() -> list[Caso]:
             Paso("HEAD", "/api/finales/resultados", SANTIAGO),
         ]),
         _caso_archivos(),
+        # La salud del servidor: la abierta y la de Firestore (solo administración)
+        Caso("La salud, a fondo", [
+            _ver("/api/salud", None),
+            _ver("/api/salud?x=1", SANTIAGO),
+            _ver("/api/salud/", None),
+            Paso("POST", "/api/salud", None, {}),
+            Paso("HEAD", "/api/salud", None),
+            _ver("/api/salud/firestore", SECRETARIA),
+            _ver("/api/salud/firestore", CLAUDIA),
+            _ver("/api/salud/firestore", MARIA),
+            _ver("/api/salud/firestore", None),
+            _ver("/api/salud/firestore/", SECRETARIA),
+            Paso("DELETE", "/api/salud/firestore", SECRETARIA),
+        ]),
         # Quién soy y las campanitas: las piden todas las pantallas
         Caso("La sesión y las campanitas, a fondo", [
             _ver("/api/me", SANTIAGO),

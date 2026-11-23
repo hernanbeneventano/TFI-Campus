@@ -92,10 +92,53 @@ MIGRADOS_EXACTOS: tuple[str, ...] = (
 )
 
 
-def es_de_django(camino: str) -> bool:
-    return camino in MIGRADOS_EXACTOS or any(
+# Módulos enteros, por el nombre de su archivo en `app/rutas/`. Es la forma
+# de migrar los que comparten prefijo: `/api/cursos/...` es de cursos, de la
+# gestión del módulo, de Mi cursada y de asistencias, y ningún prefijo ni
+# camino exacto separa `/api/cursos/{id}/notas` de `/api/cursos/{id}/asistencias`.
+# Para estos se pregunta **qué ruta de FastAPI la atendería** —con la misma
+# regla que Starlette: primero la que coincide en camino y método, si no la
+# primera que coincide en camino— y si es de un módulo migrado va a Django.
+# Las vistas las arma `campus_django/puente.py`.
+MODULOS: tuple[str, ...] = (
+    "salud",
+)
+
+# Rutas sueltas de un módulo que no se migra entero: (módulo, camino de FastAPI)
+RUTAS_SUELTAS: tuple[tuple[str, str], ...] = (
+    ("main", "/api/salud"),
+)
+
+
+def _ruta_que_atiende(camino: str, metodo: str):
+    """La ruta de FastAPI que atendería esa petición, o `None` si ninguna."""
+    from starlette.routing import Match
+
+    alcance = {"type": "http", "path": camino, "root_path": "", "method": metodo}
+    parcial = None
+    for ruta in fastapi.router.routes:
+        coincide, _ = ruta.matches(alcance)
+        if coincide == Match.FULL:
+            return ruta
+        if coincide == Match.PARTIAL and parcial is None:
+            parcial = ruta
+    return parcial
+
+
+def es_de_django(camino: str, metodo: str = "GET") -> bool:
+    if camino in MIGRADOS_EXACTOS or any(
         camino == p or camino.startswith(p + "/") for p in MIGRADOS
-    )
+    ):
+        return True
+    if not MODULOS and not RUTAS_SUELTAS:
+        return False
+    ruta = _ruta_que_atiende(camino, metodo)
+    endpoint = getattr(ruta, "endpoint", None)
+    if endpoint is None:
+        # Ninguna ruta: el 404 o la barra final los contesta FastAPI
+        return False
+    modulo = endpoint.__module__.rsplit(".", 1)[-1]
+    return modulo in MODULOS or (modulo, ruta.path) in RUTAS_SUELTAS
 
 
 # ===================== La pila de FastAPI, con Django en el centro =====================
@@ -156,7 +199,7 @@ async def aplicacion(scope, receive, send):
     —incluido el `lifespan`, que es el arranque y el cierre— va a FastAPI tal
     cual llegó.
     """
-    if scope["type"] == "http" and es_de_django(scope["path"]):
+    if scope["type"] == "http" and es_de_django(scope["path"], scope.get("method", "GET")):
         await django()(scope, receive, send)
         return
     await fastapi(scope, receive, send)
@@ -165,5 +208,5 @@ async def aplicacion(scope, receive, send):
 # Con algo migrado, Django se arma al arrancar y no con la primera petición:
 # una configuración rota tiene que impedir que el servidor levante, no
 # aparecer cuando un alumno abre el foro.
-if MIGRADOS or MIGRADOS_EXACTOS:
+if MIGRADOS or MIGRADOS_EXACTOS or MODULOS or RUTAS_SUELTAS:
     django()

@@ -6,7 +6,8 @@ esté acá y no allá no la ve nadie.
 
 Migrados: el calendario, el panel, las tareas pendientes, la auditoría, la
 inscripción a materias, la mitad del alumno de Finales, los archivos,
-`/api/me` y las campanitas.
+`/api/me`, las campanitas
+y la salud del servidor (esta, por el puente).
 
 Cuando se migre un módulo, sus rutas se agregan con el **mismo camino y en
 el mismo orden** que en `app/main.py`. El orden importa por dos motivos: las
@@ -24,6 +25,7 @@ comprobar la sesión, que es el orden en que lo hace FastAPI.
 from __future__ import annotations
 
 from .adaptadores import como_starlette
+from .puente import rutas_de
 from . import archivos, auditoria, calendario, finales, general, inscripciones, panel, tareas
 
 # `como_starlette`: cuando un camino coincide con dos rutas de métodos
@@ -37,6 +39,9 @@ urlpatterns: list = como_starlette([
     *finales.urlpatterns,
     *archivos.urlpatterns,
     *general.urlpatterns,
+    # Por el puente (ver `puente.py`): la misma función de la ruta de FastAPI
+    *rutas_de("main", caminos={"/api/salud"}),
+    *rutas_de("salud"),
 ])
 
 handler404 = "campus_django.vistas.no_encontrada"
