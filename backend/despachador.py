@@ -101,6 +101,7 @@ MIGRADOS_EXACTOS: tuple[str, ...] = (
 # primera que coincide en camino— y si es de un módulo migrado va a Django.
 # Las vistas las arma `campus_django/puente.py`.
 MODULOS: tuple[str, ...] = (
+    "asistencias",
     "mi_cursada",
     "cursos",
     "salud",
