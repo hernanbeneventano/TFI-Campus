@@ -237,6 +237,25 @@ def _ficha_alumno(persona_id: int, materia_id: int, mesa_id: int) -> dict:
     }
 
 
+def _comision_de(inscripcion: dict) -> str:
+    """La comisión del inscripto, como la muestra la planilla: «A», «B»…
+
+    Las inscripciones de ejemplo la traen guardada, pero la que hace un
+    alumno desde la web no: y la pantalla Inscriptos hacía
+    `inscripcion["comision"]` y se caía con un 500 apenas alguien se anotaba.
+    Si no está, se calcula al leer, desde la comisión de su inscripción a la
+    carrera —que es lo que vale hoy: un alumno puede cambiar de comisión—.
+    """
+    if inscripcion.get("comision"):
+        return inscripcion["comision"]
+    asociacion = d.carrera_de(inscripcion["personaId"]) or {}
+    comision = d.buscar_en(d.comisiones, asociacion.get("comisionId"))
+    if not comision:
+        return "—"
+    # «2.º año - Comisión A» → «A», que es como la nombra la planilla
+    return comision["nombre"].rsplit(" ", 1)[-1]
+
+
 def _con_alumno(inscripcion: dict, mesa: dict) -> dict:
     """La fila de la planilla: la inscripción, el alumno y su condición.
 
@@ -247,6 +266,7 @@ def _con_alumno(inscripcion: dict, mesa: dict) -> dict:
     persona_id = inscripcion["personaId"]
     return {
         **inscripcion,
+        "comision": _comision_de(inscripcion),
         "condicion": d.condicion_en(persona_id, mesa["materiaId"]) or "Libre",
         "alumno": _ficha_alumno(persona_id, mesa["materiaId"], mesa["id"]),
     }
@@ -358,8 +378,9 @@ def listar_inscriptos(
     for mesa in mesas:
         filas = []
         for inscripcion in _inscripciones_de(mesa):
-            comisiones.add(inscripcion["comision"])
-            if comision and inscripcion["comision"] != comision:
+            de_la_fila = _comision_de(inscripcion)
+            comisiones.add(de_la_fila)
+            if comision and de_la_fila != comision:
                 continue
             filas.append(_con_alumno(inscripcion, mesa))
         filas.sort(key=lambda f: (f["estado"] != ac.MESA_INSCRIPTO, f["alumno"]["nombre"]))

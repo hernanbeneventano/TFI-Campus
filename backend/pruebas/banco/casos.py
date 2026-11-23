@@ -452,11 +452,11 @@ def con_parametros() -> list[Caso]:
             Paso("POST", "/api/finales/mesas/99999/inscripcion", SANTIAGO),
             Paso("DELETE", "/api/finales/mesas/abc/inscripcion", SANTIAGO),
             _ver("/api/finales/mesas", SANTIAGO),
-            # Lo ve la cátedra (gestión, todavía FastAPI): la planilla de la mesa 1.
-            # `/gestion/inscriptos?mesaId=1` no va: se cae con un 500 en los dos
-            # frameworks, porque la inscripción que crea el alumno no trae el
-            # campo `comision` que esa pantalla da por sentado. Es un error de
-            # antes de la migración; se arregla con la gestión docente.
+            # Lo ve la cátedra: la planilla de la mesa 1. La inscripción que hace
+            # el alumno no trae `comision` y esta pantalla se caía con un 500;
+            # ahora la calcula al leer.
+            _ver("/api/finales/gestion/inscriptos?mesaId=1", MARIA),
+            _ver("/api/finales/gestion/inscriptos?mesaId=1&comision=A", MARIA),
             _ver("/api/finales/gestion/mesas/1", SECRETARIA),
             # Sin sesión, un cuerpo que no se usa, la barra final, lo que no existe
             _ver("/api/finales/mesas", None),
