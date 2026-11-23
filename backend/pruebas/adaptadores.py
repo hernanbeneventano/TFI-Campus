@@ -299,10 +299,56 @@ def _cabeceras(r) -> dict:
     return {k: r.headers[k] for k in CABECERAS if k in r.headers}
 
 
+# ===================== La grabación =====================
+# Para cuando FastAPI ya no esté: lo que contestó cada sonda queda grabado y
+# Django se compara contra eso. `ADAPTADORES_GRABAR=archivo` graba;
+# `ADAPTADORES_GRABADO=archivo` compara contra la grabación.
+import base64 as _b64
+import json as _json
+import os as _os
+
+_GRABAR = _os.environ.get("ADAPTADORES_GRABAR")
+_GRABADO = _os.environ.get("ADAPTADORES_GRABADO")
+_grabacion: dict = {}
+if _GRABADO:
+    with open(_GRABADO, encoding="utf-8") as _f:
+        _grabacion = _json.load(_f)
+
+
+class _Grabada:
+    """Una respuesta grabada, con lo que miran las comparaciones."""
+
+    def __init__(self, dato: dict):
+        self.status_code = dato["estado"]
+        self.content = _b64.b64decode(dato["cuerpo"])
+        self.headers = dato["cabeceras"]
+
+
+def _de_fastapi(clave: str, pedir):
+    """La respuesta de FastAPI: en vivo, grabándola o desde la grabación."""
+    if _GRABADO:
+        return _Grabada(_grabacion[clave])
+    r = pedir()
+    if _GRABAR:
+        _grabacion[clave] = {
+            "estado": r.status_code,
+            "cuerpo": _b64.b64encode(r.content).decode(),
+            "cabeceras": {k: r.headers[k] for k in r.headers.keys()},
+        }
+    return r
+
+
+def _terminar_grabacion() -> None:
+    if _GRABAR:
+        with open(_GRABAR, "w", encoding="utf-8") as f:
+            _json.dump(_grabacion, f, ensure_ascii=False, indent=1, sort_keys=True)
+        print(f"\nGrabadas {len(_grabacion)} respuestas de FastAPI en {_GRABAR}")
+
+
 def igual(nombre: str, metodo: str, camino: str, **extra) -> tuple:
     """La misma petición a las dos; comprueba código, bytes y cabeceras."""
     frenos.olvidar_todo()
-    a = fa.request(metodo, camino, follow_redirects=False, **extra)
+    a = _de_fastapi(f"igual:{nombre}", lambda: fa.request(metodo, camino, follow_redirects=False, **extra))
     frenos.olvidar_todo()
     b = dj.request(metodo, camino, follow_redirects=False, **extra)
 
@@ -451,13 +497,14 @@ def correr() -> None:
     igual("un envío de más de 30 MB", "POST", f"{SONDA}/creado",
           headers={"content-length": str(frenos.MAXIMO_BYTES + 1)})
 
-    respuestas = {}
-    for nombre, cliente in (("fa", fa), ("dj", dj)):
+    def pasarse(cliente):
         frenos.olvidar_todo()
         for _ in range(frenos.MAXIMO_ESCRITURAS):
             cliente.post(f"{SONDA}/creado")
-        respuestas[nombre] = cliente.post(f"{SONDA}/creado")
-    a, b = respuestas["fa"], respuestas["dj"]
+        return cliente.post(f"{SONDA}/creado")
+
+    a = _de_fastapi("freno:429", lambda: pasarse(fa))
+    b = pasarse(dj)
     comprobar("pasarse del minuto da el mismo 429",
               (a.status_code, a.content, a.headers.get("retry-after"))
               == (b.status_code, b.content, b.headers.get("retry-after")),
@@ -481,8 +528,13 @@ def correr() -> None:
     persistencia.activo = lambda: True
     persistencia.guardar_cambios = lambda: llamadas.__setitem__("n", llamadas["n"] + 1)
     try:
-        fa.get(f"{SONDA}/datos")
-        en_fastapi = llamadas["n"]
+        if _GRABADO:
+            en_fastapi = _grabacion["guardado:veces"]
+        else:
+            fa.get(f"{SONDA}/datos")
+            en_fastapi = llamadas["n"]
+            if _GRABAR:
+                _grabacion["guardado:veces"] = en_fastapi
         llamadas["n"] = 0
         dj.get(f"{SONDA}/datos")
         en_django = llamadas["n"]
@@ -510,6 +562,8 @@ def correr() -> None:
     prueba = [path("api/con", rutas(get=dj_datos)), path("api/sin", rutas(get=abierta))]
     comprobar("y el vigilante encuentra una abierta",
               vistas_sin_sesion(prueba, publicas) == ["api/sin"], vistas_sin_sesion(prueba, publicas))
+
+    _terminar_grabacion()
 
     # ------------------------------------------------------------------
     print("\n" + "-" * 52)
