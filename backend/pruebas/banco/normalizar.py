@@ -72,8 +72,11 @@ def _texto(valor: str) -> str:
 def aplicar(valor: Any, camino: str = "cuerpo", extra: frozenset[str] = frozenset()) -> Any:
     """Devuelve el valor con lo variable reemplazado por una marca."""
     if isinstance(valor, dict):
+        # Las claves también: lo guardado se indexa por la clave del objeto, y
+        # la de un adjunto de Mensajes lleva un tramo al azar. FastAPI contra
+        # sí mismo ya daba distinto. El contenido se sigue comparando.
         return {
-            k: (
+            (_texto(k) if isinstance(k, str) else k): (
                 MARCA
                 if (k in POR_NOMBRE or k in extra or f"{camino}.{k}" in POR_CAMINO)
                 else aplicar(v, f"{camino}.{k}", extra)

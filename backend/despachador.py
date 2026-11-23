@@ -102,6 +102,7 @@ MIGRADOS_EXACTOS: tuple[str, ...] = (
 # Las vistas las arma `campus_django/puente.py`.
 MODULOS: tuple[str, ...] = (
     "salud",
+    "mensajes",
 )
 
 # Rutas sueltas de un módulo que no se migra entero: (módulo, camino de FastAPI)

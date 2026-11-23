@@ -471,6 +471,152 @@ def con_parametros() -> list[Caso]:
             Paso("HEAD", "/api/finales/resultados", SANTIAGO),
         ]),
         _caso_archivos(),
+        # El foro. El tema 1 es de Hernán (3), en el módulo 1; la respuesta 3 es de María
+        Caso("El foro, a fondo", [
+            _ver("/api/foro", SANTIAGO),
+            _ver("/api/foro", SECRETARIA),
+            _ver("/api/foro/1", SANTIAGO),
+            _ver("/api/foro/99999", SANTIAGO),
+            _ver("/api/foro/abc", SANTIAGO),
+            # Abrir: bien, sin asignatura, sin texto, de un módulo ajeno
+            Paso("POST", "/api/foro", SANTIAGO, {"cursoId": CURSO, "titulo": "Duda del TP", "texto": "¿Se entrega en PDF?"}),
+            Paso("POST", "/api/foro", SANTIAGO, {"titulo": "Sin asignatura", "texto": "x"}),
+            Paso("POST", "/api/foro", SANTIAGO, {"cursoId": CURSO, "titulo": "", "texto": ""}),
+            Paso("POST", "/api/foro", SANTIAGO, {"cursoId": 99999, "titulo": "x", "texto": "x"}),
+            Paso("POST", "/api/foro", SANTIAGO),
+            # Responder, seguir, votar
+            Paso("POST", "/api/foro/1", SANTIAGO, {"texto": "Yo también tengo esa duda"}),
+            Paso("POST", "/api/foro/1", SANTIAGO, {"texto": "  "}),
+            Paso("POST", "/api/foro/99999", SANTIAGO, {"texto": "x"}),
+            Paso("POST", "/api/foro/1/seguir", SANTIAGO),
+            Paso("POST", "/api/foro/1/seguir", SANTIAGO),
+            Paso("POST", "/api/foro/1/mensajes/3/voto", SANTIAGO),
+            Paso("POST", "/api/foro/1/mensajes/3/voto", SANTIAGO),
+            Paso("POST", "/api/foro/1/mensajes/99999/voto", SANTIAGO),
+            _ver("/api/foro/1", HERNAN),
+            # Retirar: la respuesta ajena sin motivo (403 o 400), con motivo quien modera
+            Paso("DELETE", "/api/foro/1/mensajes/3", SANTIAGO, {}),
+            Paso("DELETE", "/api/foro/1/mensajes/3", MARIA),
+            Paso("DELETE", "/api/foro/1/mensajes/2", SECRETARIA, {}),
+            Paso("DELETE", "/api/foro/1/mensajes/2", SECRETARIA, {"motivo": "Fuera de tema"}),
+            Paso("DELETE", "/api/foro/2", SANTIAGO, {}),
+            Paso("DELETE", "/api/foro/2", CLAUDIA, {"motivo": "Duplicado"}),
+            Paso("DELETE", "/api/foro/2", CLAUDIA, {"motivo": "Duplicado"}),
+            _ver("/api/foro", SANTIAGO),
+            # Sin sesión, barras y métodos
+            _ver("/api/foro", None),
+            Paso("POST", "/api/foro/1", None, {"texto": "x"}),
+            _ver("/api/foro/", SANTIAGO),
+            Paso("PUT", "/api/foro/1", SANTIAGO, {}),
+            _ver("/api/foro/1/seguir", SANTIAGO),
+            Paso("HEAD", "/api/foro", SANTIAGO),
+        ]),
+        # Novedades. La 1 es de María (2) y está destacada; la 2 es de otro docente (8)
+        Caso("Las novedades, a fondo", [
+            _ver("/api/novedades", SANTIAGO),
+            _ver("/api/novedades", MARIA),
+            # Publicar: el docente sí, el alumno 403, sin título 400; destacar desancla la anterior
+            Paso("POST", "/api/novedades", MARIA, {"titulo": "Cambio de aula", "cuerpo": "Nos vemos en el 12",
+                                                   "categoria": "Académico", "ambito": "Programación II", "anclada": True}),
+            Paso("POST", "/api/novedades", SANTIAGO, {"titulo": "No", "cuerpo": "No"}),
+            Paso("POST", "/api/novedades", MARIA, {"titulo": "", "cuerpo": ""}),
+            Paso("POST", "/api/novedades", MARIA),
+            _ver("/api/novedades", SANTIAGO),
+            # Editar: la propia sí, la ajena 403, inexistente 404
+            Paso("PUT", "/api/novedades/1", MARIA, {"titulo": "Editada", "cuerpo": "Otro texto"}),
+            Paso("PUT", "/api/novedades/2", MARIA, {"titulo": "No", "cuerpo": "No"}),
+            Paso("PUT", "/api/novedades/99999", MARIA, {"titulo": "x", "cuerpo": "x"}),
+            Paso("PUT", "/api/novedades/abc", MARIA, {"titulo": "x", "cuerpo": "x"}),
+            # La imagen: PNG sí, otra cosa 415, ajena 403; quitarla
+            Paso("POST", "/api/novedades/1/imagen", MARIA,
+                 {"nombre": "portada.png", "extension": "png", "tipo": "image/png", "contenido": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="}),
+            Paso("POST", "/api/novedades/1/imagen", MARIA,
+                 {"nombre": "x.svg", "extension": "svg", "tipo": "image/svg+xml", "contenido": "PHN2Zy8+"}),
+            Paso("POST", "/api/novedades/2/imagen", MARIA,
+                 {"nombre": "portada.png", "extension": "png", "tipo": "image/png", "contenido": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="}),
+            Paso("POST", "/api/novedades/1/imagen", MARIA),
+            _ver("/api/novedades", SANTIAGO),
+            Paso("DELETE", "/api/novedades/1/imagen", MARIA),
+            Paso("DELETE", "/api/novedades/1/imagen", MARIA),
+            # Reacciones: una por persona, otra la reemplaza, la misma la saca
+            Paso("POST", "/api/novedades/1/reaccion", SANTIAGO, {"tipo": "util"}),
+            Paso("POST", "/api/novedades/1/reaccion", SANTIAGO, {"tipo": "dudas"}),
+            Paso("POST", "/api/novedades/1/reaccion", SANTIAGO, {"tipo": "dudas"}),
+            Paso("POST", "/api/novedades/1/reaccion", SANTIAGO, {"tipo": "inventada"}),
+            Paso("POST", "/api/novedades/1/reaccion", SANTIAGO, {"tipo": None}),
+            Paso("POST", "/api/novedades/99999/reaccion", SANTIAGO, {"tipo": "util"}),
+            # Retirar: la propia, la ajena sin motivo 400, con motivo quien supervisa
+            Paso("DELETE", "/api/novedades/2", CLAUDIA, {}),
+            Paso("DELETE", "/api/novedades/2", CLAUDIA, {"motivo": "Información vieja"}),
+            Paso("DELETE", "/api/novedades/3", SANTIAGO, {"motivo": "No"}),
+            Paso("DELETE", "/api/novedades/3", MARIA),
+            _ver("/api/novedades", SANTIAGO),
+            # Sin sesión, barras y métodos
+            _ver("/api/novedades", None),
+            Paso("PUT", "/api/novedades/1", None, {"titulo": "x"}),
+            _ver("/api/novedades/", SANTIAGO),
+            _ver("/api/novedades/1", SANTIAGO),
+            Paso("PATCH", "/api/novedades/1", MARIA, {}),
+            Paso("HEAD", "/api/novedades", SANTIAGO),
+        ]),
+        # Mensajes: conversaciones de a dos. La 1 es de Santiago (1) y María (2);
+        # el mensaje 1 es de Santiago y el 2 de María.
+        Caso("Los mensajes, a fondo", [
+            _ver("/api/mensajes", SANTIAGO),
+            _ver("/api/mensajes", MARIA),
+            _ver("/api/mensajes/contactos", SANTIAGO),
+            _ver("/api/mensajes/contactos", SECRETARIA),
+            # Ajena (la 2 es de Santiago con Hernán): 404, no 403
+            _ver("/api/mensajes/2", MARIA),
+            _ver("/api/mensajes/1", SANTIAGO),
+            _ver("/api/mensajes/abc", SANTIAGO),
+            # Mandar: texto, vacío, con una imagen y con un adjunto que no se acepta
+            Paso("POST", "/api/mensajes/1", SANTIAGO, {"texto": "  Hola, profe  "}),
+            Paso("POST", "/api/mensajes/1", SANTIAGO, {"texto": "   "}),
+            Paso("POST", "/api/mensajes/1", SANTIAGO),
+            Paso("POST", "/api/mensajes/1", SANTIAGO, {"texto": "", "adjuntos": [
+                {"nombre": "foto.png", "extension": "png", "tipo": "image/png",
+                 "contenido": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="}]}),
+            Paso("POST", "/api/mensajes/1", SANTIAGO, {"adjuntos": [
+                {"nombre": "virus.exe", "extension": "exe", "contenido": "TVo="}]}),
+            Paso("POST", "/api/mensajes/2", MARIA, {"texto": "No es mía"}),
+            # Editar: el propio sí (queda marcado), el ajeno 403, inexistente 404
+            Paso("PATCH", "/api/mensajes/1/mensajes/1", SANTIAGO, {"texto": "Hola (editado)"}),
+            Paso("PATCH", "/api/mensajes/1/mensajes/2", SANTIAGO, {"texto": "No"}),
+            Paso("PATCH", "/api/mensajes/1/mensajes/1", SANTIAGO, {"texto": ""}),
+            Paso("PATCH", "/api/mensajes/1/mensajes/99999", SANTIAGO, {"texto": "x"}),
+            Paso("PATCH", "/api/mensajes/1/mensajes/abc", SANTIAGO, {"texto": "x"}),
+            # Fijar: cualquiera de los dos, uno solo; tocarlo de nuevo lo suelta
+            Paso("POST", "/api/mensajes/1/mensajes/2/fijar", SANTIAGO),
+            Paso("POST", "/api/mensajes/1/mensajes/3/fijar", MARIA),
+            _ver("/api/mensajes/1", MARIA),
+            Paso("POST", "/api/mensajes/1/mensajes/3/fijar", MARIA),
+            Paso("POST", "/api/mensajes/2/mensajes/4/fijar", MARIA),
+            # Eliminar: el propio, el ajeno 403, y el fijado se suelta
+            Paso("POST", "/api/mensajes/1/mensajes/1/fijar", SANTIAGO),
+            Paso("DELETE", "/api/mensajes/1/mensajes/1", SANTIAGO),
+            Paso("DELETE", "/api/mensajes/1/mensajes/2", SANTIAGO),
+            Paso("DELETE", "/api/mensajes/1/mensajes/1", SANTIAGO),
+            _ver("/api/mensajes/1", SANTIAGO),
+            # Abrir con alguien: la existente, una nueva, consigo mismo, inexistente, roto
+            Paso("POST", "/api/mensajes", SANTIAGO, {"paraId": MARIA}),
+            Paso("POST", "/api/mensajes", SANTIAGO, {"paraId": PABLO}),
+            Paso("POST", "/api/mensajes", SANTIAGO, {"paraId": SANTIAGO}),
+            Paso("POST", "/api/mensajes", SANTIAGO, {"paraId": 99999}),
+            Paso("POST", "/api/mensajes", SANTIAGO, {"paraId": "abc"}),
+            Paso("POST", "/api/mensajes", SANTIAGO),
+            _ver("/api/mensajes", SANTIAGO),
+            # Mismo camino, otro método: «contactos» cae en POST /{id} (400)
+            Paso("POST", "/api/mensajes/contactos", SANTIAGO, {"texto": "x"}),
+            Paso("DELETE", "/api/mensajes/contactos", SANTIAGO),
+            # Sin sesión, barras y métodos
+            _ver("/api/mensajes", None),
+            Paso("POST", "/api/mensajes/1", None, {"texto": "x"}),
+            _ver("/api/mensajes/", SANTIAGO),
+            Paso("PUT", "/api/mensajes/1", SANTIAGO, {}),
+            Paso("GET", "/api/mensajes/1/mensajes/2", SANTIAGO),
+            Paso("HEAD", "/api/mensajes", SANTIAGO),
+        ]),
         # La salud del servidor: la abierta y la de Firestore (solo administración)
         Caso("La salud, a fondo", [
             _ver("/api/salud", None),
