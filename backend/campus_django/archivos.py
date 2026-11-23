@@ -21,7 +21,7 @@ from django.urls import path, re_path
 
 from app.servicios import acceso_archivos as servicio
 
-from .adaptadores import con_sesion, cuerpo, descargar, responder, rutas
+from .adaptadores import con_cuerpo, con_sesion, cuerpo, descargar, responder, rutas
 
 
 @con_sesion
@@ -29,11 +29,13 @@ def estado(request, yo):
     return responder(servicio.estado(yo))
 
 
+@con_cuerpo
 @con_sesion
 def pedir_enlace(request, yo):
     return responder(servicio.pedir_enlace(cuerpo(request), yo))
 
 
+@con_cuerpo
 @con_sesion
 def confirmar(request, yo):
     return responder(servicio.confirmar(cuerpo(request), yo))

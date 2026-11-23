@@ -105,6 +105,10 @@ CABECERAS: tuple[str, ...] = (
     # pasan aunque uno tenga espacios o los acentos escapados. El largo los
     # delata: es la única forma de ver una diferencia de bytes desde acá.
     "content-length",
+    # Qué métodos acepta, en un 405. Starlette la arma con la primera ruta que
+    # coincide en camino, y cada ruta de FastAPI tiene un solo método: juntar
+    # dos en una misma vista de Django la cambiaba sin que se viera.
+    "allow",
 )
 
 

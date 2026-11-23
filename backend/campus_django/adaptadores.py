@@ -139,6 +139,48 @@ def parametros(request) -> dict[str, str]:
     return request.GET.dict()
 
 
+def _va_como_json(request) -> bool:
+    """Si FastAPI leería este cuerpo como JSON: sin tipo de contenido, o con
+    `application/json` o un `+json`. Si no, lo deja en bytes."""
+    tipo_contenido = request.headers.get("content-type")
+    if not tipo_contenido:
+        return True
+    mensaje = email.message.Message()
+    mensaje["content-type"] = tipo_contenido
+    if mensaje.get_content_maintype() != "application":
+        return False
+    subtipo = mensaje.get_content_subtype()
+    return subtipo == "json" or subtipo.endswith("+json")
+
+
+def con_cuerpo(vista: Callable) -> Callable:
+    """Para las vistas que reciben cuerpo: un JSON roto es 400 **antes** de
+    mirar la sesión, como en FastAPI.
+
+    FastAPI lee el cuerpo de la ruta antes de resolver sus dependencias, así
+    que `POST` sin sesión y con un JSON roto da 400 y no 401. Pasaba en
+    `/api/archivos/confirmar`. Solo lo hace si la ruta declara un cuerpo, por
+    eso es un decorador aparte y no va en `con_sesion`. Va **por fuera**:
+
+        @con_cuerpo
+        @con_sesion
+        def confirmar(request, yo): ...
+    """
+
+    @wraps(vista)
+    def envuelta(request, *args, **kwargs):
+        crudo = request.body
+        if crudo and _va_como_json(request):
+            try:
+                json.loads(crudo)
+            except ValueError:
+                raise _invalido() from None
+        return vista(request, *args, **kwargs)
+
+    envuelta.con_sesion = getattr(vista, "con_sesion", False)
+    return envuelta
+
+
 def cuerpo(request, tipo: Any = dict, defecto: Any = OBLIGATORIO) -> Any:
     """El cuerpo de la petición, leído como lo lee FastAPI.
 
@@ -157,15 +199,7 @@ def cuerpo(request, tipo: Any = dict, defecto: Any = OBLIGATORIO) -> Any:
         return copy.deepcopy(defecto)
 
     valor: Any = crudo
-    tipo_contenido = request.headers.get("content-type")
-    leer_json = not tipo_contenido
-    if tipo_contenido:
-        mensaje = email.message.Message()
-        mensaje["content-type"] = tipo_contenido
-        if mensaje.get_content_maintype() == "application":
-            subtipo = mensaje.get_content_subtype()
-            leer_json = subtipo == "json" or subtipo.endswith("+json")
-    if leer_json:
+    if _va_como_json(request):
         try:
             valor = json.loads(crudo)
         except ValueError:

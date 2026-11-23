@@ -39,6 +39,7 @@ from app.servicios.autenticacion import UsuarioActual
 from campus_django import urls as urls_django
 from campus_django.adaptadores import (
     como_starlette,
+    con_cuerpo,
     con_sesion,
     consulta,
     cuerpo,
@@ -225,16 +226,19 @@ def dj_obligatoria(request, yo):
     return responder({"cantidad": consulta(request, "cantidad", int)})
 
 
+@con_cuerpo
 @con_sesion
 def dj_cuerpo(request, yo):
     return responder({"recibido": cuerpo(request, dict)})
 
 
+@con_cuerpo
 @con_sesion
 def dj_cuerpo_opcional(request, yo):
     return responder({"recibido": cuerpo(request, dict, defecto={})})
 
 
+@con_cuerpo
 @con_sesion
 def dj_cuerpo_que_cambia(request, yo):
     datos = cuerpo(request, dict, defecto={})
@@ -401,6 +405,14 @@ def correr() -> None:
     # FastAPI entrega una copia del valor por omisión en cada pedido
     igual("el valor por omisión, la primera vez", "POST", f"{SONDA}/cuerpo-que-cambia")
     igual("y la segunda, igual que la primera", "POST", f"{SONDA}/cuerpo-que-cambia")
+    # Sin sesión y con JSON roto: FastAPI lee el cuerpo antes que la sesión (400)
+    como(None)
+    igual("JSON roto y sin sesión: 400 antes que 401", "POST", f"{SONDA}/cuerpo",
+          content=b"{roto", headers={"content-type": "application/json"})
+    igual("JSON sano y sin sesión: 401", "POST", f"{SONDA}/cuerpo", json={"a": 1})
+    igual("texto plano roto y sin sesión: 401", "POST", f"{SONDA}/cuerpo",
+          content=b"{roto", headers={"content-type": "text/plain"})
+    como(SANTIAGO)
     igual("opcional con JSON roto", "POST", f"{SONDA}/cuerpo-opcional",
           content=b"[[[", headers={"content-type": "application/json"})
 
