@@ -104,6 +104,7 @@ MODULOS: tuple[str, ...] = (
     "salud",
     "mensajes",
     "foro",
+    "novedades",
 )
 
 # Rutas sueltas de un módulo que no se migra entero: (módulo, camino de FastAPI)
