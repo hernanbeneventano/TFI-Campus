@@ -1134,7 +1134,11 @@ def guardar_nota(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActu
 # permisos una sola vez, que es lo mismo que hace la Biblioteca.
 
 
-def _buscar_item(carpetas: list[dict], id_carpeta: int, id_item) -> tuple[dict, dict]:
+# Se llamaba `_buscar_item`, igual que la de arriba (línea ~103), que recibe
+# la carpeta y no la lista. En Python gana la última definición, así que
+# editar, borrar y mover un elemento llamaban a esta con dos argumentos y se
+# caían con un 500. Lo encontró el barrido del banco de la migración.
+def _buscar_item_en_carpetas(carpetas: list[dict], id_carpeta: int, id_item) -> tuple[dict, dict]:
     carpeta = _buscar_carpeta(carpetas, id_carpeta)
     item = next((i for i in carpeta["items"] if str(i["id"]) == str(id_item)), None)
     if not item:
@@ -1161,7 +1165,7 @@ def subir_archivo_item(
     """
     curso = _curso_que_administra(id_curso, yo)
     carpetas = d.asegurar_contenido(curso)
-    carpeta, item = _buscar_item(carpetas, id_carpeta, id_item)
+    carpeta, item = _buscar_item_en_carpetas(carpetas, id_carpeta, id_item)
 
     if item.get("tipo") != "archivo":
         raise HTTPException(409, "Ese elemento no es un archivo")
@@ -1239,7 +1243,7 @@ def descargar_archivo_item(
         raise HTTPException(404, "El módulo no existe")
 
     carpetas = d.carpetas_de_curso(curso)
-    _, item = _buscar_item(carpetas, id_carpeta, id_item)
+    _, item = _buscar_item_en_carpetas(carpetas, id_carpeta, id_item)
 
     guardado = item.get("archivo") or {}
     contenido = alm.leer(guardado["objectKey"]) if guardado.get("objectKey") else None

@@ -299,6 +299,41 @@ def correr() -> None:
     frenos.olvidar_todo()
 
     # ------------------------------------------------------------------
+    grupo("El docente edita, mueve y borra el material de su módulo")
+    # Se caían con un 500: había dos funciones `_buscar_item` en
+    # rutas/gestion_modulo.py y la segunda tapaba a la primera.
+    escenario.cargar()
+    como(MARIA)
+    carpeta = d.contenidos[1][0]
+    item = carpeta["items"][0]
+    base = f"/api/cursos/1/carpetas/{carpeta['id']}/items/{item['id']}"
+    r = cliente.patch(base, json={"titulo": "Renombrado"})
+    comprobar("editar un elemento", r.status_code == 200 and item["titulo"] == "Renombrado", r.status_code)
+    r = cliente.post(f"{base}/mover", json={"hacia": "abajo"})
+    comprobar("moverlo", r.status_code == 200, r.status_code)
+    r = cliente.delete(base)
+    comprobar("borrarlo", r.status_code == 200 and item not in carpeta["items"], r.status_code)
+    comprobar("y otra vez da 404", cliente.delete(base).status_code == 404)
+    como(SANTIAGO)
+    comprobar("el alumno no puede editar", cliente.patch(
+        f"/api/cursos/1/carpetas/{carpeta['id']}/items/{carpeta['items'][0]['id']}",
+        json={"titulo": "No"}).status_code in (403, 404))
+
+    grupo("Ninguna función del backend está definida dos veces")
+    import ast
+    import pathlib
+    repetidas = []
+    for archivo in sorted(pathlib.Path(__file__).resolve().parents[1].joinpath("app").rglob("*.py")):
+        arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+        vistos = set()
+        for nodo in arbol.body:
+            if isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if nodo.name in vistos:
+                    repetidas.append(f"{archivo.name}:{nodo.name}")
+                vistos.add(nodo.name)
+    comprobar("la segunda tapa a la primera sin avisar", not repetidas, repetidas)
+
+    # ------------------------------------------------------------------
     print("\n" + "-" * 52)
     total = pasadas + len(fallas)
     print(f"{pasadas}/{total} comprobaciones pasaron")
