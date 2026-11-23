@@ -32,9 +32,24 @@ import base64
 import os
 import re
 import unicodedata
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import HTTPException
+
+
+@dataclass
+class Archivo:
+    """Un archivo para bajar: los bytes, su tipo y las cabeceras que lleva.
+
+    Es lo que devuelven los servicios en vez de una respuesta de un
+    framework: cada uno arma con esto la suya (FastAPI con `Response`, Django
+    con `adaptadores.descargar`), y salen iguales.
+    """
+
+    contenido: bytes
+    tipo: str
+    cabeceras: dict[str, str]
 
 
 def _es_pdf(b: bytes) -> bool:

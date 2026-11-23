@@ -90,6 +90,109 @@ def automaticos(rutas: list[tuple[str, str]]) -> list[Caso]:
     return casos
 
 
+# ===================== Los archivos =====================
+def _caso_archivos() -> Caso:
+    """Archivos de verdad, pedidos por su dirección firmada.
+
+    La firma sale de un secreto que se sortea en cada proceso. El banco corre
+    las dos aplicaciones en el mismo, así que se calcula acá y vale para las
+    dos. Sin R2 los archivos quedan en la memoria del servidor, que es lo que
+    se compara.
+    """
+    import base64
+    import io
+    import zipfile
+
+    from app.servicios import fotos
+
+    def direccion(objeto: str) -> str:
+        return f"/api/archivos/{fotos.firma(objeto)}/{objeto}"
+
+    def subida(nombre: str, extension: str, tipo: str, crudo: bytes) -> dict:
+        return {"nombre": nombre, "extension": extension, "tipo": tipo,
+                "contenido": base64.b64encode(crudo).decode()}
+
+    pdf = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF"
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    paquete = io.BytesIO()
+    with zipfile.ZipFile(paquete, "w") as z:
+        z.writestr("word/document.xml", "<w:document/>")
+    docx = paquete.getvalue()
+
+    del_pdf = f"entregas/{CURSO}/{TAREA}/{SANTIAGO}/trabajo.pdf"
+    del_docx = f"entregas/{CURSO}/{TAREA}/{SANTIAGO}/trabajo.docx"
+    del_png = f"entregas/{CURSO}/{TAREA}/{HERNAN}/captura.png"
+    entregar = f"/api/tareas/{TAREA}/mi-entrega"
+
+    return Caso("Los archivos, a fondo", [
+        _ver("/api/archivos/estado", SANTIAGO),
+        _ver("/api/archivos/estado", SECRETARIA),
+        # Se suben por la entrega (Mi cursada, todavía FastAPI) y se piden por
+        # la dirección firmada, sin sesión: un PDF y una imagen se ven adentro
+        Paso("POST", entregar, SANTIAGO, subida("trabajo.pdf", "pdf", "application/pdf", pdf)),
+        Paso("POST", entregar, HERNAN, subida("captura.png", "png", "image/png", png)),
+        _ver(direccion(del_pdf), None),
+        _ver(direccion(del_png), None),
+        # Con otra firma, sin firma, sin objeto, o firmado y sin archivo: 404
+        _ver(f"/api/archivos/000000000000/{del_pdf}", None),
+        _ver(f"/api/archivos/{fotos.firma(del_pdf)}/", None),
+        _ver(f"/api/archivos/{fotos.firma('no/existe.pdf')}/no/existe.pdf", None),
+        _ver("/api/archivos/solo-un-tramo", None),
+        # Reemplazar por un Word: el PDF viejo se borra y el Word se baja
+        Paso("POST", entregar, SANTIAGO,
+             subida("trabajo.docx", "docx",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)),
+        _ver(direccion(del_pdf), None),
+        _ver(direccion(del_docx), None),
+        # El enlace temporal: sin R2 no hay (503); ajeno o inexistente, 404
+        _ver(f"/api/archivos/{del_docx}/enlace", SANTIAGO),
+        _ver(f"/api/archivos/{del_docx}/enlace", HERNAN),
+        _ver(f"/api/archivos/{del_docx}/enlace", SECRETARIA),
+        _ver("/api/archivos/no/existe.pdf/enlace", SANTIAGO),
+        _ver("/api/archivos//enlace", SANTIAGO),
+        _ver(f"/api/archivos/{del_docx}/enlace", None),
+        # Pedir permiso para subir directo: cada error, y el bueno da 503 sin R2
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO, {"modulo": "otra-cosa"}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "perfiles", "registroId": MARIA, "extension": "png", "tamano": 10}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "perfiles", "registroId": SANTIAGO, "extension": "exe", "tamano": 10}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "perfiles", "registroId": SANTIAGO, "extension": "png"}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "perfiles", "registroId": SANTIAGO, "extension": "png", "tamano": "10"}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "perfiles", "registroId": SANTIAGO, "extension": "png", "tamano": 10**10}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "perfiles", "registroId": SANTIAGO, "extension": "PNG", "tamano": 10,
+              "nombre": "../../otro/foto.png"}),
+        Paso("POST", "/api/archivos/enlace-de-subida", MARIA,
+             {"modulo": "modulos", "registroId": CURSO, "extension": "pdf", "tamano": 10}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO,
+             {"modulo": "modulos", "registroId": CURSO, "extension": "pdf", "tamano": 10}),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO),
+        Paso("POST", "/api/archivos/enlace-de-subida", SANTIAGO, ["no", "es", "un", "objeto"]),
+        # Confirmar: sin objeto o ajeno 404; propio pero que no llegó, 409
+        Paso("POST", "/api/archivos/confirmar", SANTIAGO, {}),
+        Paso("POST", "/api/archivos/confirmar", SANTIAGO,
+             {"objeto": "perfiles/2/foto.png", "registroId": MARIA}),
+        Paso("POST", "/api/archivos/confirmar", SANTIAGO,
+             {"objeto": f"perfiles/{SANTIAGO}/nunca-subida.png", "registroId": SANTIAGO}),
+        # Sin sesión, los métodos y las barras
+        _ver("/api/archivos/estado", None),
+        Paso("POST", "/api/archivos/confirmar", None, {}),
+        Paso("POST", "/api/archivos/estado", SANTIAGO, {}),
+        _ver("/api/archivos/enlace-de-subida", SANTIAGO),
+        _ver("/api/archivos/estado/", SANTIAGO),
+        _ver("/api/archivos", SANTIAGO),
+        Paso("POST", f"/api/archivos/{del_docx}/enlace", SANTIAGO, {}),
+        Paso("POST", direccion(del_docx), None, {}),
+        Paso("HEAD", direccion(del_docx), None),
+    ])
+
+
 # ===================== Los que llevan parámetros =====================
 def con_parametros() -> list[Caso]:
     return [
@@ -367,6 +470,7 @@ def con_parametros() -> list[Caso]:
             Paso("POST", "/api/finales/proximas", SANTIAGO),
             Paso("HEAD", "/api/finales/resultados", SANTIAGO),
         ]),
+        _caso_archivos(),
         Caso("La biblioteca y sus filtros", [
             _ver("/api/biblioteca?orden=titulo", CLAUDIA),
             _ver("/api/biblioteca?q=programacion&pagina=1&porPagina=5", CLAUDIA),

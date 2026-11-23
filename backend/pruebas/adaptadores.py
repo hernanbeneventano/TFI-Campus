@@ -420,9 +420,11 @@ def correr() -> None:
 
     # ------------------------------------------------------------------
     grupo("Ninguna vista de Django queda sin sesión")
-    publicas = {"api/salud", "api/archivos/<str:f>/<path:o>", "api/usuarios/<str:id_persona>/foto"}
+    # Las públicas a propósito. La de archivos va con la misma expresión que
+    # arma Starlette (ver `campus_django/archivos.py`): es esa y ninguna otra.
+    publicas = {"api/salud", r"^api/archivos/(?P<f>[^/]+)/(?P<o>.*)$", "api/usuarios/<str:id_persona>/foto"}
     reales = [p for p in urls_django.urlpatterns if not str(p.pattern).startswith(S)]
-    comprobar("las rutas reales del campus (hoy ninguna)",
+    comprobar("las rutas reales del campus",
               not vistas_sin_sesion(reales, publicas), vistas_sin_sesion(reales, publicas))
 
     def abierta(request):

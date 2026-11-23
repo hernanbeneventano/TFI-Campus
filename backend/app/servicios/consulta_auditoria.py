@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import csv
 import io
-from dataclasses import dataclass
 from typing import Any
 
 from fastapi import HTTPException
@@ -36,16 +35,7 @@ from .. import datos as d
 from . import ambito
 from . import auditoria as a
 from . import persistencia
-
-
-@dataclass
-class Archivo:
-    """Un archivo para bajar: los bytes, su tipo y las cabeceras que lleva.
-    Cada framework arma con esto su propia respuesta."""
-
-    contenido: bytes
-    tipo: str
-    cabeceras: dict[str, str]
+from .archivos import Archivo
 
 
 # Lo académico, que es el ámbito del supervisor
