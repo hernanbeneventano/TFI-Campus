@@ -6,18 +6,24 @@ React y una API en Python.
 ## Estructura
 
 - `frontend/`: interfaz React 18 y Vite.
-- `backend/`: API FastAPI y sus datos de prueba.
+- `backend/`: el campus. API en Python, migrándose de FastAPI a Django.
+- `backend-node/`: el servicio de catálogos externos (Google Books y Open
+  Library). Es el segundo backend, y está en Node porque es la única parte sin
+  datos propios: ver [su README](backend-node/README.md).
 - `docs/`: decisiones técnicas y especificación OpenAPI.
 - `equipo/`: información del equipo y planificación.
 
 ## Requisitos
 
 - Python 3.11 o superior.
-- Node.js 20 o superior (incluye npm), para el frontend.
+- Node.js 22.15 o superior (incluye npm), para el frontend y para
+  `backend-node/`.
 
 ## Cómo levantarlo en Windows
 
-Abrir dos terminales desde la carpeta del proyecto.
+Abrir tres terminales desde la carpeta del proyecto. El campus funciona sin la
+tercera: lo único que no se puede sin ella es buscar en catálogos externos, y la
+pantalla lo avisa.
 
 **1. Backend** (http://localhost:3000):
 
@@ -39,9 +45,22 @@ if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
 npm run dev
 ```
 
+**3. Catálogos externos** (http://127.0.0.1:4000), opcional:
+
+```powershell
+cd backend-node
+npm install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+npm start
+```
+
 Abrir http://localhost:5173. Vite redirige las llamadas `/api` al backend.
 FastAPI publica documentación interactiva en http://localhost:3000/docs y
 http://localhost:3000/redoc.
+
+El navegador no le habla nunca a `backend-node`: le habla al campus, que ya sabe
+quién es y si tiene permiso, y el campus le pregunta a ese servicio. Por eso
+escucha en 127.0.0.1 y no hace falta configurar nada en el frontend.
 
 Para completar `frontend/.env.local`, copiá la configuración de la app web en
 Firebase Console → Configuración del proyecto → General → Tus apps. Ese archivo

@@ -397,3 +397,70 @@ el servidor. Las pantallas anteriores de Actividad e Información se mantienen m
 rutas de compatibilidad. La implementación de Express fue retirada del proyecto.
 
 **Estado.** Vigente.
+
+---
+
+## 22. El segundo backend en Node se limita a los catálogos externos
+
+**Contexto.** La cátedra pide que el proyecto implemente Django y Node. El campus está
+migrando de FastAPI a Django en `backend/`, y había que decidir qué parte atiende Node.
+
+La restricción que gobierna la decisión no es el framework sino **cómo se guardan los
+datos**: el servidor trabaja sobre una copia en memoria del campus (`backend/app/datos.py`),
+las rutas la leen y la escriben directamente, y `servicios/persistencia.py` manda a
+Firestore lo que cambió después de cada petición. Eso obliga a un solo proceso. Con dos,
+cada uno tendría su propio campus y el último en guardar pisaría al otro **sin que nada
+fallara**, que es la peor forma de perder datos. Django puede convivir porque corre dentro
+del mismo proceso y comparte esa memoria; Node no puede compartir la memoria de Python.
+
+**Decisión.** Node atiende los **catálogos externos** —la búsqueda en Google Books y Open
+Library— como un servicio sin estado, en `backend-node/`. El campus le pregunta por HTTP
+dentro de la misma máquina. Node no es dueño de ninguna colección de Firestore, no verifica
+tokens y no decide permisos.
+
+**Alternativas descartadas.**
+
+1. *Repartir el dominio entre Django y Node* (por ejemplo, Mensajes, Foro y Novedades en
+   Node). Son 23 rutas que escriben en la memoria del campus, emiten eventos de auditoría,
+   mandan avisos por mensaje y validan archivos mirando los bytes. Llevarlas a otro proceso
+   obliga a dos dueños para las mismas colecciones, a duplicar la capa de permisos y las
+   reglas de archivos en dos lenguajes, y a un corte de migración donde un error borra
+   datos. Para 21 días y dos personas, el costo es alto y nada de eso lo ve el usuario.
+2. *Un servicio de tiempo real para el chat y las campanitas.* Es un buen candidato y
+   resuelve algo real: hoy los contadores se vuelven a pedir en cada cambio de ruta. Queda
+   como el siguiente paso, no como el primero, porque necesita saber quién puede ver qué y
+   eso lo obliga a preguntarle al campus.
+
+**Por qué.** De todo el campus, los catálogos externos son la única parte que no tiene
+estado propio: no toca `datos.py`, no escribe en Firestore, no mira el historial académico
+y no decide permisos. Lo único que hace es esperar a dos servidores ajenos al mismo tiempo
+y unir lo que contestan.
+
+Eso es también lo que Node hace mejor que Python: I/O concurrente contra servicios de
+terceros sin estado compartido. **No es Node agregado para cumplir un requisito, es la
+parte del sistema donde Node es la herramienta correcta.** Y es la única parte que se cae
+por culpa de un tercero —Google sin clave devuelve 429 casi siempre—, así que aislarla en
+su propio proceso tiene un segundo beneficio: cuando se cae, se cae sola.
+
+El reparto de responsabilidades quedó donde corresponde. En el campus: quién pregunta, el
+freno por persona, los favoritos y la biblioteca de cada materia. En Node: pedirles a los
+dos catálogos, unificar por ISBN y cachear. Duplicar la capa de permisos en otro lenguaje
+es la forma más segura de que las dos digan cosas distintas.
+
+**Consecuencias.** Requiere Node 22.15 o superior; la única dependencia es Express, y el
+resto —`fetch`, el corredor de pruebas, la lectura del archivo de entorno— es nativo.
+
+La frontera es `backend/app/servicios/libros_externos.py`, que pasó de ser la implementación
+a ser el cliente y **conserva las mismas dos funciones con la misma firma**. Migrar
+Biblioteca a Django no tiene nada que ver con Node: una vista de Django las llama igual que
+la ruta de FastAPI.
+
+Si el servicio no está levantado, el campus funciona entero y lo único que no se puede es
+buscar en catálogos externos; el error llega con la misma forma que una fuente caída y la
+pantalla ya sabe mostrarlo. `GOOGLE_BOOKS_API_KEY` se movió de `backend/.env` a
+`backend-node/.env`, porque ese servicio es el único que consulta Google.
+
+El servicio escucha en 127.0.0.1 y acepta un secreto compartido opcional. No tiene —ni
+necesita— las credenciales de Firebase ni las de R2.
+
+**Estado.** Vigente.
