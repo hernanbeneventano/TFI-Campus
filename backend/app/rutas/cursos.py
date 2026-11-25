@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import threading
 
-from ..web import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import modulos as mod
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api/cursos", tags=["Cursos"])
 
 # Se importa acá y no arriba porque `gestion_modulo` declara su router con
 # el mismo prefijo y los dos se registran en `main`: importarlo al principio
@@ -48,7 +46,7 @@ def _curso_mio(id_curso: int, yo: dict) -> dict:
     """
     curso = d.buscar_curso(id_curso)
     if not curso or not puede_ver(yo, curso):
-        raise HTTPException(404, "Curso no encontrado")
+        raise ErrorDeAPI(404, "Curso no encontrado")
     return curso
 
 
@@ -116,8 +114,7 @@ def _carrera_de_curso(curso_id: int) -> dict:
     }
 
 
-@router.get("", summary="Listar los módulos de quien consulta")
-def listar_cursos(yo: dict = UsuarioActual):
+def listar_cursos(yo: dict ):
     """Los módulos propios, que no son los mismos según quién pregunte.
 
     - **Administrador y supervisor**: todos. No cursan ni dictan nada, así que
@@ -170,14 +167,12 @@ def listar_cursos(yo: dict = UsuarioActual):
     ]
 
 
-@router.get("/{id_curso}", summary="Obtener un módulo")
-def obtener_curso(id_curso: int, yo: dict = UsuarioActual):
+def obtener_curso(id_curso: int, yo: dict ):
     curso = _curso_mio(id_curso, yo)
     return {**curso, "favorito": es_favorito(yo["id"], curso["id"])}
 
 
-@router.get("/{id_curso}/modulo", summary="Todo el contenido de la pantalla de un módulo")
-def obtener_modulo(id_curso: int, yo: dict = UsuarioActual):
+def obtener_modulo(id_curso: int, yo: dict ):
     """El curso, sus carpetas de contenido, los anuncios y la gente inscripta.
 
     Va en una sola consulta: resolverlo con cuatro multiplicaba los estados
@@ -227,24 +222,19 @@ def _tablero_de(curso: dict, id_item: str) -> dict:
     """
     propias = d.contenidos.get(curso["id"])
     if not propias:
-        raise HTTPException(404, "Ese tablero no existe en este módulo")
+        raise ErrorDeAPI(404, "Ese tablero no existe en este módulo")
 
     for carpeta in propias:
         for item in carpeta.get("items") or []:
             if str(item.get("id")) == str(id_item):
                 if item.get("tipo") != "tablero":
-                    raise HTTPException(400, "Ese elemento no es un tablero")
+                    raise ErrorDeAPI(400, "Ese elemento no es un tablero")
                 return item
-    raise HTTPException(404, "Ese tablero no existe en este módulo")
+    raise ErrorDeAPI(404, "Ese tablero no existe en este módulo")
 
 
-@router.post(
-    "/{id_curso}/tableros/{id_item}/publicaciones",
-    status_code=201,
-    summary="Publicar en el tablero de consultas",
-)
 def publicar_en_tablero(
-    id_curso: int, id_item: str, cuerpo: dict = Body(default={}), yo: dict = UsuarioActual
+    id_curso: int, id_item: str, cuerpo: dict = {}, yo: dict = None
 ):
     """Escribe **cualquiera del módulo**, no solo la cátedra.
 
@@ -257,14 +247,14 @@ def publicar_en_tablero(
 
     texto = str(cuerpo.get("texto") or "").strip()
     if not texto:
-        raise HTTPException(400, "La consulta no puede estar vacía")
+        raise ErrorDeAPI(400, "La consulta no puede estar vacía")
     if len(texto) > MAXIMO_PUBLICACION:
-        raise HTTPException(400, f"La consulta no puede pasar de {MAXIMO_PUBLICACION} caracteres")
+        raise ErrorDeAPI(400, f"La consulta no puede pasar de {MAXIMO_PUBLICACION} caracteres")
 
     buscada = str(cuerpo.get("columna") or "").strip()
     columna = next((c for c in tablero["columnas"] if c["titulo"] == buscada), None)
     if columna is None:
-        raise HTTPException(404, "Ese tablero no tiene esa columna")
+        raise ErrorDeAPI(404, "Ese tablero no tiene esa columna")
 
     with _publicando:
         columna.setdefault("publicaciones", [])
@@ -287,8 +277,7 @@ def publicar_en_tablero(
     return publicacion
 
 
-@router.post("/{id_curso}/favorito", summary="Marcar o desmarcar un módulo como favorito")
-def alternar_favorito(id_curso: int, yo: dict = UsuarioActual):
+def alternar_favorito(id_curso: int, yo: dict ):
     """La estrella es **de quien la pone**, no del módulo.
 
     Antes era un booleano adentro del curso: marcar Programación II se la

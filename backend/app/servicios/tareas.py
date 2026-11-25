@@ -1,8 +1,4 @@
-"""Las tareas pendientes de quien pregunta: próximas y atrasadas.
-
-Vive acá y no en la ruta para que FastAPI y Django contesten **con la misma
-función** mientras dure la migración: cada framework solo la llama.
-"""
+"""Las tareas pendientes de quien pregunta: próximas y atrasadas."""
 
 from __future__ import annotations
 

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 from .. import datos as d
 from . import asistencias as asis
@@ -428,9 +428,7 @@ def alertas(persona: dict) -> list[dict]:
 
 
 # ===================== Las dos respuestas =====================
-# Lo que contestan las dos rutas del panel, con su control de acceso. Viven
-# acá y no en la ruta para que FastAPI y Django contesten **con la misma
-# función** mientras dure la migración: cada framework solo la llama.
+# Lo que contestan las dos vistas del panel, con su control de acceso.
 
 # Lo que ve de la actividad quien supervisa sin administrar: lo académico.
 # `usuarios` —roles y cuentas suspendidas— es del administrador.
@@ -441,7 +439,7 @@ MODULOS_DE_SUPERVISION = {
 
 def exigir_acceso(yo: dict) -> None:
     if not es_supervisor(yo):
-        raise HTTPException(
+        raise ErrorDeAPI(
             403, "El panel de control es para la administración y la supervisión"
         )
 

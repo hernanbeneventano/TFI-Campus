@@ -119,7 +119,9 @@ export default function MenuLateral({ usuario, contadores }) {
   // Plegado: quedan solo los íconos. Se recuerda para la próxima visita.
   const [cerrado, setCerrado] = usePreferencia(leerMenuCerrado);
 
-  const ruta = useLocation().pathname;
+  const ubicacion = useLocation();
+  const ruta = ubicacion.pathname;
+  const carreraSeleccionada = new URLSearchParams(ubicacion.search).get('carrera');
   const enModulo = esPantallaDeModulo(ruta);
   const enFinales = ruta.startsWith('/finales');
 
@@ -132,6 +134,9 @@ export default function MenuLateral({ usuario, contadores }) {
   // Una opción con `roles` solo se muestra a quien tenga alguno de ellos. El
   // servidor comprueba lo mismo: esto es para no ofrecer una puerta cerrada.
   const mios = usuario?.roles ?? (usuario?.rol ? [usuario.rol] : []);
+  const esAdministradorOSupervisor = ['Administrador', 'Supervisor'].some((rol) =>
+    mios.includes(rol)
+  );
   const visibles = secciones.filter(
     (s) =>
       (!s.roles || s.roles.some((r) => mios.includes(r))) &&
@@ -195,6 +200,16 @@ export default function MenuLateral({ usuario, contadores }) {
         // Los favoritos van arriba de su cuatrimestre
         modulos: [...suyos].sort((a, b) => Number(b.favorito) - Number(a.favorito)),
       }));
+  }, [modulos]);
+
+  const carreras = useMemo(() => {
+    const unicas = new Map();
+    for (const modulo of modulos) {
+      if (modulo.carreraId != null && modulo.carrera) {
+        unicas.set(String(modulo.carreraId), modulo.carrera);
+      }
+    }
+    return [...unicas.entries()].sort(([, a], [, b]) => a.localeCompare(b, 'es'));
   }, [modulos]);
 
   const materiasCerrado = periodosCerrados.includes(GRUPO_MATERIAS);
@@ -269,7 +284,10 @@ export default function MenuLateral({ usuario, contadores }) {
           {visibles.map(({ ruta: destino, nombre, Icono, aviso, conHijos, conFinales }) => {
             const cuantas = aviso ? (contadores?.[aviso] ?? 0) : 0;
             const ayuda = cuantas > 0 ? `${nombre} · ${textoAviso[aviso](cuantas)}` : nombre;
-            const hijos = conFinales || (conHijos && modulos.length > 0);
+            const hijos =
+              conFinales ||
+              (conHijos &&
+                (esAdministradorOSupervisor ? carreras.length > 0 : modulos.length > 0));
 
             // Las dos opciones desplegables comparten el mismo mecanismo y
             // solo se diferencian en qué estado miran y qué cuelgan.
@@ -279,9 +297,13 @@ export default function MenuLateral({ usuario, contadores }) {
               ? abierto
                 ? 'Ocultar los finales'
                 : 'Ver los finales'
-              : abierto
-                ? 'Ocultar tus módulos'
-                : 'Ver tus módulos';
+              : esAdministradorOSupervisor
+                ? abierto
+                  ? 'Ocultar las carreras'
+                  : 'Ver las carreras'
+                : abierto
+                  ? 'Ocultar tus módulos'
+                  : 'Ver tus módulos';
 
             return (
               <li key={destino}>
@@ -405,7 +427,25 @@ export default function MenuLateral({ usuario, contadores }) {
                           </li>
                         )}
 
-                        {porPeriodo.map(({ periodo, modulos: delPeriodo }) => {
+                        {esAdministradorOSupervisor
+                          ? carreras.map(([id, nombre]) => (
+                              <li key={id}>
+                                <NavLink
+                                  to={`/modulos?carrera=${encodeURIComponent(id)}`}
+                                  tabIndex={desplegados ? 0 : -1}
+                                  title={`Ver módulos de ${nombre}`}
+                                  className={({ isActive }) =>
+                                    isActive && ruta === '/modulos' && carreraSeleccionada === id
+                                      ? 'menu-subitem activo'
+                                      : 'menu-subitem'
+                                  }
+                                >
+                                  <span className="menu-hueco" aria-hidden="true" />
+                                  <span className="menu-etiqueta">{nombre}</span>
+                                </NavLink>
+                              </li>
+                            ))
+                          : porPeriodo.map(({ periodo, modulos: delPeriodo }) => {
                           const periodoCerrado = periodosCerrados.includes(periodo);
                           const alcanzables = desplegados && !periodoCerrado;
 

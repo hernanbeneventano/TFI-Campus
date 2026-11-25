@@ -850,14 +850,14 @@ def ventana(modulo, nombre: str, segundos: float = 0.002):
 
 
 def _codigo(funcion) -> int:
-    """Lo que contestaría la ruta: el estado de su HTTPException, o 500."""
-    from app.web import HTTPException
+    """El estado de un error público del servidor, o 500 si no está previsto."""
+    from app.errores import ErrorDeAPI
 
     try:
         funcion()
         return 201
-    except HTTPException as error:
-        return error.status_code
+    except ErrorDeAPI as error:
+        return error.estado
     except Exception as error:  # noqa: BLE001 - un 500 de verdad
         print(f"         500: {error!r}")
         return 500

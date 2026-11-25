@@ -9,8 +9,8 @@ levantar nada: las pruebas también miran la memoria del servidor
 —`d.auditoria`, `d.personas`— para comprobar que lo que devuelve una ruta es
 lo que de verdad quedó guardado.
 
-Arma cada pedido como lo armaba el `TestClient` de Starlette, que es con el
-que se grabaron las respuestas de referencia: el mismo `host`
+Arma cada pedido con el mismo formato de la captura histórica del contrato:
+el mismo `host`
 (`testserver`), las mismas cabeceras por omisión y el mismo cliente
 (`testclient:50000`, que es lo que ven el freno y la auditoría). Si el
 servidor se cae, el error llega a la prueba (salvo que se pida lo contrario).
@@ -87,9 +87,9 @@ class _Transporte(httpx.BaseTransport):
         async def receive():
             nonlocal leido
             if leido:
-                # Como el TestClient de Starlette: la «desconexión» llega
-                # recién cuando la respuesta terminó. Si llegara antes, Django
-                # la toma como un cliente que se fue y descarta la respuesta.
+                # La desconexión llega recién cuando termina la respuesta. Si
+                # llegara antes, Django la toma como un cliente que se fue y
+                # descarta la respuesta.
                 await _terminada().wait()
                 return {"type": "http.disconnect"}
             leido = True

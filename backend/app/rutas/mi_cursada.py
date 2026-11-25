@@ -13,28 +13,25 @@ recién después de responder.
 
 from __future__ import annotations
 
-from ..web import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm
 from ..servicios import archivos, auditoria, fotos
 from ..servicios import cursada as c
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api", tags=["Mi cursada"])
 
 
 def _curso_en_el_que_estoy(id_curso: int, yo: dict) -> dict:
     curso = d.buscar_curso(id_curso)
     if not curso:
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
     if not any(p["id"] == yo["id"] for p in d.participantes_de_curso(curso)):
-        raise HTTPException(403, "No cursás este módulo")
+        raise ErrorDeAPI(403, "No cursás este módulo")
     return curso
 
 
-@router.get("/cursos/{id_curso}/mis-notas", summary="Mis notas en un módulo")
-def mis_notas(id_curso: int, yo: dict = UsuarioActual):
+def mis_notas(id_curso: int, yo: dict ):
     """Las notas propias, con el promedio y la condición.
 
     No hay forma de pedir las de otro: de quién son sale de la sesión.
@@ -79,8 +76,7 @@ def mis_notas(id_curso: int, yo: dict = UsuarioActual):
     }
 
 
-@router.get("/tareas/{id_tarea}/cuestionario", summary="Abrir un cuestionario")
-def abrir_cuestionario(id_tarea: int, yo: dict = UsuarioActual):
+def abrir_cuestionario(id_tarea: int, yo: dict ):
     """Las preguntas, sin decir cuál es la correcta.
 
     Si ya lo respondió, vienen la nota y el detalle: ahí sí se muestra qué
@@ -88,11 +84,11 @@ def abrir_cuestionario(id_tarea: int, yo: dict = UsuarioActual):
     """
     tarea = d.buscar_tarea(id_tarea)
     if not tarea:
-        raise HTTPException(404, "El trabajo no existe")
+        raise ErrorDeAPI(404, "El trabajo no existe")
     _curso_en_el_que_estoy(tarea["cursoId"], yo)
 
     if tarea.get("formato") != "cuestionario":
-        raise HTTPException(400, "Ese trabajo no es un cuestionario")
+        raise ErrorDeAPI(400, "Ese trabajo no es un cuestionario")
 
     respuesta = c.respuesta_de(yo["id"], id_tarea)
     abierto = _entrega_abierta(tarea)
@@ -163,8 +159,7 @@ def _marca_de(persona_id: int, curso_id: int, item_id: str) -> dict | None:
     )
 
 
-@router.get("/mi-progreso", summary="Todo el material que marqué como visto")
-def ver_mi_progreso(yo: dict = UsuarioActual):
+def ver_mi_progreso(yo: dict ):
     """Los identificadores de **todos** los módulos, no de uno.
 
     El panel de tareas pendientes cruza módulos —muestra lo que falta en la
@@ -176,8 +171,7 @@ def ver_mi_progreso(yo: dict = UsuarioActual):
     return {"completados": _mi_progreso(yo["id"])}
 
 
-@router.put("/cursos/{id_curso}/mi-progreso/{id_item}", summary="Marcar material como visto")
-def marcar_visto(id_curso: int, id_item: str, yo: dict = UsuarioActual):
+def marcar_visto(id_curso: int, id_item: str, yo: dict ):
     """Solo material que existe en ese módulo y que se pueda marcar.
 
     Sin esa comprobación cualquiera podría mandar identificadores inventados
@@ -188,9 +182,9 @@ def marcar_visto(id_curso: int, id_item: str, yo: dict = UsuarioActual):
 
     item = d.buscar_item_de_curso(id_curso, id_item)
     if not item:
-        raise HTTPException(404, "Ese material no existe en el módulo")
+        raise ErrorDeAPI(404, "Ese material no existe en el módulo")
     if not d.es_marcable(item):
-        raise HTTPException(400, "Las tareas se dan por hechas al entregarlas")
+        raise ErrorDeAPI(400, "Las tareas se dan por hechas al entregarlas")
 
     if not _marca_de(yo["id"], id_curso, id_item):
         d.progreso_alumnos.append(
@@ -204,8 +198,7 @@ def marcar_visto(id_curso: int, id_item: str, yo: dict = UsuarioActual):
     return {"completados": _mi_progreso(yo["id"])}
 
 
-@router.delete("/cursos/{id_curso}/mi-progreso/{id_item}", summary="Desmarcar material")
-def desmarcar(id_curso: int, id_item: str, yo: dict = UsuarioActual):
+def desmarcar(id_curso: int, id_item: str, yo: dict ):
     """Se puede desmarcar siempre: marcar algo por error no puede ser
     definitivo, y esto no es una entrega sino una nota para uno mismo."""
     _curso_en_el_que_estoy(id_curso, yo)
@@ -215,8 +208,7 @@ def desmarcar(id_curso: int, id_item: str, yo: dict = UsuarioActual):
     return {"completados": _mi_progreso(yo["id"])}
 
 
-@router.post("/mi-progreso/importar", summary="Subir lo marcado en este navegador")
-def importar_progreso(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def importar_progreso(cuerpo: dict , yo: dict ):
     """Trae de una vez lo que el alumno había marcado cuando esto vivía en el
     navegador.
 
@@ -227,7 +219,7 @@ def importar_progreso(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     """
     ids = cuerpo.get("completados")
     if not isinstance(ids, list):
-        raise HTTPException(400, "Falta la lista de material visto")
+        raise ErrorDeAPI(400, "Falta la lista de material visto")
 
     mios = {
         c["id"]
@@ -300,25 +292,24 @@ def _trabajo_entregable(id_tarea: int, yo: dict) -> tuple[dict, dict]:
     """La tarea y su módulo, comprobando que esa persona pueda entregarla."""
     tarea = d.buscar_tarea(id_tarea)
     if not tarea:
-        raise HTTPException(404, "El trabajo no existe")
+        raise ErrorDeAPI(404, "El trabajo no existe")
     curso = _curso_en_el_que_estoy(tarea["cursoId"], yo)
 
     if tarea.get("formato") == "cuestionario":
-        raise HTTPException(400, "Ese trabajo se responde en pantalla, no se sube")
+        raise ErrorDeAPI(400, "Ese trabajo se responde en pantalla, no se sube")
     if tarea.get("modalidad") == "presencial":
-        raise HTTPException(400, "Ese trabajo es presencial: no hay nada que subir")
+        raise ErrorDeAPI(400, "Ese trabajo es presencial: no hay nada que subir")
 
     # Entrega quien cursa, no quien dicta. La cátedra figura entre los
     # participantes del módulo —por eso pasa el control de arriba— y sin esto
     # el docente podía entregarse su propio trabajo y aparecer en su propia
     # planilla de corrección.
     if curso.get("docenteId") == yo["id"] or not d.tiene_rol(yo, "Estudiante"):
-        raise HTTPException(403, "Los trabajos los entregan los estudiantes")
+        raise ErrorDeAPI(403, "Los trabajos los entregan los estudiantes")
     return tarea, curso
 
 
-@router.get("/tareas/{id_tarea}/mi-entrega", summary="Lo que entregué en un trabajo")
-def ver_mi_entrega(id_tarea: int, yo: dict = UsuarioActual):
+def ver_mi_entrega(id_tarea: int, yo: dict ):
     tarea, _curso = _trabajo_entregable(id_tarea, yo)
     return {
         "entrega": _entrega_publica(_entrega_de(yo["id"], id_tarea), tarea),
@@ -329,8 +320,7 @@ def ver_mi_entrega(id_tarea: int, yo: dict = UsuarioActual):
     }
 
 
-@router.post("/tareas/{id_tarea}/mi-entrega", status_code=201, summary="Entregar un trabajo")
-def entregar(id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def entregar(id_tarea: int, cuerpo: dict , yo: dict ):
     """Sube el archivo y deja la entrega hecha.
 
     **Se puede volver a entregar**, y la nueva reemplaza a la anterior: vale
@@ -345,7 +335,7 @@ def entregar(id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     tarea, curso = _trabajo_entregable(id_tarea, yo)
 
     if not _entrega_abierta(tarea):
-        raise HTTPException(403, "La entrega está cerrada")
+        raise ErrorDeAPI(403, "La entrega está cerrada")
 
     contenido, ficha = archivos.leer_subida(
         cuerpo, permitidos=FORMATOS_ENTREGA, max_mb=ENTREGA_MAX_MB
@@ -361,7 +351,7 @@ def entregar(id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     try:
         alm.subir(objeto, contenido, ficha["tipo"])
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(502, f"No se pudo guardar la entrega: {error}")
+        raise ErrorDeAPI(502, f"No se pudo guardar la entrega: {error}")
 
     anterior = ((previa or {}).get("archivo") or {})
     if isinstance(anterior, dict) and anterior.get("objectKey") and anterior["objectKey"] != objeto:
@@ -406,8 +396,7 @@ def entregar(id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return {"entrega": _entrega_publica(entrega, tarea), "abierta": True}
 
 
-@router.delete("/tareas/{id_tarea}/mi-entrega", summary="Retirar lo entregado")
-def retirar_entrega(id_tarea: int, yo: dict = UsuarioActual):
+def retirar_entrega(id_tarea: int, yo: dict ):
     """Solo mientras la entrega siga abierta.
 
     Después de cerrada no se retira: el docente ya pudo haberla corregido, y
@@ -416,9 +405,9 @@ def retirar_entrega(id_tarea: int, yo: dict = UsuarioActual):
     tarea, curso = _trabajo_entregable(id_tarea, yo)
     entrega = _entrega_de(yo["id"], id_tarea)
     if not entrega:
-        raise HTTPException(409, "No entregaste nada en este trabajo")
+        raise ErrorDeAPI(409, "No entregaste nada en este trabajo")
     if not _entrega_abierta(tarea):
-        raise HTTPException(403, "La entrega está cerrada: ya no se puede retirar")
+        raise ErrorDeAPI(403, "La entrega está cerrada: ya no se puede retirar")
 
     archivo = entrega.get("archivo")
     if isinstance(archivo, dict) and archivo.get("objectKey"):
@@ -434,8 +423,7 @@ def retirar_entrega(id_tarea: int, yo: dict = UsuarioActual):
     return {"entrega": None, "abierta": True}
 
 
-@router.post("/tareas/{id_tarea}/respuestas", status_code=201, summary="Responder un cuestionario")
-def responder(id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def responder(id_tarea: int, cuerpo: dict , yo: dict ):
     """Se responde una sola vez y se corrige en el acto.
 
     Una sola vez porque, pudiendo repetir, el cuestionario deja de medir
@@ -444,23 +432,23 @@ def responder(id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual)
     """
     tarea = d.buscar_tarea(id_tarea)
     if not tarea:
-        raise HTTPException(404, "El trabajo no existe")
+        raise ErrorDeAPI(404, "El trabajo no existe")
     curso = _curso_en_el_que_estoy(tarea["cursoId"], yo)
 
     if tarea.get("formato") != "cuestionario":
-        raise HTTPException(400, "Ese trabajo no es un cuestionario")
+        raise ErrorDeAPI(400, "Ese trabajo no es un cuestionario")
     if c.respuesta_de(yo["id"], id_tarea):
-        raise HTTPException(409, "Ya respondiste este cuestionario")
+        raise ErrorDeAPI(409, "Ya respondiste este cuestionario")
     if not _entrega_abierta(tarea):
-        raise HTTPException(403, "El cuestionario está cerrado")
+        raise ErrorDeAPI(403, "El cuestionario está cerrado")
 
     respuestas = cuerpo.get("respuestas")
     if not isinstance(respuestas, dict) or not respuestas:
-        raise HTTPException(400, "Falta responder")
+        raise ErrorDeAPI(400, "Falta responder")
 
     preguntas = tarea.get("preguntas") or []
     if len(respuestas) < len(preguntas):
-        raise HTTPException(400, "Quedaron preguntas sin responder")
+        raise ErrorDeAPI(400, "Quedaron preguntas sin responder")
 
     corregido = c.corregir_cuestionario(tarea, respuestas)
 

@@ -38,7 +38,7 @@ en uso: concentran mucha información, pero cuesta encontrar dónde está cada c
 se realiza cada tarea. La propuesta aborda ese problema desde el diseño de la interfaz,
 sin resignar alcance funcional.
 
-El sistema se construyó con React y Vite en el navegador, y con Python y FastAPI del
+El sistema se construyó con React y Vite en el navegador, y con Python y Django del
 lado del servidor. Cubre siete pantallas: Novedades, Módulos, Calendario, Foro,
 Mensajes, Biblioteca y Ajustes. Incorpora además la consulta de catálogos
 bibliográficos públicos mediante las interfaces de programación de Google Books y Open
@@ -68,9 +68,9 @@ iteraciones a partir de la realimentación: la pantalla Actividad se reemplazó 
 Calendario académico, la pantalla Información pasó a ser un muro de Novedades, y se
 incorporaron el Foro, la Mensajería interna y la Biblioteca.
 
-El sistema expone 40 puntos de acceso en su interfaz de programación. La capa de datos
-todavía utiliza un conjunto de datos de prueba en memoria. La migración a Firestore
-está definida pero no ejecutada, y constituye la principal línea de trabajo pendiente.
+El sistema expone 169 rutas HTTP en su interfaz de programación. Firestore es la
+persistencia cuando está configurada; el backend puede trabajar en memoria para el
+desarrollo y las pruebas.
 
 ---
 
@@ -117,7 +117,7 @@ llevaron a él. La cátedra pide que esta sección sea escrita por los autores.]
 | 4.2 Arquitectura en capas | Separación de responsabilidades |
 | 4.3 Criterios de diseño visual | Paleta y significado de cada color |
 | 4.4 a 4.11 Pantallas | Novedades, Módulos, Calendario, Foro, Mensajes, Biblioteca y Ajustes |
-| 4.12 Interfaz de programación | Los 40 puntos de acceso |
+| 4.12 Interfaz de programación | Las 169 rutas HTTP |
 | 4.13 Pruebas realizadas | Conjunto de comprobaciones y resultados |
 | 4.14 Alcance no cubierto | Funcionalidades fuera de esta entrega |
 | **5. Conclusiones y líneas futuras** | Cuatro conclusiones y trece líneas |
@@ -199,9 +199,8 @@ como en un aviso de atraso, deja de comunicar urgencia.
 En cuanto a las tecnologías, el desarrollo web actual se apoya en bibliotecas de
 componentes que mantienen sincronizados el estado de la aplicación y lo que se muestra
 en pantalla. React [8] es una de ellas, y organiza la interfaz en componentes que
-describen qué mostrar para un estado dado. Del lado del servidor, los marcos de trabajo
-asíncronos como FastAPI [7] aprovechan que buena parte del tiempo de una consulta se
-pasa esperando entrada y salida, y no calculando.
+describen qué mostrar para un estado dado. Del lado del servidor, Django [7] organiza
+las rutas, vistas y middlewares de la API en Python.
 
 Para la persistencia, las alternativas se agrupan en dos familias. Las bases
 relacionales imponen un esquema previo y garantizan integridad referencial. Las bases
@@ -812,25 +811,16 @@ código asíncrono sin recurrir a cadenas de funciones de retorno.
 previo del equipo y por la disponibilidad de bibliotecas para las tareas pendientes,
 entre ellas el kit de desarrollo de Firebase para administradores.
 
-## FastAPI
+## Django
 
-FastAPI [7] es un marco de trabajo para construir interfaces de programación en Python.
-Se apoya en las anotaciones de tipo del lenguaje para validar los datos de entrada y
-generar la documentación. Es asíncrono de origen, sobre la especificación ASGI.
+Django [7] es un framework web para Python. Su sistema de URLconf relaciona caminos
+HTTP con vistas; las vistas reciben un `HttpRequest` y producen respuestas HTTP. La
+configuración ASGI permite servir la aplicación de forma asíncrona.
 
-**Aplicación en el proyecto.** Estructura los 40 puntos de acceso. Tres características
-resultaron determinantes para este caso.
-
-La primera es el carácter asíncrono. La Biblioteca consulta dos catálogos externos en
-cada búsqueda, y `asyncio.gather` permite lanzarlos en paralelo: el tiempo total es el
-de la fuente más lenta y no la suma de ambas.
-
-La segunda es la generación automática de la documentación. FastAPI publica la
-especificación OpenAPI en `/docs` a partir del propio código, de modo que no puede
-quedar desactualizada respecto de lo que el servidor hace.
-
-La tercera es el tratamiento de errores. Un gestor propio convierte las excepciones en
-respuestas con la forma `{ error: "motivo" }`, que es la que espera la interfaz.
+**Aplicación en el proyecto.** Django es el framework del backend principal. Las rutas
+del campus conservan sus caminos y métodos HTTP, y responden con el formato JSON que
+consume el frontend. La especificación OpenAPI se mantiene como archivo versionado en
+`docs/api/openapi.yaml`; no se genera una página interactiva en tiempo de ejecución.
 
 ## Uvicorn
 
@@ -911,7 +901,7 @@ flowchart TB
         P --> SV
     end
 
-    subgraph SRV["Servidor Python y FastAPI"]
+    subgraph SRV["Servidor Python y Django"]
         RT["Rutas<br/>app/rutas/"]
         CT["Lógica y permisos<br/>en cada ruta"]
         SE["Servicios<br/>app/servicios/"]
@@ -1422,8 +1412,8 @@ Administraciones Públicas, 2012.
 [6] R. S. Pressman, *Ingeniería del Software. Un Enfoque Práctico*, 7.ª ed., México:
 McGraw-Hill, 2010.
 
-[7] S. Ramírez, *FastAPI Documentation*. [En línea]. Disponible en:
-https://fastapi.tiangolo.com. Fecha de última consulta: 07/11/2026.
+[7] Django Software Foundation, *Django Documentation*. [En línea]. Disponible en:
+https://docs.djangoproject.com/. Fecha de última consulta: 25/11/2026.
 
 [8] Meta Open Source, *React Documentation*. [En línea]. Disponible en:
 https://react.dev. Fecha de última consulta: 02/11/2026.
@@ -1452,8 +1442,8 @@ cp .env.example .env
 python -m app.main
 ```
 
-Queda disponible en `http://localhost:3000`, con la documentación interactiva de las
-rutas en `http://localhost:3000/docs`.
+Queda disponible en `http://localhost:3000`. La especificación OpenAPI está en
+`docs/api/openapi.yaml`; no se genera documentación interactiva al arrancar.
 
 **Interfaz**
 
@@ -1486,7 +1476,7 @@ TFI-Campus/
 │       ├── services/      Consultas al servidor y preferencias
 │       ├── hooks/         Lógica reutilizable de estado
 │       └── styles/        Hoja de estilos y paleta
-├── backend/               Servidor (Python y FastAPI)
+├── backend/               Servidor (Python y Django)
 │   ├── app/
 │   │   ├── main.py        Rutas generales, CORS y errores
 │   │   ├── datos.py       Capa de datos
@@ -1516,9 +1506,9 @@ integrarse más adelante a una verificación automática.
 
 ## Anexo 5. Documentación de la interfaz de programación
 
-La especificación completa de los 40 puntos de acceso reside en `docs/api/openapi.yaml`,
-en formato OpenAPI 3.0.3. Documenta para cada operación los parámetros, el cuerpo
-esperado, los códigos de respuesta y los esquemas de datos.
+La especificación OpenAPI 3.0.3 mantenida en `docs/api/openapi.yaml` documenta 42
+operaciones. No cubre todavía las 169 rutas de la API; el resto del contrato se
+verifica con el banco de pruebas.
 
 Se puede consultar de dos maneras: abriéndola en Swagger Editor, en
 https://editor.swagger.io, o importándola en Postman mediante la opción de importar un
@@ -1551,7 +1541,7 @@ dependa de buscarlos.
 | Diagramas del software | 7 | Figuras 1, 2, 3, 14, 15 y 16 | Cubierto. Arquitectura, casos de uso, modelo de datos y tres secuencias |
 | Interfaz y usabilidad | 10 | Capítulo 4, criterios de diseño | Cubierto. Verificado a 390 píxeles |
 | Alcance y limitaciones | 8 | Capítulo 4, alcance no cubierto | Cubierto |
-| Backend | — | Capítulo 4, interfaz de programación | Cubierto. 40 puntos de acceso |
+| Backend | — | Capítulo 4, interfaz de programación | Cubierto. 169 rutas HTTP |
 | Arquitectura en capas | 10 | Capítulo 4, arquitectura en capas | Cubierto |
 | Frontend | 5 | Capítulo 4, pantallas | Cubierto. Incluye avisos de error y confirmaciones |
 | Antecedentes | — | Capítulo 1, antecedentes | Cubierto |

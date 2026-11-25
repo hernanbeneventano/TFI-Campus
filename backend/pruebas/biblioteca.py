@@ -1,7 +1,7 @@
 """Pruebas de la Biblioteca.
 
-Corren **dentro del proceso**, con el cliente de pruebas de FastAPI, por el
-mismo motivo que las de Finales: lo que hay que comprobar es quién ve qué, y
+Corren **dentro del proceso**, con el cliente ASGI de Django, por el mismo
+motivo que las de Finales: lo que hay que comprobar es quién ve qué, y
 para eso hay que poder ser el docente de una materia, el de otra, un alumno
 inscripto, uno que no y el supervisor. Contra el servidor en marcha, sin
 login, todos serían la misma persona.

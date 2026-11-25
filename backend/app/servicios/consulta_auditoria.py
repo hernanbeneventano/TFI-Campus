@@ -1,13 +1,10 @@
 """El registro de auditoría visto desde afuera: consultarlo y exportarlo.
 
 `servicios/auditoria.py` es el que **anota** (`registrar`) y busca; este es lo
-que contestan las cinco rutas de la pantalla, con sus permisos. Vive acá y no
-en la ruta para que FastAPI y Django contesten **con la misma función**
-mientras dure la migración: cada framework lee los parámetros y la llama.
+que contestan las cinco rutas de la pantalla, con sus permisos.
 
 Los parámetros llegan como un diccionario de texto, con el último valor si
-alguno se repite: lo que da `dict(request.query_params)` en FastAPI y
-`request.GET.dict()` en Django.
+alguno se repite, igual que con `request.GET.dict()` de Django.
 
 **No hay escritura**: los eventos los escribe cada módulo con `registrar`.
 La única excepción es la exportación, que se anota a sí misma porque es una
@@ -29,7 +26,7 @@ import csv
 import io
 from typing import Any
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 from .. import datos as d
 from . import ambito
@@ -67,7 +64,7 @@ def _modulos_que_ve(yo: dict) -> set[str] | None:
 def _exigir_acceso(yo: dict) -> set[str] | None:
     permitidos = _modulos_que_ve(yo)
     if permitidos is not None and not permitidos:
-        raise HTTPException(
+        raise ErrorDeAPI(
             403, "El registro de auditoría es para la administración y la supervisión"
         )
     return permitidos
@@ -165,7 +162,7 @@ def mis_materias(yo: dict, p: dict) -> dict:
     secretaría con las cuentas.
     """
     if not d.tiene_rol(yo, "Docente"):
-        raise HTTPException(403, "Esto es para los docentes de una materia")
+        raise ErrorDeAPI(403, "Esto es para los docentes de una materia")
 
     mias = {m["id"] for m in d.materias_que_dicta(yo["id"])}
     if not mias:
@@ -253,7 +250,7 @@ def exportar(yo: dict, p: dict) -> Archivo:
     escritor.writerows(filas)
 
     return Archivo(
-        # Lo mismo que hacía la respuesta de Starlette con un texto: UTF-8
+        # El BOM facilita que Excel abra el CSV con los acentos correctos.
         contenido=("﻿" + buffer.getvalue()).encode("utf-8"),
         tipo="text/csv; charset=utf-8",
         cabeceras={
@@ -390,6 +387,6 @@ def ver(yo: dict, id_evento: int) -> dict:
     if fuera:
         # Fuera de alcance se niega como inexistente, igual que en Biblioteca
         # y en Finales.
-        raise HTTPException(404, "Ese movimiento no existe")
+        raise ErrorDeAPI(404, "Ese movimiento no existe")
 
     return a.con_nombres(evento)

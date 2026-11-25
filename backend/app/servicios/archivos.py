@@ -35,16 +35,15 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 
 @dataclass
 class Archivo:
     """Un archivo para bajar: los bytes, su tipo y las cabeceras que lleva.
 
-    Es lo que devuelven los servicios en vez de una respuesta de un
-    framework: cada uno arma con esto la suya (FastAPI con `Response`, Django
-    con `adaptadores.descargar`), y salen iguales.
+    El servicio valida y prepara los bytes; la vista nativa de Django los
+    entrega con el tipo y las cabeceras correspondientes.
     """
 
     contenido: bytes
@@ -143,26 +142,26 @@ def leer_subida(cuerpo: dict, *, permitidos: set[str] | None = None, max_mb: int
     formato = FORMATOS.get(extension)
     if not formato or extension not in aceptados:
         lista = " y ".join(sorted(e.upper() for e in aceptados))
-        raise HTTPException(415, f"Solo se aceptan archivos {lista}")
+        raise ErrorDeAPI(415, f"Solo se aceptan archivos {lista}")
 
     # El tipo que declara el navegador tiene que coincidir con la extensión…
     declarado = str(cuerpo.get("tipo") or "")
     if declarado and declarado != formato["mime"]:
-        raise HTTPException(415, "El tipo del archivo no coincide con su extensión")
+        raise ErrorDeAPI(415, "El tipo del archivo no coincide con su extensión")
 
     try:
         contenido = base64.b64decode(str(cuerpo.get("contenido") or ""), validate=False)
     except Exception:
-        raise HTTPException(400, "No se pudo leer el archivo")
+        raise ErrorDeAPI(400, "No se pudo leer el archivo")
 
     if len(contenido) == 0:
-        raise HTTPException(400, "El archivo está vacío")
+        raise ErrorDeAPI(400, "El archivo está vacío")
     if len(contenido) > tope * 1024 * 1024:
-        raise HTTPException(413, f"El archivo supera los {tope} MB")
+        raise ErrorDeAPI(413, f"El archivo supera los {tope} MB")
 
     # …y el contenido real tiene que ser lo que dice ser
     if not formato["firma"](contenido):
-        raise HTTPException(415, f"El archivo no es un {extension.upper()} válido")
+        raise ErrorDeAPI(415, f"El archivo no es un {extension.upper()} válido")
 
     ficha = {
         "nombre": nombre_seguro(cuerpo.get("nombre"), extension),

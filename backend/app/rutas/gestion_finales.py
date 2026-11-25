@@ -41,14 +41,12 @@ import re
 from datetime import datetime, timedelta
 from typing import Any
 
-from ..web import APIRouter, Body, HTTPException, Query
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import academico as ac
 from ..servicios import auditoria
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api/finales/gestion", tags=["Finales (gestión)"])
 
 RESULTADOS = d.CONDICIONES_FINAL
 
@@ -77,7 +75,7 @@ def _es_supervisor(persona: dict) -> bool:
 
 def _exigir_gestion(yo: dict) -> None:
     if not d.tiene_rol(yo, "Docente") and not _es_supervisor(yo):
-        raise HTTPException(403, "La gestión de finales es para docentes")
+        raise ErrorDeAPI(403, "La gestión de finales es para docentes")
 
 
 def _es_titular(yo: dict, mesa: dict) -> bool:
@@ -138,7 +136,7 @@ def _buscar_mesa(id_mesa: int, yo: dict) -> dict:
     mesa = d.buscar_mesa(id_mesa)
     # Si no la puede ver, para él no existe: un 403 confirmaría que está
     if not mesa or not _puede_ver(yo, mesa):
-        raise HTTPException(404, "Mesa no encontrada")
+        raise ErrorDeAPI(404, "Mesa no encontrada")
     return mesa
 
 
@@ -308,8 +306,7 @@ def _registrar(mesa: dict, yo: dict, accion: str, detalle: str = "") -> None:
 
 
 # ===================== Rutas: consulta =====================
-@router.get("/opciones", summary="Con qué puede trabajar quien pregunta")
-def opciones(yo: dict = UsuarioActual):
+def opciones(yo: dict ):
     _exigir_gestion(yo)
     return {
         "materias": [
@@ -339,8 +336,7 @@ def opciones(yo: dict = UsuarioActual):
     }
 
 
-@router.get("/mesas", summary="Las mesas que el docente puede ver")
-def listar_mesas(yo: dict = UsuarioActual, materiaId: int | None = Query(default=None)):
+def listar_mesas(yo: dict , materiaId: int | None = None):
     """Las próximas primero, de la más cercana a la más lejana; después las ya
     tomadas, de la más reciente hacia atrás."""
     _exigir_gestion(yo)
@@ -362,12 +358,11 @@ def listar_mesas(yo: dict = UsuarioActual, materiaId: int | None = Query(default
     return [_resumir_mesa(m, yo) for m in proximas + tomadas]
 
 
-@router.get("/inscriptos", summary="Inscriptos por mesa, con sus datos académicos")
 def listar_inscriptos(
-    yo: dict = UsuarioActual,
-    materiaId: int | None = Query(default=None),
-    mesaId: int | None = Query(default=None),
-    comision: str | None = Query(default=None),
+    yo: dict ,
+    materiaId: int | None = None,
+    mesaId: int | None = None,
+    comision: str | None = None,
 ):
     _exigir_gestion(yo)
     mesas = [m for m in listar_mesas(yo, materiaId) if (mesaId is None or m["id"] == mesaId)]
@@ -390,8 +385,7 @@ def listar_inscriptos(
     return {"grupos": grupos, "total": total, "comisiones": sorted(comisiones)}
 
 
-@router.get("/mesas/{id_mesa}", summary="Una mesa, con sus inscriptos")
-def obtener_mesa(id_mesa: int, yo: dict = UsuarioActual):
+def obtener_mesa(id_mesa: int, yo: dict ):
     _exigir_gestion(yo)
     mesa = _buscar_mesa(id_mesa, yo)
     filas = sorted(
@@ -412,10 +406,10 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
         try:
             materia_id = int(cuerpo.get("materiaId"))
         except (TypeError, ValueError):
-            raise HTTPException(400, "Elegí la materia")
+            raise ErrorDeAPI(400, "Elegí la materia")
         materia = d.buscar_materia(materia_id)
         if not materia or materia not in _materias_que_administra(yo):
-            raise HTTPException(403, "Solo podés crear mesas de las materias que tenés a cargo")
+            raise ErrorDeAPI(403, "Solo podés crear mesas de las materias que tenés a cargo")
     else:
         materia = d.buscar_materia(mesa_actual["materiaId"])
         materia_id = materia["id"]
@@ -431,28 +425,28 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
     cierra = str(cuerpo.get("inscripcionHasta") or "").strip()
 
     if not llamado:
-        raise HTTPException(400, "Elegí el llamado de la mesa")
+        raise ErrorDeAPI(400, "Elegí el llamado de la mesa")
     # Tiene que ser uno de los ocho del año: escrito a mano, la misma mesa
     # aparecía con dos nombres distintos según quién la cargara.
     if llamado not in d.LLAMADOS:
-        raise HTTPException(400, "Ese llamado no es uno de los del año académico")
+        raise ErrorDeAPI(400, "Ese llamado no es uno de los del año académico")
     if not (_FECHA.match(fecha) and _FECHA.match(abre) and _FECHA.match(cierra)):
-        raise HTTPException(400, "Revisá las fechas: alguna está vacía o no es válida")
+        raise ErrorDeAPI(400, "Revisá las fechas: alguna está vacía o no es válida")
     if not (_HORA.match(desde) and _HORA.match(hasta)):
-        raise HTTPException(400, "Revisá el horario: tiene que ser HH:MM")
+        raise ErrorDeAPI(400, "Revisá el horario: tiene que ser HH:MM")
     if desde >= hasta:
-        raise HTTPException(400, "La hora de fin tiene que ser posterior a la de inicio")
+        raise ErrorDeAPI(400, "La hora de fin tiene que ser posterior a la de inicio")
     if modalidad not in d.MODALIDADES_FINAL:
-        raise HTTPException(400, "Elegí una modalidad")
+        raise ErrorDeAPI(400, "Elegí una modalidad")
     if instancia not in d.INSTANCIAS_FINAL:
-        raise HTTPException(400, "Elegí si el examen es escrito, oral o las dos cosas")
+        raise ErrorDeAPI(400, "Elegí si el examen es escrito, oral o las dos cosas")
     if not lugar:
-        raise HTTPException(
+        raise ErrorDeAPI(
             400,
             "Poné el enlace de la sala virtual" if modalidad == "Virtual" else "Poné el aula o el lugar",
         )
     if len(lugar) > 120:
-        raise HTTPException(400, "El lugar es demasiado largo")
+        raise ErrorDeAPI(400, "El lugar es demasiado largo")
 
     try:
         inicio = _local(fecha, desde)
@@ -460,14 +454,14 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
         # El cierre incluye todo ese día
         cierre = _local(cierra) + timedelta(days=1) - timedelta(seconds=1)
     except ValueError:
-        raise HTTPException(400, "Revisá las fechas: alguna no existe")
+        raise ErrorDeAPI(400, "Revisá las fechas: alguna no existe")
 
     if inicio <= d.ahora():
-        raise HTTPException(400, "La mesa tiene que ser en el futuro")
+        raise ErrorDeAPI(400, "La mesa tiene que ser en el futuro")
     if apertura > cierre:
-        raise HTTPException(400, "La inscripción no puede cerrar antes de abrir")
+        raise ErrorDeAPI(400, "La inscripción no puede cerrar antes de abrir")
     if cierre.date() >= inicio.date():
-        raise HTTPException(400, "La inscripción tiene que cerrar antes del día del examen")
+        raise ErrorDeAPI(400, "La inscripción tiene que cerrar antes del día del examen")
 
     # Cupo vacío = sin límite
     cupo_bruto = cuerpo.get("cupo")
@@ -476,11 +470,11 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
         try:
             cupo = int(cupo_bruto)
         except (TypeError, ValueError):
-            raise HTTPException(400, "El cupo tiene que ser un número")
+            raise ErrorDeAPI(400, "El cupo tiene que ser un número")
         if cupo < 1 or cupo > 500:
-            raise HTTPException(400, "El cupo tiene que estar entre 1 y 500")
+            raise ErrorDeAPI(400, "El cupo tiene que estar entre 1 y 500")
         if mesa_actual and cupo < len(_activas(mesa_actual)):
-            raise HTTPException(
+            raise ErrorDeAPI(
                 400,
                 f"Ya hay {len(_activas(mesa_actual))} inscriptos: el cupo no puede ser menor",
             )
@@ -493,11 +487,11 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
         except (TypeError, ValueError):
             persona = None
         if not persona or not d.tiene_rol(persona, "Docente"):
-            raise HTTPException(400, "En el tribunal solo puede haber docentes")
+            raise ErrorDeAPI(400, "En el tribunal solo puede haber docentes")
         if persona["id"] not in tribunal:
             tribunal.append(persona["id"])
     if len(tribunal) > MAX_TRIBUNAL:
-        raise HTTPException(400, f"El tribunal no puede tener más de {MAX_TRIBUNAL} integrantes")
+        raise ErrorDeAPI(400, f"El tribunal no puede tener más de {MAX_TRIBUNAL} integrantes")
 
     repetida = next(
         (
@@ -511,7 +505,7 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
         None,
     )
     if repetida:
-        raise HTTPException(409, "Esa materia ya tiene una mesa ese día")
+        raise ErrorDeAPI(409, "Esa materia ya tiene una mesa ese día")
 
     return {
         "materiaId": materia_id,
@@ -529,8 +523,7 @@ def _validar_datos_mesa(cuerpo: dict, yo: dict, mesa_actual: dict | None) -> dic
     }
 
 
-@router.post("/mesas", status_code=201, summary="Crear una mesa de examen")
-def crear_mesa(cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def crear_mesa(cuerpo: dict[str, Any] = {}, yo: dict = None ):
     _exigir_gestion(yo)
     datos = _validar_datos_mesa(cuerpo, yo, None)
     mesa = {
@@ -550,25 +543,24 @@ def _como_se_toma(mesa: dict) -> str:
     return f"{_texto_fecha(mesa['fecha'])}, de {mesa['desde']} a {mesa['hasta']} h, {mesa['lugar']} ({mesa['modalidad'].lower()})"
 
 
-@router.put("/mesas/{id_mesa}", summary="Modificar o reprogramar una mesa")
-def editar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def editar_mesa(id_mesa: int, cuerpo: dict[str, Any] = {}, yo: dict = None ):
     """Si cambia cuándo, dónde o cómo se toma y ya hay inscriptos, se les avisa
     por mensaje a cada uno: es una reprogramación."""
     _exigir_gestion(yo)
     mesa = _buscar_mesa(id_mesa, yo)
     if not _puede_administrar(yo, mesa):
-        raise HTTPException(403, "Solo el docente a cargo de la materia puede modificar la mesa")
+        raise ErrorDeAPI(403, "Solo el docente a cargo de la materia puede modificar la mesa")
     # Comprobar el estado y el cupo contra los inscriptos, y cambiar la mesa,
     # van juntos: si no, alguien se anota en el medio y queda más gente que
     # cupo. Ver `academico.inscripciones_a_mesas`. El historial, la auditoría
     # y los avisos van afuera, con los inscriptos de ese momento.
     with ac.inscripciones_a_mesas:
         if mesa["estado"] == "cancelada":
-            raise HTTPException(409, "La mesa está cancelada")
+            raise ErrorDeAPI(409, "La mesa está cancelada")
         if mesa["actaCerrada"]:
-            raise HTTPException(409, "El acta ya está cerrada")
+            raise ErrorDeAPI(409, "El acta ya está cerrada")
         if _ya_se_tomo(mesa):
-            raise HTTPException(409, "La mesa ya se tomó: no se puede modificar")
+            raise ErrorDeAPI(409, "La mesa ya se tomó: no se puede modificar")
 
         datos = _validar_datos_mesa(cuerpo, yo, mesa)
         antes = _como_se_toma(mesa)
@@ -607,27 +599,26 @@ def editar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dic
     return _resumir_mesa(mesa, yo)
 
 
-@router.post("/mesas/{id_mesa}/cancelar", summary="Cancelar una mesa y avisar a los inscriptos")
-def cancelar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def cancelar_mesa(id_mesa: int, cuerpo: dict[str, Any] = {}, yo: dict = None ):
     _exigir_gestion(yo)
     mesa = _buscar_mesa(id_mesa, yo)
     if not _puede_administrar(yo, mesa):
-        raise HTTPException(403, "Solo el docente a cargo de la materia puede cancelar la mesa")
+        raise ErrorDeAPI(403, "Solo el docente a cargo de la materia puede cancelar la mesa")
     # Comprobar y cancelar van juntos, y los inscriptos a avisar se toman en
     # ese mismo momento: si alguien se anotaba en el medio quedaba inscripto
     # en una mesa cancelada sin enterarse. Ver `academico.inscripciones_a_mesas`.
     with ac.inscripciones_a_mesas:
         if mesa["estado"] == "cancelada":
-            raise HTTPException(409, "La mesa ya estaba cancelada")
+            raise ErrorDeAPI(409, "La mesa ya estaba cancelada")
         if _ya_se_tomo(mesa) or mesa["actaCerrada"]:
-            raise HTTPException(409, "La mesa ya se tomó: no se puede cancelar")
+            raise ErrorDeAPI(409, "La mesa ya se tomó: no se puede cancelar")
 
         # Sin motivo, quien estaba inscripto no sabe qué hacer
         motivo = str(cuerpo.get("motivo") or "").strip()
         if not motivo:
-            raise HTTPException(400, "Contá el motivo: les llega a los inscriptos")
+            raise ErrorDeAPI(400, "Contá el motivo: les llega a los inscriptos")
         if len(motivo) > 500:
-            raise HTTPException(400, "El motivo es demasiado largo")
+            raise ErrorDeAPI(400, "El motivo es demasiado largo")
 
         mesa["estado"] = "cancelada"
         mesa["motivoCancelacion"] = motivo
@@ -650,41 +641,40 @@ def cancelar_mesa(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: d
 # ===================== Rutas: resultados =====================
 def _exigir_calificable(mesa: dict, yo: dict) -> None:
     if not _puede_calificar(yo, mesa):
-        raise HTTPException(403, "Solo el tribunal de la mesa puede cargar las notas")
+        raise ErrorDeAPI(403, "Solo el tribunal de la mesa puede cargar las notas")
     if mesa["estado"] == "cancelada":
-        raise HTTPException(409, "La mesa está cancelada")
+        raise ErrorDeAPI(409, "La mesa está cancelada")
     if mesa["actaCerrada"]:
-        raise HTTPException(409, "El acta ya está cerrada: los resultados no se pueden cambiar")
+        raise ErrorDeAPI(409, "El acta ya está cerrada: los resultados no se pueden cambiar")
     if not _ya_se_tomo(mesa):
-        raise HTTPException(409, "Las notas se cargan después del examen")
+        raise ErrorDeAPI(409, "Las notas se cargan después del examen")
 
 
 def _validar_resultado(resultado: Any, nota: Any) -> tuple[str | None, int | None]:
     if resultado in (None, ""):
         return None, None
     if resultado not in RESULTADOS:
-        raise HTTPException(400, "La condición tiene que ser Aprobado, Desaprobado o Ausente")
+        raise ErrorDeAPI(400, "La condición tiene que ser Aprobado, Desaprobado o Ausente")
     if resultado == "Ausente":
         return resultado, None
 
     if nota in (None, ""):
-        raise HTTPException(400, "Falta la nota de alguien que se presentó")
+        raise ErrorDeAPI(400, "Falta la nota de alguien que se presentó")
     try:
         exacta = float(nota)
     except (TypeError, ValueError):
-        raise HTTPException(400, "La nota tiene que ser un número")
+        raise ErrorDeAPI(400, "La nota tiene que ser un número")
     valor = int(exacta)
     if exacta != valor or not 1 <= valor <= NOTA_MAXIMA:
-        raise HTTPException(400, f"La nota tiene que ser un número entero entre 1 y {NOTA_MAXIMA}")
+        raise ErrorDeAPI(400, f"La nota tiene que ser un número entero entre 1 y {NOTA_MAXIMA}")
     if resultado == "Aprobado" and valor < NOTA_APROBACION:
-        raise HTTPException(400, f"Para aprobar hace falta {NOTA_APROBACION} o más")
+        raise ErrorDeAPI(400, f"Para aprobar hace falta {NOTA_APROBACION} o más")
     if resultado == "Desaprobado" and valor >= NOTA_APROBACION:
-        raise HTTPException(400, f"Con {valor} el examen está aprobado")
+        raise ErrorDeAPI(400, f"Con {valor} el examen está aprobado")
     return resultado, valor
 
 
-@router.put("/mesas/{id_mesa}/resultados", summary="Guardar notas (el acta sigue abierta)")
-def guardar_resultados(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def guardar_resultados(id_mesa: int, cuerpo: dict[str, Any] = {}, yo: dict = None ):
     """Se puede guardar a medias y volver más tarde. Primero se valida todo y
     recién después se escribe: o se guarda la planilla entera o nada."""
     _exigir_gestion(yo)
@@ -693,7 +683,7 @@ def guardar_resultados(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), 
 
     recibidos = cuerpo.get("resultados")
     if not isinstance(recibidos, list):
-        raise HTTPException(400, "No llegaron resultados")
+        raise ErrorDeAPI(400, "No llegaron resultados")
 
     activas = {i["id"]: i for i in _activas(mesa)}
     cambios = []
@@ -701,7 +691,7 @@ def guardar_resultados(id_mesa: int, cuerpo: dict[str, Any] = Body(default={}), 
         try:
             inscripcion = activas[int((fila or {}).get("inscripcionId"))]
         except (KeyError, TypeError, ValueError):
-            raise HTTPException(400, "Alguien de la planilla no está inscripto en esta mesa")
+            raise ErrorDeAPI(400, "Alguien de la planilla no está inscripto en esta mesa")
         cambios.append((inscripcion, *_validar_resultado(fila.get("resultado"), fila.get("nota"))))
 
     for inscripcion, resultado, nota in cambios:
@@ -735,8 +725,7 @@ def _asentar_condicion(persona_id: int, materia_id: int, nota: int | None, fecha
     registro["fecha"] = fecha
 
 
-@router.post("/mesas/{id_mesa}/cerrar-acta", summary="Confirmar los resultados y cerrar el acta")
-def cerrar_acta(id_mesa: int, yo: dict = UsuarioActual):
+def cerrar_acta(id_mesa: int, yo: dict ):
     """Después de esto los resultados no se tocan más: pasan al historial
     académico de cada alumno y se le avisa por mensaje."""
     _exigir_gestion(yo)
@@ -746,7 +735,7 @@ def cerrar_acta(id_mesa: int, yo: dict = UsuarioActual):
     activas = _activas(mesa)
     faltan = [i for i in activas if not i.get("resultado")]
     if faltan:
-        raise HTTPException(
+        raise ErrorDeAPI(
             400,
             f"Falta la condición de {len(faltan)} "
             f"{'inscripto' if len(faltan) == 1 else 'inscriptos'}: el acta se cierra completa",

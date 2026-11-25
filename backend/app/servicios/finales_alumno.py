@@ -11,14 +11,13 @@ motivo para arrastrar el usuario de prueba fijo. Mientras no haya token, el
 servicio de autenticación devuelve igual al usuario de prueba, así que se
 comporta como el resto.
 
-Vive acá y no en la ruta para que FastAPI y Django contesten **con la misma
-función** mientras dure la migración: cada framework solo la llama. `yo` es
-el identificador de quien pregunta, como `IdUsuarioActual`.
+La lógica compartida por las vistas de las mesas del alumno. `yo` es el
+identificador de quien pregunta.
 """
 
 from __future__ import annotations
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 from .. import datos as d
 from . import academico as ac
@@ -115,16 +114,16 @@ def inscribirse(id_mesa: int, yo: int) -> dict:
     """
     mesa = d.buscar_mesa(id_mesa)
     if not mesa:
-        raise HTTPException(404, "La mesa de examen no existe")
+        raise ErrorDeAPI(404, "La mesa de examen no existe")
 
     # Mirar el estado (cupo, si ya está, si se canceló) y anotar van juntos:
     # ver `academico.inscripciones_a_mesas`.
     with ac.inscripciones_a_mesas:
         estado = ac.estado_de_mesa(yo, mesa)
         if estado["estado"] == ac.MESA_INSCRIPTO:
-            raise HTTPException(409, "Ya estás inscripto en esta mesa")
+            raise ErrorDeAPI(409, "Ya estás inscripto en esta mesa")
         if not estado["puedeInscribirse"]:
-            raise HTTPException(403, estado["motivo"] or "No podés inscribirte a esta mesa")
+            raise ErrorDeAPI(403, estado["motivo"] or "No podés inscribirte a esta mesa")
 
         # Si había una baja anterior se reutiliza el registro, así no quedan dos
         # filas de la misma persona en la misma mesa.
@@ -167,18 +166,18 @@ def cancelar(id_mesa: int, yo: int) -> dict:
     """
     mesa = d.buscar_mesa(id_mesa)
     if not mesa:
-        raise HTTPException(404, "La mesa de examen no existe")
+        raise ErrorDeAPI(404, "La mesa de examen no existe")
 
     with ac.inscripciones_a_mesas:
         inscripcion = ac.inscripcion_en_mesa(yo, id_mesa)
         if not inscripcion:
-            raise HTTPException(409, "No estás inscripto en esta mesa")
+            raise ErrorDeAPI(409, "No estás inscripto en esta mesa")
 
         ahora = d.ahora()
         if not (
             d.desde_iso(mesa["inscripcionDesde"]) <= ahora <= d.desde_iso(mesa["inscripcionHasta"])
         ):
-            raise HTTPException(403, "El período de inscripción está cerrado: no se puede dar de baja")
+            raise ErrorDeAPI(403, "El período de inscripción está cerrado: no se puede dar de baja")
 
         inscripcion["estado"] = ac.MESA_CANCELADO
         inscripcion["canceladaEl"] = d.iso(ahora)

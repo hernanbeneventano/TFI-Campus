@@ -28,7 +28,7 @@ que volver a discutirla por no recordar el motivo.
 | [18](#18-los-archivos-se-validan-por-su-contenido) | Validación por contenido | 02/11/2026 | Vigente |
 | [19](#19-modera-el-docente-hasta-que-exista-el-rol-de-administrador) | Modera el docente | 02/11/2026 | Provisoria |
 | [20](#20-postergar-la-autenticación) | Postergar la autenticación | 02/11/2026 | Provisoria |
-| [21](#21-python-con-fastapi-en-el-servidor) | Python con FastAPI en el servidor | 07/11/2026 | Vigente |
+| [21](#21-python-con-django-en-el-servidor) | Python con Django en el servidor | 07/11/2026 | Vigente |
 
 ---
 
@@ -49,7 +49,7 @@ criterios de escritura y que cada integrante pueda leer el código del otro sin 
 **Consecuencias.** Se renuncia al tipado estático. Se compensa con nombres explícitos y
 validación en los límites del sistema.
 
-**Estado.** Reemplazada el 07/11/2026 por la decisión [21](#21-python-con-fastapi-en-el-servidor).
+**Estado.** Reemplazada el 07/11/2026 por la decisión [21](#21-python-con-django-en-el-servidor).
 
 ---
 
@@ -220,7 +220,7 @@ distintos competía con terminar las funcionalidades.
 **Consecuencias en ese momento.** Quedaban sin uso bcrypt, jsonwebtoken y multer, que
 figuraban como dependencias futuras. Se postergó decidir si Express permanecería como
 capa intermedia o si la interfaz consultaría Firestore directamente. Esa implementación
-de Express fue reemplazada por Python/FastAPI en la decisión 21.
+de Express fue reemplazada por Python/Django en la decisión 21.
 
 ---
 
@@ -378,23 +378,24 @@ cubierto de manera parcial mientras esto siga pendiente.
 
 ---
 
-## 21. Python con FastAPI en el servidor
+## 21. Python con Django en el servidor
 
 **Contexto.** La API creció y el equipo decidió pasar el servidor de Express a Python,
 manteniendo React y Vite en el frontend.
 
-**Decisión.** Usar FastAPI para el backend principal y mantener la interfaz HTTP que
-consume el frontend. La implementación está en `backend/`.
+**Decisión.** Usar Django para el backend principal y mantener la interfaz HTTP que
+consume el frontend. Las URLconf y vistas nativas de Django están en `backend/`.
 
 **Alternativas descartadas.** Continuar ampliando el servidor Express existente.
 
-**Por qué.** El backend Python permite organizar las rutas por funcionalidad, generar
-documentación OpenAPI interactiva y avanzar con un lenguaje distinto al del frontend.
+**Por qué.** Django permite centralizar el enrutamiento, los middlewares y las vistas
+del campus en un único framework backend. La especificación OpenAPI se mantiene como
+documento versionado en `docs/api/openapi.yaml`.
 
-**Consecuencias.** El backend requiere Python 3.11 o superior y sus dependencias de
-`backend/requirements.txt`. Los datos siguen siendo de prueba y se reinician al reiniciar
-el servidor. Las pantallas anteriores de Actividad e Información se mantienen mediante
-rutas de compatibilidad. La implementación de Express fue retirada del proyecto.
+**Consecuencias.** El backend requiere Python 3.11 o superior y las dependencias de
+`backend/requirements.txt`. Django atiende las rutas HTTP del campus; la persistencia
+usa Firestore cuando está configurada. El servicio Node de `backend-node/` se limita a
+los catálogos externos y no implementa rutas del campus.
 
 **Estado.** Vigente.
 
@@ -402,8 +403,8 @@ rutas de compatibilidad. La implementación de Express fue retirada del proyecto
 
 ## 22. El segundo backend en Node se limita a los catálogos externos
 
-**Contexto.** La cátedra pide que el proyecto implemente Django y Node. El campus está
-migrando de FastAPI a Django en `backend/`, y había que decidir qué parte atiende Node.
+**Contexto.** La cátedra pide que el proyecto implemente Django y Node. El backend principal del campus es Django en `backend/`, y había que decidir qué parte
+atiende Node.
 
 La restricción que gobierna la decisión no es el framework sino **cómo se guardan los
 datos**: el servidor trabaja sobre una copia en memoria del campus (`backend/app/datos.py`),
@@ -450,10 +451,9 @@ es la forma más segura de que las dos digan cosas distintas.
 **Consecuencias.** Requiere Node 22.15 o superior; la única dependencia es Express, y el
 resto —`fetch`, el corredor de pruebas, la lectura del archivo de entorno— es nativo.
 
-La frontera es `backend/app/servicios/libros_externos.py`, que pasó de ser la implementación
-a ser el cliente y **conserva las mismas dos funciones con la misma firma**. Migrar
-Biblioteca a Django no tiene nada que ver con Node: una vista de Django las llama igual que
-la ruta de FastAPI.
+La frontera es `backend/app/servicios/libros_externos.py`, que actúa como cliente y
+**conserva las mismas dos funciones con la misma firma**. Django las llama sin trasladar
+la biblioteca ni sus permisos a Node.
 
 Si el servicio no está levantado, el campus funciona entero y lo único que no se puede es
 buscar en catálogos externos; el error llega con la misma forma que una fuente caída y la

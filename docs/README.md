@@ -5,6 +5,6 @@
 - [Especificación OpenAPI](./api/openapi.yaml): contrato de la API, importable
   en Postman o Swagger Editor.
 
-Con el backend Python iniciado, FastAPI también publica documentación
-interactiva en `http://localhost:3000/docs` y `http://localhost:3000/redoc`.
-La guía para ejecutar el proyecto está en el [README principal](../README.md).
+La especificación OpenAPI es un documento mantenido en el repositorio y no se
+genera en tiempo de ejecución. La guía para ejecutar el proyecto está en el
+[README principal](../README.md).

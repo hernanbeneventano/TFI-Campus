@@ -1,13 +1,8 @@
-"""¿El banco encuentra una diferencia cuando la hay?
-
-Que FastAPI contra sí mismo dé cero prueba que el banco **no inventa**
-diferencias. Falta la mitad que importa de verdad: que las **encuentre**. Un
-comparador que siempre dice «todo igual» da cero igual que uno que funciona,
-y es exactamente el que uno querría descubrir antes de migrar y no después.
+"""Comprueba que el comparador detecte diferencias deliberadas.
 
 Acá se compara el campus contra una copia a la que se le mete un defecto a
 propósito, uno por vez, y se comprueba que el informe lo marque. Son los
-cinco errores que una migración comete de verdad:
+cinco errores de contrato que hay que detectar:
 
 1. un campo que se perdió al rearmar la respuesta;
 2. un campo de más que se escapó;
@@ -66,7 +61,7 @@ class _ClienteConDefecto:
 def _con_defecto(defecto) -> servidores.Aplicacion:
     base = servidores.django()
     return servidores.Aplicacion(
-        "FastAPI con defecto", _ClienteConDefecto(base.cliente, defecto), base.rutas
+        "Django con defecto", _ClienteConDefecto(base.cliente, defecto), base.rutas
     )
 
 

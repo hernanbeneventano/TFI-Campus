@@ -1,7 +1,7 @@
 """Pruebas de Finales (gestión docente).
 
 A diferencia de las de la Biblioteca, estas corren **dentro del proceso**, con
-el cliente de pruebas de FastAPI: hace falta actuar como personas distintas
+el cliente ASGI de Django: hace falta actuar como personas distintas
 (un estudiante, la titular de una materia, otro docente) y sin login real el
 servidor en marcha siempre responde como el usuario de prueba, que es
 estudiante. Acá se reemplaza la identificación por la persona que se quiera.

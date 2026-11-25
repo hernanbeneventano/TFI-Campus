@@ -10,7 +10,7 @@ rules_version = '2';
 //
 // El navegador nunca habla con Firestore. `frontend/src/services/firebase.js`
 // solo inicializa Authentication —para iniciar sesión y conseguir el token— y
-// todos los datos pasan por el backend de FastAPI. El backend usa el kit de
+// todos los datos pasan por el backend Django. El backend usa el kit de
 // administrador con una cuenta de servicio, que **no está sujeta a estas
 // reglas**: las saltea por diseño.
 //

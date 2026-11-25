@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import os
 
-from ..web import Depends, HTTPException, Request
+from django.http import HttpRequest as Request
+
+from ..errores import ErrorDeAPI
 from firebase_admin import auth
 
 from .. import datos as d
@@ -92,15 +94,8 @@ def _permite_usuario_de_prueba() -> bool:
 
 
 # ===================== Quién actúa, en las pruebas =====================
-# Las pruebas necesitan hacer la misma petición como distintas personas: lo
-# que comprueban es justamente quién ve qué. Eso se resolvía con
-# `dependency_overrides` de FastAPI, que reemplaza la dependencia desde
-# afuera. Es cómodo y **no existe fuera de FastAPI**, así que era lo único que
-# ataba las catorce suites al framework.
-#
-# Acá la suplantación vive adentro: `identificar` la consulta antes que nada.
-# Es Python a secas, así que sigue funcionando con cualquier framework que
-# llame a esta función.
+# Las pruebas necesitan hacer la misma petición como distintas personas:
+# `identificar` consulta este estado de proceso antes de verificar el token.
 #
 # **No agrega superficie de ataque.** Se enciende únicamente llamando a
 # `actuar_como()` desde adentro del proceso: no hay ruta, cabecera ni variable
@@ -150,12 +145,7 @@ def _token_de(peticion: Request) -> str | None:
 def identificar(peticion: Request) -> dict:
     """Devuelve la persona del campus que hace la consulta.
 
-    Pensada para usarse como dependencia de FastAPI:
-
-        def mi_ruta(yo: dict = Depends(identificar)):
-
-    De `peticion` solo se usa `.headers`, así que sirve igual cualquier
-    petición que tenga esa propiedad.
+    Recibe un `HttpRequest` de Django y verifica el token de Firebase.
     """
     # Las pruebas dicen quién actúa sin pasar por Firebase (ver arriba). En el
     # campus de verdad esto vale siempre None y la función sigue de largo.
@@ -176,7 +166,7 @@ def identificar(peticion: Request) -> dict:
             persona = d.buscar_persona(d.usuario_actual["id"])
             if persona:
                 return persona
-        raise HTTPException(401, "Hay que iniciar sesión")
+        raise ErrorDeAPI(401, "Hay que iniciar sesión")
 
     try:
         # `check_revoked` hace que Firebase mire también si esa cuenta fue
@@ -187,17 +177,17 @@ def identificar(peticion: Request) -> dict:
         datos_token = auth.verify_id_token(token, check_revoked=True)
     except auth.ExpiredIdTokenError:
         _anotar_fallo("La sesión venció")
-        raise HTTPException(401, "La sesión venció. Volvé a iniciar sesión.")
+        raise ErrorDeAPI(401, "La sesión venció. Volvé a iniciar sesión.")
     except auth.RevokedIdTokenError:
         _anotar_fallo("La sesión había sido cerrada")
-        raise HTTPException(401, "La sesión fue cerrada. Volvé a iniciar sesión.")
+        raise ErrorDeAPI(401, "La sesión fue cerrada. Volvé a iniciar sesión.")
     except (auth.InvalidIdTokenError, auth.UserDisabledError):
         _anotar_fallo("Token inválido o cuenta deshabilitada")
-        raise HTTPException(401, "La sesión no es válida. Volvé a iniciar sesión.")
+        raise ErrorDeAPI(401, "La sesión no es válida. Volvé a iniciar sesión.")
     except Exception:
         # Un fallo al verificar no puede interpretarse como "pase"
         _anotar_fallo("No se pudo verificar la sesión")
-        raise HTTPException(503, "No se pudo verificar la sesión. Probá de nuevo.")
+        raise ErrorDeAPI(503, "No se pudo verificar la sesión. Probá de nuevo.")
 
     persona = _persona_por_correo(datos_token.get("email"))
 
@@ -210,7 +200,7 @@ def identificar(peticion: Request) -> dict:
         _anotar_fallo(
             f"La cuenta está {persona.get('estado')}", datos_token.get("email")
         )
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Tu cuenta no está habilitada para entrar al campus. Consultá en la secretaría.",
         )
@@ -220,7 +210,7 @@ def identificar(peticion: Request) -> dict:
         # campus. Es un caso real: alguien de la facultad con cuenta de Google
         # que todavía no fue dado de alta.
         _anotar_fallo("El correo no está dado de alta en el campus", datos_token.get("email"))
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Tu cuenta no está dada de alta en el campus. Pedí el alta en la secretaría.",
         )
@@ -230,10 +220,5 @@ def identificar(peticion: Request) -> dict:
 
 
 def identificar_id(peticion: Request) -> int:
-    """El identificador de quien consulta, para las rutas que solo necesitan eso."""
+    """Devuelve el identificador de la persona que hizo la petición Django."""
     return identificar(peticion)["id"]
-
-
-# Atajos para leer en las rutas
-UsuarioActual = Depends(identificar)
-IdUsuarioActual = Depends(identificar_id)

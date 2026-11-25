@@ -4,47 +4,40 @@
 `servicios/auditoria.registrar` desde cada módulo, y desde afuera el registro
 solo se lee. Que no exista la ruta es más fuerte que prohibirla.
 
-**Lo atiende Django** (`campus_django/auditoria.py`, ver `MIGRADOS` en
-`despachador.py`). Estas rutas quedan para volver atrás sin tocar código. Las
-dos llaman a las mismas funciones, en `servicios/consulta_auditoria.py`.
+Las vistas nativas de Django delegan en estas funciones y en
+`servicios/consulta_auditoria.py`.
 """
 
 from __future__ import annotations
 
-from ..web import APIRouter, Request, Response
+from campus_django.respuestas import descargar
+from django.http import HttpRequest as Request
 
 from ..servicios import consulta_auditoria as consulta
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api/auditoria", tags=["Auditoría"])
 
 
 # ===================== Rutas con nombre fijo =====================
 # Antes de /{id}, si no "opciones" se tomaría como el id de un evento.
 
 
-@router.get("/opciones", summary="Los filtros y qué puede ver quien pregunta")
-def opciones(yo: dict = UsuarioActual):
+def opciones(yo: dict ):
     return consulta.opciones(yo)
 
 
-@router.get("/mis-materias", summary="Lo que pasó en las materias que dicta")
-def mis_materias(request: Request, yo: dict = UsuarioActual):
-    return consulta.mis_materias(yo, dict(request.query_params))
+def mis_materias(request: Request, yo: dict ):
+    return consulta.mis_materias(yo, request.GET.dict())
 
 
-@router.get("/exportar", summary="Bajar lo que se está viendo")
-def exportar(request: Request, yo: dict = UsuarioActual):
-    archivo = consulta.exportar(yo, dict(request.query_params))
-    return Response(content=archivo.contenido, media_type=archivo.tipo, headers=archivo.cabeceras)
+def exportar(request: Request, yo: dict ):
+    archivo = consulta.exportar(yo, request.GET.dict())
+    return descargar(archivo.contenido, archivo.tipo, archivo.cabeceras)
 
 
 # ===================== El registro =====================
-@router.get("", summary="El registro de actividad")
-def listar(request: Request, yo: dict = UsuarioActual):
-    return consulta.listar(yo, dict(request.query_params))
+def listar(request: Request, yo: dict ):
+    return consulta.listar(yo, request.GET.dict())
 
 
-@router.get("/{id_evento}", summary="El detalle de un movimiento")
-def ver(id_evento: int, yo: dict = UsuarioActual):
+def ver(id_evento: int, yo: dict ):
     return consulta.ver(yo, id_evento)

@@ -6,7 +6,7 @@ React y una API en Python.
 ## Estructura
 
 - `frontend/`: interfaz React 18 y Vite.
-- `backend/`: el campus. API en Python, migrándose de FastAPI a Django.
+- `backend/`: el campus. API en Python, servida exclusivamente por Django.
 - `backend-node/`: el servicio de catálogos externos (Google Books y Open
   Library). Es el segundo backend, y está en Node porque es la única parte sin
   datos propios: ver [su README](backend-node/README.md).
@@ -54,9 +54,9 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 npm start
 ```
 
-Abrir http://localhost:5173. Vite redirige las llamadas `/api` al backend.
-FastAPI publica documentación interactiva en http://localhost:3000/docs y
-http://localhost:3000/redoc.
+Abrir http://localhost:5173. Vite redirige las llamadas `/api` al backend
+Django. La especificación OpenAPI está en
+[`docs/api/openapi.yaml`](docs/api/openapi.yaml).
 
 El navegador no le habla nunca a `backend-node`: le habla al campus, que ya sabe
 quién es y si tiene permiso, y el campus le pregunta a ese servicio. Por eso
@@ -69,15 +69,15 @@ de las variables que necesita el frontend.
 
 Para conectar Firestore, guardá la clave de servicio en
 `backend/firebase-key.json` (Git la ignora) y consultá la guía de
-[configuración del backend](backend/README.md). La conexión se comprueba en
-`http://localhost:3000/api/salud/firestore`; los datos de las pantallas todavía
-usan memoria y requieren una migración aparte.
+[configuración del backend](backend/README.md). La API de salud está en
+`http://localhost:3000/api/salud`.
 
 ## Estado
 
-La API incluye módulos, tareas, mensajería, novedades, calendario, foro y
-biblioteca. Los datos siguen siendo de prueba y viven en memoria; todavía no
-hay autenticación real ni persistencia en una base de datos.
+La API incluye módulos, tareas, mensajería, novedades, calendario, foro,
+biblioteca, administración académica, asistencia y finales. Django atiende las
+rutas y el backend persiste en Firestore cuando está configurado; los datos de
+ejemplo se usan para desarrollo y pruebas.
 
 Ver [decisiones técnicas](docs/decisiones-tecnicas.md) y la
 [especificación de la API](docs/api/openapi.yaml).

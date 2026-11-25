@@ -1,14 +1,9 @@
 """Servidor de CampusTFI.
 
-Expone la interfaz de programación que consume el frontend. La atiende
-Django (`campus_django/`): este archivo es la configuración del campus —qué
-pasa al arrancar y al cerrar, qué módulos de rutas hay y en qué orden— y el
-punto de entrada, `python -m app.main`.
-
-Hasta la migración esto era una aplicación de FastAPI. Ya no hay FastAPI: las
-rutas de `app/rutas/` se anotan con `app/web.py` y las atiende Django por el
-puente (`campus_django/puente.py`); las capas que las envuelven están en
-`campus_django/asgi.py`.
+Expone la interfaz de programación que consume el frontend. Django registra y
+atiende las rutas mediante `campus_django/urls.py`; este módulo prepara los
+servicios del campus al iniciar y cerrar, y ofrece el punto de entrada
+`python -m app.main`.
 """
 
 from __future__ import annotations
@@ -19,21 +14,9 @@ import secrets
 from dotenv import load_dotenv
 
 from . import datos as d
-from .rutas import biblioteca, calendario, cursos, finales, foro, gestion_finales
-from .rutas import gestion_modulo
-from .rutas import archivos as rutas_archivos
-from .rutas import asistencias as rutas_asistencias
-from .rutas import auditoria as rutas_auditoria
-from .rutas import panel as rutas_panel
-from .rutas import institucion, mi_cursada, usuarios
-from .rutas import inscripciones
-from .rutas import mensajes, novedades, tareas
-from .rutas import salud as rutas_salud
-from .servicios import certificados
-from .servicios.autenticacion import identificar
 from .servicios.firestore import inicializar_firestore
-from .servicios import almacenamiento, general, legajos, persistencia
-from .web import APIRouter, Depends
+from .servicios import almacenamiento, legajos, persistencia
+from .servicios import certificados
 
 load_dotenv()
 
@@ -74,84 +57,9 @@ def al_cerrar() -> None:
     persistencia.guardar_cambios()
 
 
-# ===================== Rutas generales =====================
 # Cambia en cada arranque del servidor. El navegador lo compara con el que
 # tenía guardado y, si no coincide, cierra la sesión y manda al login.
-#
-# Hace falta porque la sesión de Firebase vive en el navegador: reiniciar el
-# backend no la toca, y se seguía entrando como quien hubiera quedado logueado
-# la última vez. Para probar los roles eso es un estorbo —uno quiere arrancar
-# siempre desde el login— y, con el campus en desarrollo, también evita quedar
-# con media pantalla de datos viejos de antes del reinicio.
 ARRANQUE = secrets.token_hex(8)
-
-router = APIRouter()
-
-
-@router.get("/api/salud", tags=["General"], summary="Comprobar que el servidor responde")
-def salud():
-    return {"estado": "ok", "app": "CampusTFI", "instancia": ARRANQUE}
-
-
-@router.get("/api/me", tags=["General"], summary="El usuario que inició sesión")
-def obtener_usuario(persona: dict = Depends(identificar)):
-    """Sale del token de Firebase que manda el navegador."""
-    return general.yo_mismo(persona)
-
-
-# `PUT /api/me` **se eliminó**. No pedía sesión y escribía sobre
-# `d.usuario_actual` —el usuario de prueba— en vez de sobre quien llamaba, así
-# que ni editaba el perfil de nadie ni tenía por qué dejar escribir a
-# cualquiera. El perfil propio se edita en `PUT /api/usuarios/yo`, que sí
-# comprueba la sesión y guarda donde corresponde.
-
-
-@router.get("/api/contadores", tags=["General"], summary="Las campanitas del menú")
-def contadores(persona: dict = Depends(identificar)):
-    """Cuántas cosas nuevas hay en cada apartado, para quien pregunta."""
-    return general.contadores(persona)
-
-
-# `GET /api/informacion` y `GET /api/actividad` **se eliminaron**. Ninguna
-# pantalla las usaba: la primera repetía las novedades institucionales, que ya
-# salen de `/api/novedades` con el control de alcance puesto, y la segunda
-# quedó de la pantalla «Actividad» que reemplazó el Calendario —leía
-# `tarea["entregada"]`, un campo que dejó de existir cuando la entrega pasó a
-# ser de cada alumno—. Las dos respondían sin pedir sesión.
-
-
-# ===================== Los módulos, en orden =====================
-# El orden en que se miran las rutas, el mismo que tenía FastAPI: importa
-# cuando dos rutas coinciden en camino (ver `adaptadores.como_starlette`).
-# La gestión docente de finales va después de la mitad del alumno: tiene su
-# propio prefijo (/api/finales/gestion), así que el orden no las pisa.
-MODULOS = {
-    "main": router,
-    "archivos": rutas_archivos.router,
-    "cursos": cursos.router,
-    "tareas": tareas.router,
-    "mensajes": mensajes.router,
-    "novedades": novedades.router,
-    "calendario": calendario.router,
-    "foro": foro.router,
-    "biblioteca": biblioteca.router,
-    "finales": finales.router,
-    "gestion_finales": gestion_finales.router,
-    "gestion_modulo": gestion_modulo.router,
-    "mi_cursada": mi_cursada.router,
-    "institucion": institucion.router,
-    "usuarios": usuarios.router,
-    "asistencias": rutas_asistencias.router,
-    "inscripciones": inscripciones.router,
-    "auditoria": rutas_auditoria.router,
-    "panel": rutas_panel.router,
-    "salud": rutas_salud.router,
-}
-
-
-def todas_las_rutas() -> list:
-    """Todas las rutas anotadas, en el orden en que se miran."""
-    return [ruta for r in MODULOS.values() for ruta in r.rutas]
 
 
 # ===================== Arranque =====================

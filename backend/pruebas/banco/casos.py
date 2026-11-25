@@ -11,10 +11,9 @@ De dónde salen
 De dos lugares, a propósito:
 
 - **Automáticos**: todos los GET sin parámetros, sacados de la tabla de rutas
-  de la aplicación de referencia. Son gratis y cubren la mitad del campus sin
-  escribir nada. Como la lista sale de FastAPI, una ruta que exista allá y no
-  en Django aparece sola como un 404 del lado de Django, que es justo lo que
-  queremos detectar.
+  de la captura histórica del contrato. Son gratis y cubren la mitad del
+  campus sin escribir nada. Una ruta que falte en Django aparece como un 404,
+  que es justo lo que queremos detectar.
 - **Escritos a mano**: los que llevan parámetros —hay que saber qué
   identificador existe en el escenario— y los que escriben. Estos últimos
   son los que más importan: una migración rompe más fácil un POST que un GET.
@@ -131,8 +130,8 @@ def _caso_archivos() -> Caso:
     return Caso("Los archivos, a fondo", [
         _ver("/api/archivos/estado", SANTIAGO),
         _ver("/api/archivos/estado", SECRETARIA),
-        # Se suben por la entrega (Mi cursada, todavía FastAPI) y se piden por
-        # la dirección firmada, sin sesión: un PDF y una imagen se ven adentro
+        # Se suben por la entrega (Mi cursada) y se piden por la dirección
+        # firmada, sin sesión: un PDF y una imagen se ven adentro
         Paso("POST", entregar, SANTIAGO, subida("trabajo.pdf", "pdf", "application/pdf", pdf)),
         Paso("POST", entregar, HERNAN, subida("captura.png", "png", "image/png", png)),
         _ver(direccion(del_pdf), None),
@@ -332,7 +331,7 @@ def con_parametros() -> list[Caso]:
             Paso("POST", "/api/tareas/pendientes", SANTIAGO, {}),
             Paso("HEAD", "/api/tareas/pendientes", SANTIAGO),
             Paso("DELETE", "/api/tareas/pendientes", None),
-            # Lo que cuelga de ella es de Mi cursada (FastAPI): «pendientes» como id
+            # Lo que cuelga de ella es de Mi cursada: «pendientes» como id
             _ver("/api/tareas/pendientes/mi-entrega", SANTIAGO),
             _ver("/api/tareas/pendientes/cuestionario", SANTIAGO),
             _ver("/api/tareas/pendientes/mi-entrega", None),
@@ -416,7 +415,7 @@ def con_parametros() -> list[Caso]:
             _ver("/api/inscripciones/materias", SANTIAGO),
             Paso("POST", "/api/inscripciones/materias/113", SANTIAGO),
             Paso("DELETE", "/api/inscripciones/materias/119", SANTIAGO),
-            # Se abre el período (lo hace la secretaría, todavía en FastAPI)
+            # Se abre el período (lo hace la secretaría)
             Paso("PUT", "/api/institucion/configuracion/periodo", CLAUDIA,
                  {"desde": "2020-01-01", "hasta": "2099-12-31"}),
             _ver("/api/inscripciones/materias", SANTIAGO),
@@ -456,9 +455,8 @@ def con_parametros() -> list[Caso]:
             _ver("/api/inscripciones", SANTIAGO),
             Paso("HEAD", "/api/inscripciones/materias", SANTIAGO),
         ]),
-        # Finales, la mitad del alumno. La gestión docente sigue en FastAPI y
-        # se mira al final: lo que hace el alumno tiene que verse igual del
-        # otro lado.
+        # Finales, la mitad del alumno; la gestión docente se comprueba por
+        # separado sobre las mismas reglas académicas.
         Caso("Los finales del alumno, a fondo", [
             _ver("/api/finales/mesas", SANTIAGO),
             _ver("/api/finales/proximas", SANTIAGO),

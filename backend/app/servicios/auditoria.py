@@ -132,6 +132,9 @@ def ip_de(peticion=None) -> str | None:
     reenviada = peticion.headers.get("x-forwarded-for")
     if reenviada:
         return reenviada.split(",")[0].strip()[:45]
+    remoto = getattr(peticion, "META", {}).get("REMOTE_ADDR")
+    if remoto:
+        return remoto
     cliente = getattr(peticion, "client", None)
     return getattr(cliente, "host", None)
 

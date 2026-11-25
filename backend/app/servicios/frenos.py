@@ -75,7 +75,11 @@ def direccion_de(peticion) -> str:
     reenviada = peticion.headers.get("x-forwarded-for")
     if reenviada:
         return reenviada.split(",")[0].strip()
-    return peticion.client.host if peticion.client else "desconocida"
+    remoto = getattr(peticion, "META", {}).get("REMOTE_ADDR")
+    if remoto:
+        return remoto
+    cliente = getattr(peticion, "client", None)
+    return cliente.host if cliente else "desconocida"
 
 
 def quien_es(peticion) -> str:

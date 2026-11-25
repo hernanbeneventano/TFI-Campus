@@ -27,6 +27,9 @@ espera, la configuración del proceso. Eso es despliegue, y va aparte.
 
 from __future__ import annotations
 
+import gzip
+import json
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -39,10 +42,11 @@ class Aplicacion:
 
 
 def rutas_del_campus() -> list[tuple[str, str]]:
-    """(método, camino) de cada ruta de la interfaz, como se anotaron."""
-    from app.main import todas_las_rutas
-
-    return sorted({(r.metodo, r.camino) for r in todas_las_rutas() if r.camino.startswith("/api")})
+    """Los contratos históricos que el banco debe resolver en Django."""
+    grabacion = Path(__file__).with_name("grabaciones") / "fastapi.json.gz"
+    with gzip.open(grabacion, "rt", encoding="utf-8") as archivo:
+        rutas = json.load(archivo)["rutas"]
+    return sorted({(metodo, camino) for metodo, camino in rutas})
 
 
 def django() -> Aplicacion:

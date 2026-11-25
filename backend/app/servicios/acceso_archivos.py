@@ -21,17 +21,16 @@ minutos. Un enlace sin esa comprobación es el bucket abierto con un paso más.
 Un archivo fuera de alcance responde **404, no 403**, como en el resto del
 campus: un 403 ya confirma que existe.
 
-Vive acá y no en la ruta para que FastAPI y Django contesten **con la misma
-función** mientras dure la migración: cada framework lee lo que llega y la
-llama. `ver` devuelve un `Archivo` y no una respuesta: cada framework arma la
-suya con él.
+Vive en el servicio para compartir las reglas de acceso entre los distintos
+tipos de archivo. `ver` devuelve un `Archivo`; la vista Django arma la
+respuesta HTTP después de comprobar el permiso.
 """
 
 from __future__ import annotations
 
 import hmac
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 from .. import datos as d
 from . import almacenamiento as alm
@@ -104,27 +103,27 @@ def pedir_enlace(cuerpo: dict, yo: dict) -> dict:
         alm.BIBLIOTECA, alm.MODULOS, alm.PERFILES,
         alm.NOVEDADES, alm.MENSAJES, alm.INSTITUCION, alm.SOLICITUDES,
     ):
-        raise HTTPException(400, "Ese apartado no existe")
+        raise ErrorDeAPI(400, "Ese apartado no existe")
 
     registro_id = cuerpo.get("registroId")
     if not _puede_escribir(yo, modulo, registro_id):
-        raise HTTPException(404, "No se encontró eso")
+        raise ErrorDeAPI(404, "No se encontró eso")
 
     extension = str(cuerpo.get("extension") or "").lower().lstrip(".")
     formato = validacion.FORMATOS.get(extension)
     if not formato:
-        raise HTTPException(415, "Ese tipo de archivo no se acepta")
+        raise ErrorDeAPI(415, "Ese tipo de archivo no se acepta")
 
     # El tamaño se declara y se comprueba: R2 no sabe de nuestros límites.
     tamano = cuerpo.get("tamano")
     tope = validacion.maximo_mb() * 1024 * 1024
     if not isinstance(tamano, int) or tamano <= 0:
-        raise HTTPException(400, "Falta el tamaño del archivo")
+        raise ErrorDeAPI(400, "Falta el tamaño del archivo")
     if tamano > tope:
-        raise HTTPException(413, f"El archivo supera los {validacion.maximo_mb()} MB")
+        raise ErrorDeAPI(413, f"El archivo supera los {validacion.maximo_mb()} MB")
 
     if not alm.configurado():
-        raise HTTPException(
+        raise ErrorDeAPI(
             503,
             "El almacenamiento de archivos todavía no está configurado. "
             "Subí el archivo por el formulario, o configurá Cloudflare R2.",
@@ -134,7 +133,7 @@ def pedir_enlace(cuerpo: dict, yo: dict) -> dict:
     objeto = alm.clave(modulo, registro_id, nombre=nombre)
     enlace = alm.enlace_para_subir(objeto, formato["mime"])
     if not enlace:
-        raise HTTPException(502, "No se pudo preparar la subida")
+        raise ErrorDeAPI(502, "No se pudo preparar la subida")
 
     return {**enlace, "nombre": nombre, "tipo": formato["mime"]}
 
@@ -151,11 +150,11 @@ def confirmar(cuerpo: dict, yo: dict) -> dict:
     modulo = objeto.split("/")[0] if "/" in objeto else ""
     registro_id = cuerpo.get("registroId")
     if not objeto or not _puede_escribir(yo, modulo, registro_id):
-        raise HTTPException(404, "No se encontró eso")
+        raise ErrorDeAPI(404, "No se encontró eso")
 
     datos_objeto = alm.metadatos(objeto)
     if not datos_objeto:
-        raise HTTPException(409, "El archivo no llegó al almacenamiento")
+        raise ErrorDeAPI(409, "El archivo no llegó al almacenamiento")
 
     ficha = alm.registrar(
         objeto,
@@ -184,11 +183,11 @@ def enlace(objeto: str, yo: dict) -> dict:
     """
     ficha = alm.ficha_de(objeto)
     if not ficha or not _mia(yo, ficha):
-        raise HTTPException(404, "No se encontró el archivo")
+        raise ErrorDeAPI(404, "No se encontró el archivo")
 
     url = alm.enlace_temporal(objeto, nombre=ficha.get("nombre"))
     if not url:
-        raise HTTPException(503, "El almacenamiento de archivos no está disponible")
+        raise ErrorDeAPI(503, "El almacenamiento de archivos no está disponible")
     return {"url": url, "venceEnSegundos": alm.MINUTOS_DE_ENLACE * 60, "nombre": ficha["nombre"]}
 
 
@@ -206,11 +205,11 @@ def ver(f: str, o: str) -> Archivo:
     conversación—, y cambia si cambia el archivo.
     """
     if not o or not hmac.compare_digest(f or "", fotos.firma(o)):
-        raise HTTPException(404, "No se encontró el archivo")
+        raise ErrorDeAPI(404, "No se encontró el archivo")
 
     contenido = alm.leer(o)
     if contenido is None:
-        raise HTTPException(404, "No se encontró el archivo")
+        raise ErrorDeAPI(404, "No se encontró el archivo")
 
     ficha = alm.ficha_de(o) or {}
     tipo = ficha.get("tipo") or "application/octet-stream"

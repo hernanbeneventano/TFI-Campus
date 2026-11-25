@@ -10,14 +10,13 @@ Al confirmar una inscripción la materia **entra sola a Módulos**, que es lo
 que se pidió. Si la materia ya tenía un módulo armado se usa ese; si no, se
 crea uno con el contenido genérico que arma `datos.contenido_generico`.
 
-Vive acá y no en la ruta para que FastAPI y Django contesten **con la misma
-función** mientras dure la migración: cada framework solo la llama. `yo` es
-el identificador de quien pregunta, como `IdUsuarioActual`.
+La lógica compartida por las vistas de inscripción. `yo` es el identificador
+de quien pregunta.
 """
 
 from __future__ import annotations
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 from .. import datos as d
 from . import academico as ac
@@ -46,7 +45,7 @@ def listar_materias(yo: int) -> dict:
     carrera = d.carrera_de(yo)
     if not carrera:
         # Pasa si la institución todavía no lo inscribió a la carrera
-        raise HTTPException(
+        raise ErrorDeAPI(
             404,
             "Todavía no estás inscripto a una carrera. Acercate a la secretaría para el alta.",
         )
@@ -102,31 +101,31 @@ def inscribirse(id_materia: int, yo: int) -> dict:
     """
     carrera = d.carrera_de(yo)
     if not carrera:
-        raise HTTPException(403, "No estás inscripto a ninguna carrera")
+        raise ErrorDeAPI(403, "No estás inscripto a ninguna carrera")
 
     materia = d.buscar_materia(id_materia)
     if not materia:
-        raise HTTPException(404, "La materia no existe")
+        raise ErrorDeAPI(404, "La materia no existe")
     if not materia.get("activa", True):
-        raise HTTPException(403, "Esa materia está dada de baja: no se ofrece este período")
+        raise ErrorDeAPI(403, "Esa materia está dada de baja: no se ofrece este período")
     if (
         materia.get("carreraId") != carrera.get("carreraId")
         or materia.get("planId") != carrera.get("planId")
     ):
-        raise HTTPException(403, "Esa materia no pertenece a tu plan de estudios")
+        raise ErrorDeAPI(403, "Esa materia no pertenece a tu plan de estudios")
 
     periodo = ac.periodo_materias()
     if not periodo["abierto"]:
-        raise HTTPException(403, "El período de inscripción está cerrado")
+        raise ErrorDeAPI(403, "El período de inscripción está cerrado")
 
     # Mirar el estado (cupo, si ya está) y anotar van juntos: ver
     # `academico.inscripciones_a_materias`. El módulo se crea afuera.
     with ac.inscripciones_a_materias:
         estado = ac.estado_de_materia(yo, materia)
         if estado["estado"] == ac.INSCRIPTO:
-            raise HTTPException(409, "Ya estás inscripto a esta materia")
+            raise ErrorDeAPI(409, "Ya estás inscripto a esta materia")
         if not estado["puedeInscribirse"]:
-            raise HTTPException(403, estado["motivo"] or "No podés inscribirte a esta materia")
+            raise ErrorDeAPI(403, estado["motivo"] or "No podés inscribirte a esta materia")
 
         d.inscripciones_materias.append(
             {
@@ -176,10 +175,10 @@ def dar_de_baja(id_materia: int, yo: int) -> dict:
     """
     materia = d.buscar_materia(id_materia)
     if not materia:
-        raise HTTPException(404, "La materia no existe")
+        raise ErrorDeAPI(404, "La materia no existe")
 
     if not ac.periodo_materias()["abierto"]:
-        raise HTTPException(403, "El período de inscripción está cerrado")
+        raise ErrorDeAPI(403, "El período de inscripción está cerrado")
 
     with ac.inscripciones_a_materias:
         inscripcion = next(
@@ -191,7 +190,7 @@ def dar_de_baja(id_materia: int, yo: int) -> dict:
             None,
         )
         if not inscripcion:
-            raise HTTPException(409, "No estás inscripto a esta materia")
+            raise ErrorDeAPI(409, "No estás inscripto a esta materia")
 
         d.inscripciones_materias.remove(inscripcion)
 

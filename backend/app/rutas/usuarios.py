@@ -18,19 +18,19 @@ que todavía no está habilitado: ver `servicios/autenticacion.py`.
 
 from __future__ import annotations
 
+from campus_django.respuestas import descargar
+
 import hmac
 import re
 
-from ..web import APIRouter, Body, HTTPException, Response
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm
 from ..servicios import archivos
 from ..servicios import ambito, auditoria, cuentas, fotos, legajos
-from ..servicios.autenticacion import UsuarioActual
 from .institucion import es_administrador
 
-router = APIRouter(prefix="/api/usuarios", tags=["Usuarios"])
 
 CORREO = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # Un DNI argentino: 7 u 8 dígitos, sin puntos
@@ -41,13 +41,13 @@ TELEFONO = re.compile(r"^[\d\s()+-]{6,25}$")
 def _texto(valor, campo: str, maximo: int, obligatorio: bool = False) -> str | None:
     if valor is None or (isinstance(valor, str) and not valor.strip()):
         if obligatorio:
-            raise HTTPException(400, f"Falta {campo}")
+            raise ErrorDeAPI(400, f"Falta {campo}")
         return None
     if not isinstance(valor, str):
-        raise HTTPException(400, f"{campo} tiene que ser texto")
+        raise ErrorDeAPI(400, f"{campo} tiene que ser texto")
     limpio = valor.strip()
     if len(limpio) > maximo:
-        raise HTTPException(400, f"{campo} no puede pasar de {maximo} caracteres")
+        raise ErrorDeAPI(400, f"{campo} no puede pasar de {maximo} caracteres")
     return limpio
 
 
@@ -127,23 +127,23 @@ def _fijar_ambito(yo: dict, persona: dict, crudo) -> None:
     facultad, y recortarlo la dejaría sin nadie que la viera entera.
     """
     if d.tiene_rol(persona, "Administrador"):
-        raise HTTPException(400, "El administrador alcanza todo el campus: no lleva ámbito")
+        raise ErrorDeAPI(400, "El administrador alcanza todo el campus: no lleva ámbito")
 
     if not isinstance(crudo, dict):
-        raise HTTPException(400, "El ámbito tiene que traer carreras y sedes")
+        raise ErrorDeAPI(400, "El ámbito tiene que traer carreras y sedes")
 
     def ids_de(clave: str, coleccion: list[dict]) -> list[int]:
         valores = crudo.get(clave) or []
         if not isinstance(valores, list):
-            raise HTTPException(400, f"«{clave}» tiene que ser una lista")
+            raise ErrorDeAPI(400, f"«{clave}» tiene que ser una lista")
         salida = []
         for v in valores:
             try:
                 numero = int(v)
             except (TypeError, ValueError):
-                raise HTTPException(400, f"«{clave}» tiene que traer identificadores")
+                raise ErrorDeAPI(400, f"«{clave}» tiene que traer identificadores")
             if not d.buscar_en(coleccion, numero):
-                raise HTTPException(400, f"En «{clave}» hay algo que no existe")
+                raise ErrorDeAPI(400, f"En «{clave}» hay algo que no existe")
             salida.append(numero)
         return sorted(dict.fromkeys(salida))
 
@@ -167,8 +167,7 @@ def _fijar_ambito(yo: dict, persona: dict, crudo) -> None:
 
 
 # ===================== Mi perfil =====================
-@router.get("/yo", summary="Mi perfil completo")
-def mi_perfil(yo: dict = UsuarioActual):
+def mi_perfil(yo: dict ):
     """Todo lo mío, con mis carreras y comisiones."""
     return {
         "perfil": _perfil(yo, completo=True),
@@ -193,8 +192,7 @@ def mi_perfil(yo: dict = UsuarioActual):
 IDENTIDAD = {"nombre", "correo", "dni"}
 
 
-@router.put("/yo", summary="Editar mis datos de contacto")
-def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_mi_perfil(cuerpo: dict , yo: dict ):
     """El teléfono y la fecha de nacimiento, y nada más.
 
     Roles y estado de la cuenta tampoco: si uno pudiera cambiarse el rol, los
@@ -202,7 +200,7 @@ def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     """
     prohibidos = {"roles", "rol", "estado", "id"} & set(cuerpo)
     if prohibidos:
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Los roles y el estado de la cuenta los cambia un administrador, no vos.",
         )
@@ -211,7 +209,7 @@ def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     # valor sin cambios no es un intento de editar nada.
     tocados = {c for c in IDENTIDAD if c in cuerpo and (cuerpo[c] or None) != (yo.get(c) or None)}
     if tocados:
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "El nombre, el correo y el DNI los cambia la administración. "
             "Si hay un error, pedíselo a la secretaría.",
@@ -220,7 +218,7 @@ def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     if "telefono" in cuerpo:
         telefono = _texto(cuerpo["telefono"], "el teléfono", 25)
         if telefono and not TELEFONO.match(telefono):
-            raise HTTPException(400, "Ese teléfono no tiene un formato válido")
+            raise ErrorDeAPI(400, "Ese teléfono no tiene un formato válido")
         yo["telefono"] = telefono
 
     if "fechaNacimiento" in cuerpo:
@@ -229,9 +227,9 @@ def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
             try:
                 nacimiento = d.desde_iso(fecha)
             except (ValueError, TypeError, AttributeError):
-                raise HTTPException(400, "Esa fecha de nacimiento no es válida")
+                raise ErrorDeAPI(400, "Esa fecha de nacimiento no es válida")
             if nacimiento > d.ahora():
-                raise HTTPException(400, "La fecha de nacimiento no puede ser futura")
+                raise ErrorDeAPI(400, "La fecha de nacimiento no puede ser futura")
         yo["fechaNacimiento"] = fecha or None
 
     _anotar(yo, "perfil editado", "datos de contacto", yo["id"])
@@ -248,8 +246,7 @@ def editar_mi_perfil(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
 # restablecer la contraseña de alguien que la perdió.
 
 
-@router.get("/yo/acceso", summary="Cómo está mi acceso al campus")
-def mi_acceso(yo: dict = UsuarioActual):
+def mi_acceso(yo: dict ):
     """El estado de la cuenta en Firebase.
 
     **No hay lista de sesiones activas**: Firebase Authentication no la
@@ -262,32 +259,30 @@ def mi_acceso(yo: dict = UsuarioActual):
     try:
         return cuentas.estado_de_acceso(yo.get("correo") or "")
     except Exception as e:
-        raise HTTPException(502, f"No se pudo consultar el acceso: {e}")
+        raise ErrorDeAPI(502, f"No se pudo consultar el acceso: {e}")
 
 
-@router.post("/yo/cerrar-sesiones", summary="Cerrar la sesión en todos los equipos")
-def cerrar_mis_sesiones(yo: dict = UsuarioActual):
+def cerrar_mis_sesiones(yo: dict ):
     """Invalida los tokens: caen todas las sesiones, también la de acá.
 
     Sirve cuando alguien se dejó la sesión abierta en una máquina del
     laboratorio. Como caen todas, hay que volver a entrar.
     """
     if not cuentas.hay_firebase():
-        raise HTTPException(503, "El inicio de sesión todavía no está configurado")
+        raise ErrorDeAPI(503, "El inicio de sesión todavía no está configurado")
     try:
         cuentas.cerrar_sesiones(yo.get("correo") or "")
     except ValueError as e:
-        raise HTTPException(409, str(e))
+        raise ErrorDeAPI(409, str(e))
     except Exception as e:
-        raise HTTPException(502, f"No se pudieron cerrar las sesiones: {e}")
+        raise ErrorDeAPI(502, f"No se pudieron cerrar las sesiones: {e}")
 
     _anotar(yo, "sesiones cerradas", yo["nombre"], yo["id"])
     return {"cerradas": True}
 
 
 # ===================== Administración de cuentas =====================
-@router.get("", summary="Las cuentas del campus")
-def listar(yo: dict = UsuarioActual, q: str | None = None, rol: str | None = None):
+def listar(yo: dict , q: str | None = None, rol: str | None = None):
     """El padrón, para el administrador.
 
     El supervisor también la necesita para saber a quién inscribir, así que
@@ -296,7 +291,7 @@ def listar(yo: dict = UsuarioActual, q: str | None = None, rol: str | None = Non
     from .institucion import es_supervisor
 
     if not es_supervisor(yo):
-        raise HTTPException(403, "No tenés acceso al padrón de usuarios")
+        raise ErrorDeAPI(403, "No tenés acceso al padrón de usuarios")
 
     gente = d.personas
     if rol:
@@ -328,15 +323,14 @@ def listar(yo: dict = UsuarioActual, q: str | None = None, rol: str | None = Non
     }
 
 
-@router.get("/historial", summary="Los cambios sobre las cuentas")
-def historial(yo: dict = UsuarioActual):
+def historial(yo: dict ):
     """Vista del registro central, recortada a las cuentas.
 
     El apartado completo de auditoría, con todos sus filtros, está en
     `/api/auditoria`: esto es el atajo desde la pantalla de Cuentas.
     """
     if not es_administrador(yo):
-        raise HTTPException(403, "Solo el administrador ve el historial de cuentas")
+        raise ErrorDeAPI(403, "Solo el administrador ve el historial de cuentas")
 
     return {
         "historial": [
@@ -352,8 +346,7 @@ def historial(yo: dict = UsuarioActual):
     }
 
 
-@router.patch("/{id_persona}", summary="Cambiar roles o estado de una cuenta")
-def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def administrar(id_persona: int, cuerpo: dict , yo: dict ):
     """Roles y estado de la cuenta: solo el administrador.
 
     Dos resguardos que importan: nadie se edita a sí mismo —para no quitarse
@@ -361,13 +354,13 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     administrador.
     """
     if not es_administrador(yo):
-        raise HTTPException(403, "Solo el administrador puede cambiar roles y cuentas")
+        raise ErrorDeAPI(403, "Solo el administrador puede cambiar roles y cuentas")
 
     persona = d.buscar_persona(id_persona)
     if not persona:
-        raise HTTPException(404, "Esa persona no existe")
+        raise ErrorDeAPI(404, "Esa persona no existe")
     if persona["id"] == yo["id"]:
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "No podés cambiarte los roles a vos mismo. Pedíselo a otro administrador.",
         )
@@ -382,7 +375,7 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     if "dni" in cuerpo:
         dni = _texto(cuerpo["dni"], "el DNI", 10)
         if dni and not DNI.match(dni):
-            raise HTTPException(400, "El DNI son 7 u 8 números, sin puntos")
+            raise ErrorDeAPI(400, "El DNI son 7 u 8 números, sin puntos")
         antes_dni = persona.get("dni")
         persona["dni"] = dni
         _anotar(yo, "DNI corregido", persona["nombre"], persona["id"],
@@ -391,12 +384,12 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     if "correo" in cuerpo:
         correo = _texto(cuerpo["correo"], "el correo", 150, obligatorio=True)
         if not CORREO.match(correo):
-            raise HTTPException(400, "Ese correo no tiene un formato válido")
+            raise ErrorDeAPI(400, "Ese correo no tiene un formato válido")
         if any(
             p.get("correo", "").lower() == correo.lower() and p["id"] != persona["id"]
             for p in d.personas
         ):
-            raise HTTPException(409, "Ya hay una cuenta con ese correo")
+            raise ErrorDeAPI(409, "Ya hay una cuenta con ese correo")
 
         antes_correo = persona.get("correo")
         if correo.lower() != (antes_correo or "").lower():
@@ -407,7 +400,7 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
                 try:
                     cuentas.cambiar_correo(antes_correo, correo)
                 except Exception as e:
-                    raise HTTPException(
+                    raise ErrorDeAPI(
                         502, f"No se pudo cambiar el correo de acceso: {e}"
                     )
             persona["correo"] = correo
@@ -417,10 +410,10 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     if "roles" in cuerpo:
         roles = cuerpo["roles"]
         if not isinstance(roles, list) or not roles:
-            raise HTTPException(400, "Hay que dejar al menos un rol")
+            raise ErrorDeAPI(400, "Hay que dejar al menos un rol")
         desconocidos = [r for r in roles if r not in d.ROLES]
         if desconocidos:
-            raise HTTPException(400, f"El rol «{desconocidos[0]}» no existe")
+            raise ErrorDeAPI(400, f"El rol «{desconocidos[0]}» no existe")
 
         # Que no quede el campus sin administrador
         if d.tiene_rol(persona, "Administrador") and "Administrador" not in roles:
@@ -430,7 +423,7 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
                 if p["id"] != persona["id"] and d.tiene_rol(p, "Administrador")
             ]
             if not otros:
-                raise HTTPException(
+                raise ErrorDeAPI(
                     409,
                     "Es la única cuenta de administrador: asigná otra antes de quitarle el rol.",
                 )
@@ -448,7 +441,7 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
 
     if "estado" in cuerpo:
         if cuerpo["estado"] not in d.ESTADOS_CUENTA:
-            raise HTTPException(400, "Ese estado de cuenta no existe")
+            raise ErrorDeAPI(400, "Ese estado de cuenta no existe")
         antes_estado = persona.get("estado", "activa")
         persona["estado"] = cuerpo["estado"]
         # Que el estado del campus y el de Firebase no se separen: si solo
@@ -473,26 +466,25 @@ def administrar(id_persona: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     return {"usuario": _perfil(persona, completo=True)}
 
 
-@router.post("", status_code=201, summary="Dar de alta una cuenta")
-def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear(cuerpo: dict , yo: dict ):
     """Alta de una persona en el campus.
 
     La cuenta queda **pendiente**: existe en el padrón, pero el acceso real
     llega cuando se le cree el usuario en Firebase Authentication.
     """
     if not es_administrador(yo):
-        raise HTTPException(403, "Solo el administrador puede dar de alta cuentas")
+        raise ErrorDeAPI(403, "Solo el administrador puede dar de alta cuentas")
 
     nombre = _texto(cuerpo.get("nombre"), "el nombre", 120, obligatorio=True)
     correo = _texto(cuerpo.get("correo"), "el correo", 150, obligatorio=True)
     if not CORREO.match(correo):
-        raise HTTPException(400, "Ese correo no tiene un formato válido")
+        raise ErrorDeAPI(400, "Ese correo no tiene un formato válido")
     if any(p.get("correo", "").lower() == correo.lower() for p in d.personas):
-        raise HTTPException(409, "Ya hay una cuenta con ese correo")
+        raise ErrorDeAPI(409, "Ya hay una cuenta con ese correo")
 
     roles = cuerpo.get("roles") or ["Estudiante"]
     if not isinstance(roles, list) or any(r not in d.ROLES for r in roles):
-        raise HTTPException(400, "Los roles no son válidos")
+        raise ErrorDeAPI(400, "Los roles no son válidos")
 
     # Comprobar el correo, numerar y anotar van juntos: dos altas a la vez
     # sacaban el mismo id y el mismo legajo, y el mismo correo mandado dos
@@ -503,7 +495,7 @@ def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     # Firebase contesta figura como «pendiente», que es justamente lo que es.
     with legajos.padron:
         if any(p.get("correo", "").lower() == correo.lower() for p in d.personas):
-            raise HTTPException(409, "Ya hay una cuenta con ese correo")
+            raise ErrorDeAPI(409, "Ya hay una cuenta con ese correo")
         persona = {
             "id": max((p["id"] for p in d.personas), default=0) + 1,
             "nombre": nombre,
@@ -547,21 +539,20 @@ def crear(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     }
 
 
-@router.post("/{id_persona}/contrasena", summary="Restablecer la contraseña de alguien")
-def restablecer_contrasena(id_persona: int, yo: dict = UsuarioActual):
+def restablecer_contrasena(id_persona: int, yo: dict ):
     """Le pone una contraseña provisoria a quien perdió la suya.
 
     Se devuelve **una sola vez** y no se guarda en ningún lado, ni en la
     auditoría: queda anotado que se restableció y quién lo hizo, no cuál es.
     """
     if not es_administrador(yo):
-        raise HTTPException(403, "Solo el administrador puede restablecer contraseñas")
+        raise ErrorDeAPI(403, "Solo el administrador puede restablecer contraseñas")
     if not cuentas.hay_firebase():
-        raise HTTPException(503, "El inicio de sesión todavía no está configurado")
+        raise ErrorDeAPI(503, "El inicio de sesión todavía no está configurado")
 
     persona = d.buscar_persona(id_persona)
     if not persona:
-        raise HTTPException(404, "Esa persona no existe")
+        raise ErrorDeAPI(404, "Esa persona no existe")
 
     provisoria = cuentas.contrasena_provisoria()
     try:
@@ -572,7 +563,7 @@ def restablecer_contrasena(id_persona: int, yo: dict = UsuarioActual):
             cuentas.crear_acceso(persona["correo"], persona["nombre"], provisoria)
             persona["estado"] = "activa"
     except Exception as e:
-        raise HTTPException(502, f"No se pudo restablecer la contraseña: {e}")
+        raise ErrorDeAPI(502, f"No se pudo restablecer la contraseña: {e}")
 
     _anotar(yo, "contraseña restablecida", persona["nombre"], persona["id"])
     return {"contrasenaProvisoria": provisoria}
@@ -585,8 +576,7 @@ def restablecer_contrasena(id_persona: int, yo: dict = UsuarioActual):
 FOTO_MAX_MB = archivos.IMAGENES_MAX_MB  # el mismo tope que el resto de las imágenes
 
 
-@router.post("/yo/foto", summary="Cambiar mi foto de perfil")
-def subir_mi_foto(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def subir_mi_foto(cuerpo: dict , yo: dict ):
     """Valida la imagen mirando los bytes y la deja en el almacenamiento.
 
     Solo PNG y JPG: un SVG es un documento con scripts adentro, no una imagen
@@ -609,7 +599,7 @@ def subir_mi_foto(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     try:
         alm.subir(objeto, contenido, ficha["tipo"])
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(502, f"No se pudo guardar la imagen: {error}")
+        raise ErrorDeAPI(502, f"No se pudo guardar la imagen: {error}")
 
     alm.registrar(
         objeto,
@@ -626,18 +616,16 @@ def subir_mi_foto(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return mi_perfil(yo)
 
 
-@router.delete("/yo/foto", summary="Quitar mi foto de perfil")
-def quitar_mi_foto(yo: dict = UsuarioActual):
+def quitar_mi_foto(yo: dict ):
     objeto = yo.get("foto")
     if not objeto:
-        raise HTTPException(409, "No tenés una foto cargada")
+        raise ErrorDeAPI(409, "No tenés una foto cargada")
     alm.olvidar(objeto)
     yo["foto"] = None
     _anotar(yo, "foto de perfil quitada", yo["nombre"], yo["id"])
     return mi_perfil(yo)
 
 
-@router.get("/{id_persona}/foto", summary="La foto de alguien del campus")
 def ver_foto(id_persona: int, f: str = ""):
     """La sirve el servidor, con la dirección firmada.
 
@@ -658,19 +646,19 @@ def ver_foto(id_persona: int, f: str = ""):
     """
     persona = d.buscar_persona(id_persona)
     if not persona or not persona.get("foto"):
-        raise HTTPException(404, "Esa persona no tiene foto")
+        raise ErrorDeAPI(404, "Esa persona no tiene foto")
     if not hmac.compare_digest(f or "", fotos.firma(persona["foto"])):
-        raise HTTPException(404, "Esa persona no tiene foto")
+        raise ErrorDeAPI(404, "Esa persona no tiene foto")
 
     contenido = alm.leer(persona["foto"])
     if contenido is None:
-        raise HTTPException(404, "La foto no está disponible")
+        raise ErrorDeAPI(404, "La foto no está disponible")
 
     ficha = alm.ficha_de(persona["foto"]) or {}
-    return Response(
-        content=contenido,
-        media_type=ficha.get("tipo") or "image/png",
-        headers={
+    return descargar(
+        contenido,
+        ficha.get("tipo") or "image/png",
+        {
             "Content-Disposition": "inline",
             "X-Content-Type-Options": "nosniff",
             # Que el navegador la reutilice: el avatar se pide muchas veces

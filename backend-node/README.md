@@ -3,11 +3,11 @@
 Busca libros en **Google Books** y **Open Library**, los unifica y los devuelve
 en una sola forma. Es el segundo backend del campus.
 
-> **Para quien esté migrando el campus a Django: no hace falta tocar nada de
-> esta carpeta.** La frontera está en `backend/app/servicios/libros_externos.py`,
-> que expone las mismas dos funciones de siempre (`buscar_libros_externos` y
-> `obtener_libro_externo`) con la misma firma y la misma respuesta. Una vista de
-> Django las llama igual que la ruta de FastAPI. Ver «La frontera», más abajo.
+> Este servicio sigue separado del backend principal Django: la frontera está
+> en `backend/app/servicios/libros_externos.py`, que expone las funciones
+> `buscar_libros_externos` y `obtener_libro_externo`. Las vistas de Django las
+> llaman sin trasladar a este proceso las rutas ni los permisos del campus.
+> Ver «La frontera», más abajo.
 
 ## Por qué esta parte está en Node y el resto no
 
@@ -62,7 +62,7 @@ siempre: que una fuente ajena no deje sin biblioteca al campus.
 ## La frontera
 
 ```
-navegador  ──►  campus (FastAPI / Django)  ──►  este servicio  ──►  Google Books
+navegador  ──►  campus (Django)  ──►  este servicio  ──►  Google Books
                  │                                                   Open Library
                  │  quién pregunta, su freno por persona,
                  └─ sus favoritos, la biblioteca de la materia

@@ -1,17 +1,10 @@
-"""Calendario académico: entregas, exámenes, clases y eventos de un rango.
-
-Vive acá y no en la ruta para que lo atiendan FastAPI y Django **con la misma
-función** mientras dure la migración: la ruta de cada uno solo lee los
-parámetros y llama a `del_rango`. Si cada framework tuviera su copia, el día
-que alguien corrigiera una, las dos pantallas empezarían a contestar distinto
-y solo lo diría el banco de comparación.
-"""
+"""Calendario académico: entregas, exámenes, clases y eventos de un rango."""
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from ..web import HTTPException
+from ..errores import ErrorDeAPI
 
 from .. import datos as d
 
@@ -76,7 +69,7 @@ def del_rango(yo: dict, desde: str | None, hasta: str | None) -> list[dict]:
     fin = _leer_fecha(hasta)
 
     if inicio is None or fin is None or fin < inicio:
-        raise HTTPException(400, "Rango de fechas inválido")
+        raise ErrorDeAPI(400, "Rango de fechas inválido")
 
     inicio = inicio.replace(hour=0, minute=0, second=0, microsecond=0)
     fin = fin.replace(hour=23, minute=59, second=59, microsecond=999000)

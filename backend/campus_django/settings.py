@@ -21,8 +21,8 @@ DJANGO_SECRET_KEY
 DJANGO_DEBUG
     Apagado salvo que diga «si». Con `DEBUG` encendido, un error muestra la
     traza y la configuración en la respuesta: es el descuido más caro de
-    Django en producción. Además acá los errores no los formatea Django sino
-    la misma pila que FastAPI (ver `DEBUG_PROPAGATE_EXCEPTIONS`).
+    Django en producción. Los errores públicos y los internos se formatean
+    con el middleware del campus.
 
 DJANGO_ALLOWED_HOSTS
     Separados por comas. Con un host que no esté en la lista, Django contesta
@@ -56,28 +56,27 @@ ALLOWED_HOSTS = [
 
 # ===================== Sin base de datos =====================
 # Ni ORM ni módulos de `contrib`: `auth`, `sessions` y `admin` piden una base,
-# y el campus no la tiene. Firestore se usa igual que desde FastAPI, a través
-# de `app/servicios/`.
+# y el campus no la tiene. Firestore se usa a través de `app/servicios/`.
 INSTALLED_APPS: list[str] = []
 DATABASES: dict = {}
 
-# ===================== Sin middlewares propios =====================
-# El freno, la auditoría, el guardado, el CORS y el formato de los errores son
-# los mismos que en FastAPI, y los pone `despachador.py` alrededor de Django.
-# Los middlewares de seguridad de Django (`SecurityMiddleware`,
-# `XFrameOptionsMiddleware`) agregan cabeceras que hoy el campus no manda, y
-# `CommonMiddleware` cambia cómo se trata la barra final: quedan para una
-# etapa posterior, a propósito y en su propio cambio.
-MIDDLEWARE: list[str] = []
+# ===================== Middleware nativo =====================
+# El orden conserva la política de respuesta: el freno ocurre antes de CORS;
+# los errores de las vistas pasan por CORS y los errores internos no.
+MIDDLEWARE = [
+    "campus_django.middleware.ErrorInternoMiddleware",
+    "campus_django.middleware.FrenoMiddleware",
+    "campus_django.middleware.GuardadoMiddleware",
+    "campus_django.middleware.IPMiddleware",
+    "campus_django.middleware.CorsMiddleware",
+    "campus_django.middleware.ErrorDeAPIMiddleware",
+]
 
 ROOT_URLCONF = "campus_django.urls"
 
-# ===================== Los errores =====================
-# Que los errores salgan de Django hacia la pila de afuera, donde los formatean
-# los mismos manejadores que usa FastAPI. Así un 500, un 403 o un 400 de
-# validación son idénticos sin importar quién atendió la ruta, y un 500 sale
-# —como en FastAPI— sin cabeceras de CORS.
-DEBUG_PROPAGATE_EXCEPTIONS = True
+# Django middleware serializa los errores públicos del campus; los errores
+# inesperados se registran y responden como 500 sin exponer la traza.
+DEBUG_PROPAGATE_EXCEPTIONS = False
 
 # ===================== El tamaño de lo que llega =====================
 # Por omisión Django rechaza cuerpos de más de 2,5 MB con un 400 propio. Los
@@ -86,14 +85,12 @@ DEBUG_PROPAGATE_EXCEPTIONS = True
 # Django tiene que aceptar exactamente hasta donde el freno deja pasar.
 DATA_UPLOAD_MAX_MEMORY_SIZE = frenos.MAXIMO_BYTES
 
-# Por omisión Django corta con un error una consulta de más de 1000
-# parámetros (`?a=1&b=2…`). FastAPI no tiene ese tope, así que una dirección
-# así contestaba normal en uno y fallaba en el otro. Sin tope, como FastAPI:
-# lo que limita el tamaño es el freno y el servidor, no la cantidad de campos.
+# Django corta por omisión una consulta de más de 1000 parámetros
+# (`?a=1&b=2…`). El tamaño máximo total ya lo controla el freno del campus, así
+# que el número de campos no necesita otro tope.
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
-# La barra final la resuelve `vistas.no_encontrada` como FastAPI: quitándola
-# con un 307. Sin `CommonMiddleware` esto no hace nada, pero queda explícito.
+# La barra final se resuelve en `vistas.no_encontrada` con un 307.
 APPEND_SLASH = False
 
 # ===================== El registro =====================

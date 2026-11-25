@@ -1,17 +1,11 @@
-"""El banco de comparación: las mismas peticiones a dos aplicaciones.
+"""Compara el contrato actual de Django con la captura histórica.
 
-    python -m pruebas.banco                    # FastAPI contra sí mismo
-    python -m pruebas.banco --contra django    # FastAPI contra Django
+    python -m pruebas.banco                    # Django contra la captura histórica
     python -m pruebas.banco --detalle 10       # hasta 10 diferencias por caso
     python -m pruebas.banco --solo foro        # los casos cuyo nombre contenga eso
 
-Para qué sirve correrlo contra sí mismo
----------------------------------------
-Parece no tener sentido y es el primer uso: **si FastAPI contra FastAPI no da
-cero diferencias, el banco está mal**. Significa que hay algo variable sin
-normalizar, y entonces el día que haya Django el informe vendría lleno de
-ruido y nadie lo miraría. Así que esa corrida es la que valida la
-herramienta, y tiene que quedar en cero antes de empezar a migrar.
+La referencia se grabó antes de retirar la implementación anterior. Es un
+fixture de pruebas; no contiene ni ejecuta código de servidor.
 
 Cómo corre cada caso
 --------------------
@@ -147,9 +141,8 @@ def comparar_caso(
 
 
 # ===================== La grabación =====================
-# Para el día en que FastAPI ya no esté: lo que contestó y lo que guardó,
-# caso por caso, para comparar contra eso en vez de contra la aplicación en
-# vivo. De lo guardado se graba **qué cambió** respecto del campus de partida
+# La captura histórica guarda lo que contestó y lo que quedó, caso por caso.
+# De lo guardado se registra **qué cambió** respecto del campus de partida
 # —no el campus entero, que serían decenas de megas por nada—.
 def _cambios(base: dict, foto: dict) -> list[str]:
     return [str(c) for c in comparar(estado.comparable(base), estado.comparable(foto), "campus")]
@@ -301,14 +294,14 @@ GRABACION = str(pathlib.Path(__file__).with_name("grabaciones") / "fastapi.json.
 
 
 def main() -> int:
-    opciones = argparse.ArgumentParser(description="Compara el campus contra lo que grabó FastAPI")
+    opciones = argparse.ArgumentParser(description="Compara Django contra la captura histórica del contrato")
     opciones.add_argument("--contra", default="django", choices=sorted(servidores.DISPONIBLES))
     opciones.add_argument("--detalle", type=int, default=6)
     opciones.add_argument("--solo", default=None, help="solo los casos que contengan ese texto")
     opciones.add_argument("--grabar", default=None,
                           help="graba lo que contesta y guarda la aplicación, como nueva referencia")
     opciones.add_argument("--contra-grabado", default=GRABACION, dest="grabado",
-                          help="la grabación contra la que se compara (por omisión, la de FastAPI)")
+                          help="captura de referencia para comparar respuestas y estado")
     opciones.add_argument("--autoprueba", action="store_true",
                           help="comprueba que el banco encuentre una diferencia cuando la hay")
     args = opciones.parse_args()
@@ -330,7 +323,7 @@ def main() -> int:
         from .autoprueba import correr
         return correr()
 
-    # La grabación de FastAPI se hizo el 23/11/2026. El escenario usa fechas
+    # La captura histórica se hizo el 23/11/2026. El escenario usa fechas
     # relativas a hoy, así que el banco debe reponer ese mismo día para
     # comparar calendario, finales y nombres de exportación sin ruido.
     reloj = datetime(2026, 11, 23, 12).astimezone()

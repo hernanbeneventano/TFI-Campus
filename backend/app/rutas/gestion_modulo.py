@@ -25,10 +25,12 @@ siguiente.
 
 from __future__ import annotations
 
+from campus_django.respuestas import descargar
+
 import re
 from typing import Any
 
-from ..web import APIRouter, Body, HTTPException, Response
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import cursada as c
@@ -36,9 +38,7 @@ from ..servicios import almacenamiento as alm
 from ..servicios import archivos, fotos
 from ..servicios import modulos as mod
 from ..servicios import auditoria
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api/cursos", tags=["Gestión del módulo"])
 
 TIPOS_ITEM = ("pagina", "archivo", "tarea", "tablero")
 
@@ -69,9 +69,9 @@ def puede_gestionar(yo: dict, curso: dict) -> bool:
 def _curso_que_administra(id_curso: int, yo: dict) -> dict:
     curso = d.buscar_curso(id_curso)
     if not curso:
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
     if not puede_gestionar(yo, curso):
-        raise HTTPException(403, "Solo el docente a cargo puede administrar este módulo")
+        raise ErrorDeAPI(403, "Solo el docente a cargo puede administrar este módulo")
     return curso
 
 
@@ -79,31 +79,31 @@ def _curso_que_administra(id_curso: int, yo: dict) -> dict:
 def _texto(valor: Any, campo: str, maximo: int, obligatorio: bool = True) -> str | None:
     if valor is None:
         if obligatorio:
-            raise HTTPException(400, f"Falta {campo}")
+            raise ErrorDeAPI(400, f"Falta {campo}")
         return None
     if not isinstance(valor, str):
-        raise HTTPException(400, f"{campo} tiene que ser texto")
+        raise ErrorDeAPI(400, f"{campo} tiene que ser texto")
     limpio = valor.strip()
     if not limpio:
         if obligatorio:
-            raise HTTPException(400, f"Falta {campo}")
+            raise ErrorDeAPI(400, f"Falta {campo}")
         return None
     if len(limpio) > maximo:
-        raise HTTPException(400, f"{campo} no puede pasar de {maximo} caracteres")
+        raise ErrorDeAPI(400, f"{campo} no puede pasar de {maximo} caracteres")
     return limpio
 
 
 def _buscar_carpeta(carpetas: list[dict], id_carpeta: int) -> dict:
     carpeta = next((c for c in carpetas if c["id"] == id_carpeta), None)
     if not carpeta:
-        raise HTTPException(404, "La sección no existe")
+        raise ErrorDeAPI(404, "La sección no existe")
     return carpeta
 
 
 def _buscar_item(carpeta: dict, id_item: str) -> dict:
     item = next((i for i in carpeta["items"] if str(i["id"]) == str(id_item)), None)
     if not item:
-        raise HTTPException(404, "El elemento no existe")
+        raise ErrorDeAPI(404, "El elemento no existe")
     return item
 
 
@@ -118,14 +118,14 @@ def _mover(lista: list, indice: int, cuerpo: dict) -> None:
     posicion = cuerpo.get("posicion")
     if posicion is not None:
         if not isinstance(posicion, int):
-            raise HTTPException(400, "La posición tiene que ser un número")
+            raise ErrorDeAPI(400, "La posición tiene que ser un número")
         # Se acota en vez de rechazar: soltar más abajo del último es
         # "ponelo último", no un error.
         destino = max(0, min(posicion, len(lista) - 1))
     else:
         hacia = cuerpo.get("hacia")
         if hacia not in ("arriba", "abajo"):
-            raise HTTPException(400, "Falta decir a dónde moverlo")
+            raise ErrorDeAPI(400, "Falta decir a dónde moverlo")
         destino = indice - 1 if hacia == "arriba" else indice + 1
         if destino < 0 or destino >= len(lista):
             return
@@ -149,8 +149,7 @@ def _contenido_actualizado(curso: dict) -> dict:
 
 
 # ===================== Secciones =====================
-@router.post("/{id_curso}/carpetas", status_code=201, summary="Crear una sección")
-def crear_carpeta(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_carpeta(id_curso: int, cuerpo: dict , yo: dict ):
     curso = _curso_que_administra(id_curso, yo)
     titulo = _texto(cuerpo.get("titulo"), "el título de la sección", MAX_TITULO)
     descripcion = _texto(
@@ -169,9 +168,8 @@ def crear_carpeta(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     return _contenido_actualizado(curso)
 
 
-@router.patch("/{id_curso}/carpetas/{id_carpeta}", summary="Editar una sección")
 def editar_carpeta(
-    id_curso: int, id_carpeta: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_curso: int, id_carpeta: int, cuerpo: dict, yo: dict
 ):
     curso = _curso_que_administra(id_curso, yo)
     carpetas = d.asegurar_contenido(curso)
@@ -186,8 +184,7 @@ def editar_carpeta(
     return _contenido_actualizado(curso)
 
 
-@router.delete("/{id_curso}/carpetas/{id_carpeta}", summary="Borrar una sección")
-def borrar_carpeta(id_curso: int, id_carpeta: int, yo: dict = UsuarioActual):
+def borrar_carpeta(id_curso: int, id_carpeta: int, yo: dict ):
     """Se lleva lo que tiene adentro, incluidos los trabajos.
 
     Borrar una sección con material adentro es la acción más destructiva de
@@ -208,9 +205,8 @@ def borrar_carpeta(id_curso: int, id_carpeta: int, yo: dict = UsuarioActual):
     return _contenido_actualizado(curso)
 
 
-@router.post("/{id_curso}/carpetas/{id_carpeta}/mover", summary="Reordenar una sección")
 def mover_carpeta(
-    id_curso: int, id_carpeta: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_curso: int, id_carpeta: int, cuerpo: dict, yo: dict
 ):
     curso = _curso_que_administra(id_curso, yo)
     carpetas = d.asegurar_contenido(curso)
@@ -227,29 +223,29 @@ def _armar_preguntas(crudas) -> list[dict]:
     máximo que entra en pantalla sin que haya que desplazarse.
     """
     if not isinstance(crudas, list):
-        raise HTTPException(400, "Las preguntas tienen que venir en una lista")
+        raise ErrorDeAPI(400, "Las preguntas tienen que venir en una lista")
     if len(crudas) > 50:
-        raise HTTPException(400, "Son demasiadas preguntas para un cuestionario")
+        raise ErrorDeAPI(400, "Son demasiadas preguntas para un cuestionario")
 
     preguntas = []
     for n, cruda in enumerate(crudas, start=1):
         if not isinstance(cruda, dict):
-            raise HTTPException(400, f"La pregunta {n} no tiene el formato esperado")
+            raise ErrorDeAPI(400, f"La pregunta {n} no tiene el formato esperado")
 
         texto = _texto(cruda.get("texto"), f"el enunciado de la pregunta {n}", 500)
         opciones = cruda.get("opciones")
         if not isinstance(opciones, list) or not 2 <= len(opciones) <= 6:
-            raise HTTPException(400, f"La pregunta {n} necesita entre 2 y 6 opciones")
+            raise ErrorDeAPI(400, f"La pregunta {n} necesita entre 2 y 6 opciones")
 
         limpias = [_texto(o, f"una opción de la pregunta {n}", 200) for o in opciones]
 
         correcta = cruda.get("correcta")
         if not isinstance(correcta, int) or not 0 <= correcta < len(limpias):
-            raise HTTPException(400, f"Hay que marcar cuál es la correcta en la pregunta {n}")
+            raise ErrorDeAPI(400, f"Hay que marcar cuál es la correcta en la pregunta {n}")
 
         puntaje = cruda.get("puntaje", 1)
         if not isinstance(puntaje, int) or not 1 <= puntaje <= 10:
-            raise HTTPException(400, f"El puntaje de la pregunta {n} va de 1 a 10")
+            raise ErrorDeAPI(400, f"El puntaje de la pregunta {n} va de 1 a 10")
 
         preguntas.append(
             {
@@ -266,7 +262,7 @@ def _armar_preguntas(crudas) -> list[dict]:
 def _armar_item(curso: dict, carpeta: dict, cuerpo: dict) -> dict:
     tipo = cuerpo.get("tipo")
     if tipo not in TIPOS_ITEM:
-        raise HTTPException(400, "El tipo de elemento no es válido")
+        raise ErrorDeAPI(400, "El tipo de elemento no es válido")
 
     titulo = _texto(cuerpo.get("titulo"), "el título", MAX_TITULO)
     # El id lleva el curso adelante, como los que ya venían en los datos
@@ -281,10 +277,10 @@ def _armar_item(curso: dict, carpeta: dict, cuerpo: dict) -> dict:
         if isinstance(cuerpo_pagina, str):
             cuerpo_pagina = [p.strip() for p in cuerpo_pagina.split("\n\n") if p.strip()]
         if not isinstance(cuerpo_pagina, list) or not cuerpo_pagina:
-            raise HTTPException(400, "La página necesita un texto")
+            raise ErrorDeAPI(400, "La página necesita un texto")
         largo = sum(len(p) for p in cuerpo_pagina if isinstance(p, str))
         if largo > MAX_CUERPO:
-            raise HTTPException(400, "El texto de la página es demasiado largo")
+            raise ErrorDeAPI(400, "El texto de la página es demasiado largo")
         item["cuerpo"] = [p for p in cuerpo_pagina if isinstance(p, str)]
 
     elif tipo == "archivo":
@@ -295,21 +291,21 @@ def _armar_item(curso: dict, carpeta: dict, cuerpo: dict) -> dict:
         enlace = _texto(cuerpo.get("enlace"), "el enlace", 500, obligatorio=False)
         if enlace:
             if not enlace.startswith(("http://", "https://")):
-                raise HTTPException(400, "El enlace tiene que empezar con http:// o https://")
+                raise ErrorDeAPI(400, "El enlace tiene que empezar con http:// o https://")
             item["enlace"] = enlace
 
     elif tipo == "tarea":
         fecha_limite = cuerpo.get("fechaLimite")
         if not isinstance(fecha_limite, str) or not fecha_limite.strip():
-            raise HTTPException(400, "El trabajo necesita una fecha de entrega")
+            raise ErrorDeAPI(400, "El trabajo necesita una fecha de entrega")
         try:
             d.desde_iso(fecha_limite)
         except ValueError:
-            raise HTTPException(400, "La fecha de entrega no es válida")
+            raise ErrorDeAPI(400, "La fecha de entrega no es válida")
 
         modalidad = cuerpo.get("modalidad") or "virtual"
         if modalidad not in d.MODALIDADES_TRABAJO:
-            raise HTTPException(400, "La modalidad tiene que ser virtual o presencial")
+            raise ErrorDeAPI(400, "La modalidad tiene que ser virtual o presencial")
 
         # Un presencial no tiene formato que elegir: se rinde en el aula y la
         # nota la carga el docente al cerrar.
@@ -318,11 +314,11 @@ def _armar_item(curso: dict, carpeta: dict, cuerpo: dict) -> dict:
         else:
             formato = cuerpo.get("formato") or "entrega"
             if formato not in ("entrega", "cuestionario"):
-                raise HTTPException(400, "El formato tiene que ser entrega o cuestionario")
+                raise ErrorDeAPI(400, "El formato tiene que ser entrega o cuestionario")
 
         preguntas = _armar_preguntas(cuerpo.get("preguntas")) if formato == "cuestionario" else []
         if formato == "cuestionario" and not preguntas:
-            raise HTTPException(400, "Un cuestionario necesita al menos una pregunta")
+            raise ErrorDeAPI(400, "Un cuestionario necesita al menos una pregunta")
 
         tarea = {
             "id": d.nuevo_id_tarea(),
@@ -345,11 +341,8 @@ def _armar_item(curso: dict, carpeta: dict, cuerpo: dict) -> dict:
     return item
 
 
-@router.post(
-    "/{id_curso}/carpetas/{id_carpeta}/items", status_code=201, summary="Agregar un elemento"
-)
 def crear_item(
-    id_curso: int, id_carpeta: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_curso: int, id_carpeta: int, cuerpo: dict, yo: dict
 ):
     curso = _curso_que_administra(id_curso, yo)
     carpetas = d.asegurar_contenido(curso)
@@ -358,13 +351,12 @@ def crear_item(
     return _contenido_actualizado(curso)
 
 
-@router.patch("/{id_curso}/carpetas/{id_carpeta}/items/{id_item}", summary="Editar un elemento")
 def editar_item(
     id_curso: int,
     id_carpeta: int,
     id_item: str,
-    cuerpo: dict = Body(...),
-    yo: dict = UsuarioActual,
+    cuerpo: dict ,
+    yo: dict ,
 ):
     """El tipo no se cambia: una página no se convierte en un trabajo.
 
@@ -388,7 +380,7 @@ def editar_item(
         if isinstance(texto, str):
             texto = [p.strip() for p in texto.split("\n\n") if p.strip()]
         if not isinstance(texto, list) or not texto:
-            raise HTTPException(400, "La página necesita un texto")
+            raise ErrorDeAPI(400, "La página necesita un texto")
         item["cuerpo"] = [p for p in texto if isinstance(p, str)]
 
     if item["tipo"] == "archivo":
@@ -403,19 +395,19 @@ def editar_item(
             try:
                 d.desde_iso(cuerpo["fechaLimite"])
             except (ValueError, TypeError, AttributeError):
-                raise HTTPException(400, "La fecha de entrega no es válida")
+                raise ErrorDeAPI(400, "La fecha de entrega no es válida")
             tarea["fechaLimite"] = cuerpo["fechaLimite"]
         if tarea and "consigna" in cuerpo:
             tarea["consigna"] = _texto(cuerpo["consigna"], "la consigna", MAX_CUERPO, False)
         if tarea and "preguntas" in cuerpo and tarea.get("formato") == "cuestionario":
             nuevas = _armar_preguntas(cuerpo["preguntas"])
             if not nuevas:
-                raise HTTPException(400, "Un cuestionario necesita al menos una pregunta")
+                raise ErrorDeAPI(400, "Un cuestionario necesita al menos una pregunta")
             # Cambiar las preguntas invalida lo ya respondido: las respuestas
             # viejas apuntaban a otras opciones y su nota dejaría de
             # significar nada.
             if any(r["tareaId"] == tarea["id"] for r in d.respuestas_cuestionario):
-                raise HTTPException(
+                raise ErrorDeAPI(
                     409,
                     "Ya hay alumnos que respondieron: no se pueden cambiar las preguntas. "
                     "Creá un cuestionario nuevo.",
@@ -425,8 +417,7 @@ def editar_item(
     return _contenido_actualizado(curso)
 
 
-@router.delete("/{id_curso}/carpetas/{id_carpeta}/items/{id_item}", summary="Borrar un elemento")
-def borrar_item(id_curso: int, id_carpeta: int, id_item: str, yo: dict = UsuarioActual):
+def borrar_item(id_curso: int, id_carpeta: int, id_item: str, yo: dict ):
     curso = _curso_que_administra(id_curso, yo)
     carpetas = d.asegurar_contenido(curso)
     carpeta = _buscar_carpeta(carpetas, id_carpeta)
@@ -441,15 +432,12 @@ def borrar_item(id_curso: int, id_carpeta: int, id_item: str, yo: dict = Usuario
     return _contenido_actualizado(curso)
 
 
-@router.post(
-    "/{id_curso}/carpetas/{id_carpeta}/items/{id_item}/mover", summary="Reordenar un elemento"
-)
 def mover_item(
     id_curso: int,
     id_carpeta: int,
     id_item: str,
-    cuerpo: dict = Body(...),
-    yo: dict = UsuarioActual,
+    cuerpo: dict ,
+    yo: dict ,
 ):
     curso = _curso_que_administra(id_curso, yo)
     carpetas = d.asegurar_contenido(curso)
@@ -460,9 +448,8 @@ def mover_item(
 
 
 # ===================== Abrir y cerrar entregas =====================
-@router.post("/{id_curso}/tareas/{id_tarea}/entrega", summary="Abrir o cerrar la entrega")
 def alternar_entrega(
-    id_curso: int, id_tarea: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_curso: int, id_tarea: int, cuerpo: dict, yo: dict
 ):
     """Cierra un trabajo antes de la fecha, o lo reabre después.
 
@@ -473,17 +460,17 @@ def alternar_entrega(
     curso = _curso_que_administra(id_curso, yo)
     tarea = d.buscar_tarea(id_tarea)
     if not tarea or tarea["cursoId"] != curso["id"]:
-        raise HTTPException(404, "El trabajo no existe en este módulo")
+        raise ErrorDeAPI(404, "El trabajo no existe en este módulo")
 
     if "abierta" not in cuerpo:
-        raise HTTPException(400, "Falta decir si la entrega queda abierta o cerrada")
+        raise ErrorDeAPI(400, "Falta decir si la entrega queda abierta o cerrada")
     abierta = cuerpo["abierta"]
     if abierta is None:
         tarea["cerrada"] = None
     elif isinstance(abierta, bool):
         tarea["cerrada"] = not abierta
     else:
-        raise HTTPException(400, "«abierta» tiene que ser verdadero, falso o nulo")
+        raise ErrorDeAPI(400, "«abierta» tiene que ser verdadero, falso o nulo")
 
     return _contenido_actualizado(curso)
 
@@ -502,8 +489,7 @@ def _anuncios_de(curso: dict) -> list[dict]:
     return propios
 
 
-@router.post("/{id_curso}/anuncios", status_code=201, summary="Publicar un anuncio")
-def crear_anuncio(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_anuncio(id_curso: int, cuerpo: dict , yo: dict ):
     curso = _curso_que_administra(id_curso, yo)
     titulo = _texto(cuerpo.get("titulo"), "el título", MAX_TITULO)
     texto = _texto(cuerpo.get("cuerpo"), "el texto del anuncio", MAX_CUERPO)
@@ -522,15 +508,14 @@ def crear_anuncio(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioAct
     return {"anuncios": anuncios}
 
 
-@router.patch("/{id_curso}/anuncios/{id_anuncio}", summary="Editar un anuncio")
 def editar_anuncio(
-    id_curso: int, id_anuncio: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_curso: int, id_anuncio: int, cuerpo: dict, yo: dict
 ):
     curso = _curso_que_administra(id_curso, yo)
     anuncios = _anuncios_de(curso)
     anuncio = next((a for a in anuncios if a["id"] == id_anuncio), None)
     if not anuncio:
-        raise HTTPException(404, "El anuncio no existe")
+        raise ErrorDeAPI(404, "El anuncio no existe")
 
     if "titulo" in cuerpo:
         anuncio["titulo"] = _texto(cuerpo["titulo"], "el título", MAX_TITULO)
@@ -540,13 +525,12 @@ def editar_anuncio(
     return {"anuncios": anuncios}
 
 
-@router.delete("/{id_curso}/anuncios/{id_anuncio}", summary="Borrar un anuncio")
-def borrar_anuncio(id_curso: int, id_anuncio: int, yo: dict = UsuarioActual):
+def borrar_anuncio(id_curso: int, id_anuncio: int, yo: dict ):
     curso = _curso_que_administra(id_curso, yo)
     anuncios = _anuncios_de(curso)
     anuncio = next((a for a in anuncios if a["id"] == id_anuncio), None)
     if not anuncio:
-        raise HTTPException(404, "El anuncio no existe")
+        raise ErrorDeAPI(404, "El anuncio no existe")
     anuncios.remove(anuncio)
     return {"anuncios": anuncios}
 
@@ -592,8 +576,7 @@ def _archivo_entregado(entrega: dict | None) -> dict | None:
 _marcable = d.es_marcable
 
 
-@router.get("/{id_curso}/seguimiento", summary="Cómo viene el curso con el material")
-def seguimiento(id_curso: int, yo: dict = UsuarioActual):
+def seguimiento(id_curso: int, yo: dict ):
     """Dos vistas de lo mismo: por sección y por alumno.
 
     Al docente no le sirve su propio avance —el material lo subió él—, le
@@ -700,8 +683,7 @@ def seguimiento(id_curso: int, yo: dict = UsuarioActual):
     }
 
 
-@router.get("/{id_curso}/tareas/{id_tarea}/entregas", summary="Quién entregó este trabajo")
-def entregas_de_tarea(id_curso: int, id_tarea: int, yo: dict = UsuarioActual):
+def entregas_de_tarea(id_curso: int, id_tarea: int, yo: dict ):
     """Las entregas de **un** trabajo, para verlas al abrirlo.
 
     La planilla de la sección ya las muestra, pero hay que ir a buscarla: al
@@ -712,7 +694,7 @@ def entregas_de_tarea(id_curso: int, id_tarea: int, yo: dict = UsuarioActual):
     curso = _curso_que_administra(id_curso, yo)
     tarea = d.buscar_tarea(id_tarea)
     if not tarea or tarea["cursoId"] != curso["id"]:
-        raise HTTPException(404, "El trabajo no existe en este módulo")
+        raise ErrorDeAPI(404, "El trabajo no existe en este módulo")
 
     filas = []
     for alumno in _alumnos_de(curso):
@@ -765,8 +747,7 @@ def entregas_de_tarea(id_curso: int, id_tarea: int, yo: dict = UsuarioActual):
     }
 
 
-@router.get("/{id_curso}/carpetas/{id_carpeta}/entregas", summary="Quién cumplió con una sección")
-def entregas_de_seccion(id_curso: int, id_carpeta: int, yo: dict = UsuarioActual):
+def entregas_de_seccion(id_curso: int, id_carpeta: int, yo: dict ):
     """El detalle que hay detrás del porcentaje de la sección.
 
     Por cada alumno: qué material vio, qué entregó y qué le falta. Es lo que
@@ -864,8 +845,7 @@ def entregas_de_seccion(id_curso: int, id_carpeta: int, yo: dict = UsuarioActual
 # ===================== Notas =====================
 
 
-@router.get("/{id_curso}/notas", summary="La grilla de notas del módulo")
-def listar_notas(id_curso: int, yo: dict = UsuarioActual):
+def listar_notas(id_curso: int, yo: dict ):
     """Alumnos por trabajos, con lo cargado hasta ahora.
 
     Se devuelven las dos listas por separado y las notas sueltas, en vez de
@@ -911,8 +891,7 @@ def listar_notas(id_curso: int, yo: dict = UsuarioActual):
     }
 
 
-@router.put("/{id_curso}/cierre", summary="Fijar a mano la condición de un alumno")
-def fijar_cierre(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def fijar_cierre(id_curso: int, cuerpo: dict , yo: dict ):
     """La condición que decide el docente pesa más que el promedio.
 
     Hay motivos que el sistema no conoce —una recuperación, una falta
@@ -923,14 +902,14 @@ def fijar_cierre(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActu
 
     alumno = d.buscar_persona(cuerpo.get("personaId"))
     if not alumno or not any(a["id"] == alumno["id"] for a in _alumnos_de(curso)):
-        raise HTTPException(404, "Esa persona no cursa este módulo")
+        raise ErrorDeAPI(404, "Esa persona no cursa este módulo")
 
     condicion = cuerpo.get("condicion")
     if condicion is None:
         return {"cierre": c.soltar_cierre(alumno["id"], curso["id"]), "personaId": alumno["id"]}
 
     if condicion not in (c.APROBADA, c.VA_A_FINAL):
-        raise HTTPException(400, "La condición tiene que ser «Aprobada» o «Va a final»")
+        raise ErrorDeAPI(400, "La condición tiene que ser «Aprobada» o «Va a final»")
 
     observacion = _texto(cuerpo.get("observacion"), "la observación", MAX_COMENTARIO, False)
     return {
@@ -939,8 +918,7 @@ def fijar_cierre(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActu
     }
 
 
-@router.get("/{id_curso}/tareas/{id_tarea}/cuestionario", summary="Respuestas de un cuestionario")
-def respuestas_del_cuestionario(id_curso: int, id_tarea: int, yo: dict = UsuarioActual):
+def respuestas_del_cuestionario(id_curso: int, id_tarea: int, yo: dict ):
     """Qué respondió cada alumno, con el detalle por pregunta.
 
     Un cuestionario se corrige solo, así que esto no es para poner la nota:
@@ -950,9 +928,9 @@ def respuestas_del_cuestionario(id_curso: int, id_tarea: int, yo: dict = Usuario
     curso = _curso_que_administra(id_curso, yo)
     tarea = d.buscar_tarea(id_tarea)
     if not tarea or tarea["cursoId"] != curso["id"]:
-        raise HTTPException(404, "El trabajo no existe en este módulo")
+        raise ErrorDeAPI(404, "El trabajo no existe en este módulo")
     if tarea.get("formato") != "cuestionario":
-        raise HTTPException(400, "Ese trabajo no es un cuestionario")
+        raise ErrorDeAPI(400, "Ese trabajo no es un cuestionario")
 
     preguntas = tarea.get("preguntas") or []
     alumnos = _alumnos_de(curso)
@@ -1029,8 +1007,7 @@ def _auditar_nota(yo, accion, curso, alumno, tarea, antes, despues, detalle):
     )
 
 
-@router.put("/{id_curso}/notas", summary="Cargar o corregir una nota")
-def guardar_nota(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def guardar_nota(id_curso: int, cuerpo: dict , yo: dict ):
     """Una celda de la grilla. Si ya había nota, se reemplaza.
 
     Una nota en blanco borra la celda: es la forma de deshacer una carga
@@ -1040,26 +1017,26 @@ def guardar_nota(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActu
 
     tarea = d.buscar_tarea(cuerpo.get("tareaId"))
     if not tarea or tarea["cursoId"] != curso["id"]:
-        raise HTTPException(404, "El trabajo no existe en este módulo")
+        raise ErrorDeAPI(404, "El trabajo no existe en este módulo")
 
     alumno = d.buscar_persona(cuerpo.get("personaId"))
     if not alumno or not any(a["id"] == alumno["id"] for a in _alumnos_de(curso)):
-        raise HTTPException(404, "Esa persona no cursa este módulo")
+        raise ErrorDeAPI(404, "Esa persona no cursa este módulo")
 
     nota = cuerpo.get("nota")
     if nota is not None:
         try:
             nota = float(nota)
         except (TypeError, ValueError):
-            raise HTTPException(400, "La nota tiene que ser un número")
+            raise ErrorDeAPI(400, "La nota tiene que ser un número")
         if not 1 <= nota <= 10:
-            raise HTTPException(400, "La nota va de 1 a 10")
+            raise ErrorDeAPI(400, "La nota va de 1 a 10")
         # 7.5 se guarda como 7.5; 8.0 como 8, que es como se escribe
         nota = int(nota) if nota == int(nota) else round(nota, 2)
 
     estado = cuerpo.get("estado")
     if estado is not None and estado not in d.ESTADOS_CALIFICACION:
-        raise HTTPException(400, "Ese estado de corrección no existe")
+        raise ErrorDeAPI(400, "Ese estado de corrección no existe")
 
     comentario = _texto(cuerpo.get("comentario"), "el comentario", MAX_COMENTARIO, False)
 
@@ -1142,21 +1119,16 @@ def _buscar_item_en_carpetas(carpetas: list[dict], id_carpeta: int, id_item) -> 
     carpeta = _buscar_carpeta(carpetas, id_carpeta)
     item = next((i for i in carpeta["items"] if str(i["id"]) == str(id_item)), None)
     if not item:
-        raise HTTPException(404, "Ese elemento no existe en la sección")
+        raise ErrorDeAPI(404, "Ese elemento no existe en la sección")
     return carpeta, item
 
 
-@router.post(
-    "/{id_curso}/carpetas/{id_carpeta}/items/{id_item}/archivo",
-    status_code=201,
-    summary="Subir el archivo de un elemento",
-)
 def subir_archivo_item(
     id_curso: int,
     id_carpeta: int,
     id_item: str,
-    cuerpo: dict = Body(default={}),
-    yo: dict = UsuarioActual,
+    cuerpo: dict = {},
+    yo: dict = None ,
 ):
     """Sube el archivo y lo deja colgado del elemento.
 
@@ -1168,7 +1140,7 @@ def subir_archivo_item(
     carpeta, item = _buscar_item_en_carpetas(carpetas, id_carpeta, id_item)
 
     if item.get("tipo") != "archivo":
-        raise HTTPException(409, "Ese elemento no es un archivo")
+        raise ErrorDeAPI(409, "Ese elemento no es un archivo")
 
     contenido, ficha = archivos.leer_subida(cuerpo)
     objeto = alm.clave(alm.MODULOS, curso["id"], item["id"], nombre=ficha["nombre"])
@@ -1182,7 +1154,7 @@ def subir_archivo_item(
     try:
         alm.subir(objeto, contenido, ficha["tipo"])
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(502, f"No se pudo guardar el archivo: {error}")
+        raise ErrorDeAPI(502, f"No se pudo guardar el archivo: {error}")
 
     alm.registrar(
         objeto,
@@ -1215,17 +1187,13 @@ def subir_archivo_item(
     return _contenido_actualizado(curso)
 
 
-@router.get(
-    "/{id_curso}/carpetas/{id_carpeta}/items/{id_item}/archivo",
-    summary="Descargar el archivo de un elemento",
-)
 def descargar_archivo_item(
     id_curso: int,
     id_carpeta: int,
     id_item: str,
     # `?ver=1` pide mirarlo en vez de bajarlo. Solo cambia para los PDF.
     ver: bool = False,
-    yo: dict = UsuarioActual,
+    yo: dict = None ,
 ):
     """Lo descarga quien tiene acceso al módulo: la cátedra y su gente.
 
@@ -1234,13 +1202,13 @@ def descargar_archivo_item(
     """
     curso = d.buscar_curso(id_curso)
     if not curso:
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
 
     # La cátedra, o alguien que curse el módulo
     if not puede_gestionar(yo, curso) and not any(
         p["id"] == yo["id"] for p in d.participantes_de_curso(curso)
     ):
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
 
     carpetas = d.carpetas_de_curso(curso)
     _, item = _buscar_item_en_carpetas(carpetas, id_carpeta, id_item)
@@ -1251,7 +1219,7 @@ def descargar_archivo_item(
         # Lo que se subió antes de R2 sigue estando en memoria
         contenido = d.leer_archivo(d.clave_de_archivo_de_modulo(curso["id"], item["id"]))
     if not contenido or not item.get("archivo"):
-        raise HTTPException(404, "Ese elemento todavía no tiene un archivo subido")
+        raise ErrorDeAPI(404, "Ese elemento todavía no tiene un archivo subido")
 
     auditoria.registrar(
         yo,
@@ -1272,20 +1240,20 @@ def descargar_archivo_item(
     tipo = item["archivo"]["tipo"]
     adentro = ver and tipo == "application/pdf"
     if adentro:
-        return Response(
-            content=contenido,
-            media_type=tipo,
-            headers={
+        return descargar(
+            contenido,
+            tipo,
+            {
                 "Content-Disposition": "inline",
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "sandbox",
             },
         )
 
-    return Response(
-        content=contenido,
-        media_type=tipo,
-        headers={
+    return descargar(
+        contenido,
+        tipo,
+        {
             # Siempre como descarga y sin dejar que el navegador adivine el
             # tipo: lo que sube la cátedra no se abre dentro del campus.
             "Content-Disposition": f'attachment; filename="{item["archivo"]["nombre"]}"',
@@ -1309,28 +1277,27 @@ def _leer_dia_de_clase(cuerpo: dict) -> dict:
     try:
         dia = int(cuerpo.get("dia"))
     except (TypeError, ValueError):
-        raise HTTPException(400, "Elegí el día de la semana")
+        raise ErrorDeAPI(400, "Elegí el día de la semana")
     if not 1 <= dia <= 7:
-        raise HTTPException(400, "Ese día de la semana no existe")
+        raise ErrorDeAPI(400, "Ese día de la semana no existe")
 
     desde = str(cuerpo.get("desde") or "").strip()
     hasta = str(cuerpo.get("hasta") or "").strip()
     if not HORA.match(desde) or not HORA.match(hasta):
-        raise HTTPException(400, "Los horarios van en formato HH:MM")
+        raise ErrorDeAPI(400, "Los horarios van en formato HH:MM")
     if desde >= hasta:
         # Comparados como texto, "18:00" < "22:00": el formato de 24 horas con
         # ceros a la izquierda ordena igual que la hora.
-        raise HTTPException(400, "La clase no puede terminar antes de empezar")
+        raise ErrorDeAPI(400, "La clase no puede terminar antes de empezar")
 
     aula = str(cuerpo.get("aula") or "").strip()
     if len(aula) > 60:
-        raise HTTPException(400, "El aula es demasiado larga")
+        raise ErrorDeAPI(400, "El aula es demasiado larga")
 
     return {"dia": dia, "desde": desde, "hasta": hasta, "aula": aula or None}
 
 
-@router.post("/{id_curso}/clases", status_code=201, summary="Agregar un día de clase")
-def agregar_dia_de_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def agregar_dia_de_clase(id_curso: int, cuerpo: dict , yo: dict ):
     curso = _curso_que_administra(id_curso, yo)
     datos = _leer_dia_de_clase(cuerpo)
 
@@ -1341,7 +1308,7 @@ def agregar_dia_de_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = Usu
         for c in d.clases
     )
     if repetida:
-        raise HTTPException(409, "Ya hay una clase ese día a esa hora")
+        raise ErrorDeAPI(409, "Ya hay una clase ese día a esa hora")
 
     d.clases.append({"cursoId": id_curso, **datos})
     auditoria.registrar(
@@ -1357,8 +1324,7 @@ def agregar_dia_de_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = Usu
     return {"cursada": mod.cursada_de(id_curso)}
 
 
-@router.delete("/{id_curso}/clases/{dia}/{desde}", summary="Quitar un día de clase")
-def quitar_dia_de_clase(id_curso: int, dia: int, desde: str, yo: dict = UsuarioActual):
+def quitar_dia_de_clase(id_curso: int, dia: int, desde: str, yo: dict ):
     """Se identifica por día y hora de inicio: no hay un id propio, y entre
     esos dos no puede haber dos clases de la misma materia."""
     curso = _curso_que_administra(id_curso, yo)
@@ -1368,7 +1334,7 @@ def quitar_dia_de_clase(id_curso: int, dia: int, desde: str, yo: dict = UsuarioA
         None,
     )
     if not clase:
-        raise HTTPException(404, "Esa clase no está cargada")
+        raise ErrorDeAPI(404, "Esa clase no está cargada")
 
     d.clases.remove(clase)
     auditoria.registrar(

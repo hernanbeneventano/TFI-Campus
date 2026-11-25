@@ -23,9 +23,9 @@ Lo que **no** se movió, y a propósito:
 La frontera, para quien migre Biblioteca a Django
 -------------------------------------------------
 **Estas dos funciones no cambian.** `rutas/biblioteca.py` las importa igual
-que antes y con la misma firma, así que migrar Biblioteca a Django no tiene
-nada que ver con Node: se llaman desde la vista de Django igual que desde la
-ruta de FastAPI. No hay que tocar `backend-node/` para eso.
+que antes y con la misma firma, así que Biblioteca llama a este servicio
+desde sus vistas de Django sin trasladar las rutas ni los permisos del campus
+a Node.
 
 Si el servicio no está levantado
 --------------------------------

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   obtenerCursos,
   obtenerTareasPendientes,
@@ -29,6 +30,8 @@ function nombreDeCuatrimestre(cuatrimestre) {
 
 export default function Modulos() {
   useTitulo('Módulos');
+  const [parametros] = useSearchParams();
+  const carreraId = parametros.get('carrera') ?? '';
   const [modulos, setModulos] = useState(null);
   const [pendientes, setPendientes] = useState(null);
   const [error, setError] = useState(null);
@@ -39,6 +42,13 @@ export default function Modulos() {
   const [periodo, setPeriodo] = useState('');
   const [anio, setAnio] = useState('');
   const [apartado, setApartado] = useState('todos');
+
+  useEffect(() => {
+    setBusqueda('');
+    setPeriodo('');
+    setAnio('');
+    setApartado('todos');
+  }, [carreraId]);
 
   // Quién mira: al docente no se le muestra lo que hace el alumno
   const [usuario, setUsuario] = useState(null);
@@ -76,6 +86,7 @@ export default function Modulos() {
     if (!modulos) return [];
     const texto = busqueda.trim().toLowerCase();
     return modulos
+      .filter((m) => !carreraId || String(m.carreraId) === carreraId)
       .filter((m) => !periodo || m.periodo === periodo)
       .filter((m) => !anio || String(m.anio ?? 0) === anio)
       .filter((m) => apartado !== 'favoritos' || m.favorito)
@@ -88,7 +99,7 @@ export default function Modulos() {
       )
       // Los favoritos van primero
       .sort((a, b) => Number(b.favorito) - Number(a.favorito));
-  }, [modulos, busqueda, periodo, anio, apartado]);
+  }, [modulos, carreraId, busqueda, periodo, anio, apartado]);
 
   // Los módulos van en tres niveles: **carrera → año → cuatrimestre**.
   //
@@ -153,15 +164,18 @@ export default function Modulos() {
 
   const descripcion = useMemo(() => {
     if (!modulos) return 'Cargando…';
-    const favoritos = modulos.filter((m) => m.favorito).length;
+    const seleccionados = carreraId
+      ? modulos.filter((m) => String(m.carreraId) === carreraId)
+      : modulos;
+    const favoritos = seleccionados.filter((m) => m.favorito).length;
     // Con un solo módulo decía "1 módulos · 1 favoritos"
     const enPlural = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`;
-    return `${enPlural(modulos.length, 'módulo', 'módulos')} · ${enPlural(
+    return `${enPlural(seleccionados.length, 'módulo', 'módulos')} · ${enPlural(
       favoritos,
       'favorito',
       'favoritos'
     )}`;
-  }, [modulos]);
+  }, [modulos, carreraId]);
 
   return (
     <div className="pagina">

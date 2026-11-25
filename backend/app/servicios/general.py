@@ -1,8 +1,4 @@
-"""Lo que pide la pantalla en todos lados: quién soy y las campanitas.
-
-Vive acá y no en `main.py` para que FastAPI y Django contesten **con la misma
-función** mientras dure la migración: cada framework solo la llama.
-"""
+"""Lo que pide la pantalla en todos lados: quién soy y las campanitas."""
 
 from __future__ import annotations
 

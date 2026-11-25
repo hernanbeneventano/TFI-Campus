@@ -1,59 +1,47 @@
-"""Las rutas que atiende Django.
-
-Cada módulo migrado tiene su archivo con su `urlpatterns`, y se suma acá. El
-despachador solo le manda a Django lo que está en `MIGRADOS`: una ruta que
-esté acá y no allá no la ve nadie.
-
-Migrados: el calendario, el panel, las tareas pendientes, la auditoría, la
-inscripción a materias, la mitad del alumno de Finales, los archivos,
-`/api/me`, las campanitas
-y por el puente: la salud del servidor, Mensajes, el
-Foro y Novedades.
-
-Cuando se migre un módulo, sus rutas se agregan con el **mismo camino y en
-el mismo orden** que en `app/main.py`. El orden importa por dos motivos: las
-rutas con nombre fijo (`/contactos`, `/favoritos`) van antes que las que
-toman un identificador, y `cursos` y `gestion_modulo` comparten el prefijo
-`/api/cursos`.
-
-Los parámetros de camino van siempre como `<str:...>` —o `<path:...>` donde
-FastAPI usa `:path`—, **nunca** `<int:...>`: con `<int:>` un identificador no
-numérico daría 404, y hoy da 400 con «Los datos enviados no son válidos». La
-conversión la hace `adaptadores.entero`, dentro de la vista y después de
-comprobar la sesión, que es el orden en que lo hace FastAPI.
-"""
+"""Registro de las rutas nativas de Django."""
 
 from __future__ import annotations
 
-from .adaptadores import como_starlette
-from .puente import rutas_de
-from . import archivos, auditoria, calendario, finales, general, inscripciones, panel, tareas
+from . import (
+    comunicacion,
+    general,
+    vistas_archivos,
+    vistas_asistencias,
+    vistas_auditoria,
+    vistas_biblioteca,
+    vistas_calendario,
+    vistas_cursos,
+    vistas_finales,
+    vistas_gestion_finales,
+    vistas_gestion_modulo,
+    vistas_inscripciones,
+    vistas_institucion,
+    vistas_mi_cursada,
+    vistas_panel,
+    vistas_salud,
+    vistas_tareas,
+    vistas_usuarios,
+)
 
-# `como_starlette`: cuando un camino coincide con dos rutas de métodos
-# distintos, se elige como FastAPI (ver `adaptadores.como_starlette`).
-urlpatterns: list = como_starlette([
-    *calendario.urlpatterns,
-    *panel.urlpatterns,
-    *tareas.urlpatterns,
-    *auditoria.urlpatterns,
-    *inscripciones.urlpatterns,
-    *finales.urlpatterns,
-    *archivos.urlpatterns,
+urlpatterns = [
     *general.urlpatterns,
-    # Por el puente (ver `puente.py`): la misma función de la ruta de FastAPI
-    *rutas_de("main", caminos={"/api/salud"}),
-    *rutas_de("salud"),
-    *rutas_de("gestion_modulo"),
-    *rutas_de("institucion"),
-    *rutas_de("biblioteca"),
-    *rutas_de("gestion_finales"),
-    *rutas_de("usuarios"),
-    *rutas_de("asistencias"),
-    *rutas_de("mi_cursada"),
-    *rutas_de("cursos"),
-    *rutas_de("mensajes"),
-    *rutas_de("foro"),
-    *rutas_de("novedades"),
-])
+    *vistas_salud.urlpatterns,
+    *vistas_archivos.urlpatterns,
+    *vistas_cursos.urlpatterns,
+    *vistas_tareas.urlpatterns,
+    *comunicacion.urlpatterns,
+    *vistas_calendario.urlpatterns,
+    *vistas_biblioteca.urlpatterns,
+    *vistas_finales.urlpatterns,
+    *vistas_gestion_finales.urlpatterns,
+    *vistas_gestion_modulo.urlpatterns,
+    *vistas_mi_cursada.urlpatterns,
+    *vistas_institucion.urlpatterns,
+    *vistas_usuarios.urlpatterns,
+    *vistas_asistencias.urlpatterns,
+    *vistas_inscripciones.urlpatterns,
+    *vistas_auditoria.urlpatterns,
+    *vistas_panel.urlpatterns,
+]
 
 handler404 = "campus_django.vistas.no_encontrada"

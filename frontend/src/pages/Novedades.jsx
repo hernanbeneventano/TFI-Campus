@@ -24,6 +24,7 @@ import {
   IconoCheckChico,
   IconoPulgar,
   IconoDuda,
+  IconoSubir,
 } from '../components/Iconos.jsx';
 import Avatar from '../components/Avatar.jsx';
 
