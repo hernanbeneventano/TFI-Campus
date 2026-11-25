@@ -34,8 +34,11 @@ import logging
 import re
 import sys
 import traceback
+from datetime import datetime
+from unittest.mock import patch
 from typing import Any
 
+from app import datos
 from app.servicios import frenos
 
 from .. import escenario
@@ -254,10 +257,13 @@ def informar(resultados: list[Resultado], rutas: list[tuple[str, str]], detalle:
     cubiertas_set = set()
     for r in resultados:
         limpio = r.camino.split("?")[0]
-        for metodo, camino, expresion in patrones:
-            if metodo == r.metodo and expresion.match(limpio):
-                cubiertas_set.add((metodo, camino))
-                break
+        candidatas = [
+            (metodo, camino)
+            for metodo, camino, expresion in patrones
+            if metodo == r.metodo and expresion.match(limpio)
+        ]
+        if candidatas:
+            cubiertas_set.add(max(candidatas, key=lambda ruta: _especificidad(ruta[1])))
     cubiertas = len(cubiertas_set)
     sin_tocar = [f"{m} {c}" for m, c in rutas if (m, c) not in cubiertas_set]
 
@@ -281,6 +287,14 @@ def informar(resultados: list[Resultado], rutas: list[tuple[str, str]], detalle:
         return 1
     print("\nNinguna diferencia.")
     return 0
+
+
+def _especificidad(camino: str) -> tuple[int, int, int]:
+    """Prefiere la ruta concreta a otra más amplia que también coincida."""
+    segmentos = camino.strip("/").split("/")
+    fijos = [segmento for segmento in segmentos if not segmento.startswith("{")]
+    parametros_path = sum(":path}" in segmento for segmento in segmentos)
+    return len(fijos), sum(map(len, fijos)), -parametros_path
 
 
 GRABACION = str(pathlib.Path(__file__).with_name("grabaciones") / "fastapi.json.gz")
@@ -316,16 +330,21 @@ def main() -> int:
         from .autoprueba import correr
         return correr()
 
-    aplicacion = servidores.DISPONIBLES[args.contra]()
-    escenario.cargar()
-    base = estado.tomar()
+    # La grabación de FastAPI se hizo el 23/11/2026. El escenario usa fechas
+    # relativas a hoy, así que el banco debe reponer ese mismo día para
+    # comparar calendario, finales y nombres de exportación sin ruido.
+    reloj = datetime(2026, 11, 23, 12).astimezone()
+    with patch.object(datos, "ahora", return_value=reloj):
+        aplicacion = servidores.DISPONIBLES[args.contra]()
+        escenario.cargar()
+        base = estado.tomar()
 
-    if args.grabar:
-        # Solo cuando un cambio de comportamiento es a propósito: la
-        # grabación es la referencia, y regrabarla acepta lo que hoy contesta.
-        return grabar(aplicacion, catalogo.todos(aplicacion.rutas), base, args.grabar)
+        if args.grabar:
+            # Solo cuando un cambio de comportamiento es a propósito: la
+            # grabación es la referencia, y regrabarla acepta lo que hoy contesta.
+            return grabar(aplicacion, catalogo.todos(aplicacion.rutas), base, args.grabar)
 
-    return contra_grabado(aplicacion, args.grabado, args.solo, base, args.detalle)
+        return contra_grabado(aplicacion, args.grabado, args.solo, base, args.detalle)
 
 
 if __name__ == "__main__":

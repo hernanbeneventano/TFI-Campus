@@ -195,6 +195,36 @@ def _caso_archivos() -> Caso:
     ])
 
 
+def _caso_archivo_biblioteca() -> Caso:
+    """Descargar un material permitido y quitarlo de favoritos."""
+    import base64
+
+    pdf = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
+    material_id = 100
+    return Caso("La biblioteca, archivo y favoritos", [
+        Paso("POST", "/api/biblioteca", MARIA, {
+            "titulo": "Apunte del banco",
+            "autor": "Autor de prueba",
+            "materiaId": 109,
+            "tipo": "apunte",
+            "categoria": "otros",
+            "enlace": "https://example.org/apunte",
+            "autorizado": True,
+        }),
+        Paso("POST", f"/api/biblioteca/{material_id}/archivo", MARIA, {
+            "nombre": "apunte.pdf",
+            "extension": "pdf",
+            "tipo": "application/pdf",
+            "contenido": base64.b64encode(pdf).decode(),
+        }),
+        _ver(f"/api/biblioteca/{material_id}/archivo", SANTIAGO),
+        _ver(f"/api/biblioteca/{material_id}/archivo", HERNAN),
+        Paso("POST", f"/api/biblioteca/{material_id}/favorito", SANTIAGO),
+        Paso("DELETE", f"/api/biblioteca/{material_id}/favorito", SANTIAGO),
+        _ver("/api/biblioteca/favoritos", SANTIAGO),
+    ])
+
+
 # ===================== Los que llevan parámetros =====================
 def con_parametros() -> list[Caso]:
     return [
@@ -473,6 +503,7 @@ def con_parametros() -> list[Caso]:
             Paso("HEAD", "/api/finales/resultados", SANTIAGO),
         ]),
         _caso_archivos(),
+        _caso_archivo_biblioteca(),
         # El foro. El tema 1 es de Hernán (3), en el módulo 1; la respuesta 3 es de María
         Caso("El foro, a fondo", [
             _ver("/api/foro", SANTIAGO),
