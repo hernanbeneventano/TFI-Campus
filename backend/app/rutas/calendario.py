@@ -8,7 +8,7 @@ a la misma función, `servicios/calendario.del_rango`.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from ..web import APIRouter
 
 from ..servicios import calendario
 from ..servicios.autenticacion import UsuarioActual

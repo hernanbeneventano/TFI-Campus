@@ -13,7 +13,7 @@ a las mismas funciones de `servicios/panel.py`.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from ..web import APIRouter
 
 from ..servicios import panel as p
 from ..servicios.autenticacion import UsuarioActual

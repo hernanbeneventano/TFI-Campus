@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 
-from fastapi import APIRouter, Body, HTTPException
+from ..web import APIRouter, Body, HTTPException
 
 from .. import datos as d
 from ..servicios import modulos as mod

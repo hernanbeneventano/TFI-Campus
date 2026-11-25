@@ -21,7 +21,7 @@ from __future__ import annotations
 import hmac
 import re
 
-from fastapi import APIRouter, Body, HTTPException, Response
+from ..web import APIRouter, Body, HTTPException, Response
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm

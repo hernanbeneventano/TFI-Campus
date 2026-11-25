@@ -1,23 +1,15 @@
 """Pruebas de los adaptadores: que Django conteste byte por byte como FastAPI.
 
-En la fase 0 no se migra ninguna ruta, así que el banco de comparación todavía
-no tiene nada de Django para comparar. Pero los adaptadores ya están escritos,
-y un adaptador que nadie probó es una promesa. Esta suite los prueba antes de
-que los use una ruta de verdad.
+Durante la migración se registraban **las mismas sondas** en FastAPI y en
+Django, y se comparaba el cuerpo exacto en bytes, el código y las cabeceras.
+FastAPI ya no está: antes de sacarlo se **grabó** lo que contestaba cada sonda
+(`banco/grabaciones/adaptadores-fastapi.json`), y Django se compara contra eso.
 
-Cómo
-----
-Se registran **las mismas sondas** en las dos aplicaciones, solo en el
-proceso de esta prueba —nunca en el código del campus—: una ruta de FastAPI
-escrita como siempre, y su gemela en Django escrita con los adaptadores. Las
-dos llaman a la misma función del medio. Después se les hace la misma
-petición y se compara **el cuerpo exacto, en bytes**, el código y las
-cabeceras que importan. No el JSON interpretado: dos JSON que se leen igual
-pueden tener distinto largo, y una respuesta grabada deja de coincidir.
-
-Cada sonda reproduce una de las diferencias que medimos entre FastAPI y
-Django: el id no numérico, el método que no va, la barra final, el JSON roto,
-el cuerpo que falta, el parámetro repetido, el 500, el CORS, el freno.
+Cada sonda reproduce una de las diferencias que se midieron entre los dos:
+el id no numérico, el método que no va, la barra final, el JSON roto, el
+cuerpo que falta o que es `null`, el parámetro repetido, el 500, el CORS, el
+freno, dos rutas con el mismo camino. Las sondas se registran solo en el
+proceso de esta prueba, nunca en el código del campus.
 
 Uso (desde backend/):
     python -m pruebas.adaptadores
@@ -30,12 +22,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from django.urls import clear_url_caches, path
-from fastapi import Body, HTTPException
-from starlette.testclient import TestClient
+import pathlib
 
-import despachador
+from app.web import HTTPException
 from app.servicios import auditoria, frenos, persistencia
-from app.servicios.autenticacion import UsuarioActual
 from campus_django import urls as urls_django
 from campus_django.adaptadores import (
     como_starlette,
@@ -49,7 +39,7 @@ from campus_django.adaptadores import (
 )
 
 from . import escenario
-from .cliente import como, sin_suplantar
+from .cliente import como, crear_cliente, sin_suplantar
 
 SANTIAGO = 1
 FRONTEND = "http://localhost:5173"
@@ -95,90 +85,7 @@ def nucleo_explota() -> None:
     raise RuntimeError("sonda que explota a propósito")
 
 
-# ===================== Las sondas en FastAPI =====================
-fastapi = despachador.fastapi
 SONDA = "/api/__sonda"
-
-
-def fa_datos(yo: dict = UsuarioActual):
-    return nucleo_datos(yo)
-
-
-def fa_lista(yo: dict = UsuarioActual):
-    return [1, "dos", None]
-
-
-def fa_creado(yo: dict = UsuarioActual):
-    return {"creado": True}
-
-
-def fa_prohibido(yo: dict = UsuarioActual):
-    raise HTTPException(403, "Prohibido en la sonda")
-
-
-def fa_explota(yo: dict = UsuarioActual):
-    nucleo_explota()
-
-
-def fa_item(id_item: int, yo: dict = UsuarioActual):
-    return {"id": id_item}
-
-
-def fa_consulta(pagina: int = 1, q: str | None = None, activo: bool = False,
-                yo: dict = UsuarioActual):
-    return {"pagina": pagina, "q": q, "activo": activo}
-
-
-def fa_obligatoria(cantidad: int, yo: dict = UsuarioActual):
-    return {"cantidad": cantidad}
-
-
-def fa_cuerpo(datos: dict = Body(...), yo: dict = UsuarioActual):
-    return {"recibido": datos}
-
-
-def fa_cuerpo_opcional(datos: dict = Body(default={}), yo: dict = UsuarioActual):
-    return {"recibido": datos}
-
-
-def fa_cuerpo_que_cambia(datos: dict = Body(default={}), yo: dict = UsuarioActual):
-    # Una ruta que modifica lo que recibió: con el valor por omisión, cada
-    # pedido tiene que recibir uno nuevo y no el que dejó el anterior.
-    datos["veces"] = datos.get("veces", 0) + 1
-    return {"recibido": datos}
-
-
-def fa_ip(yo: dict = UsuarioActual):
-    return {"ip": auditoria.ip_de()}
-
-
-# Dos rutas con el mismo camino y métodos distintos, como `GET /contactos` y
-# `POST /{id}` en Mensajes: `POST /mezcla/fijo` lo atiende la segunda.
-def fa_mezcla_fijo(yo: dict = UsuarioActual):
-    return {"fijo": True}
-
-
-def fa_mezcla_por_id(id_x: int, yo: dict = UsuarioActual):
-    return {"id": id_x}
-
-
-for camino, funcion, metodos, extra in [
-    ("/datos", fa_datos, ["GET"], {}),
-    ("/lista", fa_lista, ["GET"], {}),
-    ("/creado", fa_creado, ["POST"], {"status_code": 201}),
-    ("/prohibido", fa_prohibido, ["GET"], {}),
-    ("/explota", fa_explota, ["GET"], {}),
-    ("/item/{id_item}", fa_item, ["GET"], {}),
-    ("/consulta", fa_consulta, ["GET"], {}),
-    ("/obligatoria", fa_obligatoria, ["GET"], {}),
-    ("/cuerpo", fa_cuerpo, ["POST"], {}),
-    ("/cuerpo-opcional", fa_cuerpo_opcional, ["POST"], {}),
-    ("/cuerpo-que-cambia", fa_cuerpo_que_cambia, ["POST"], {}),
-    ("/ip", fa_ip, ["GET"], {}),
-    ("/mezcla/fijo", fa_mezcla_fijo, ["GET"], {}),
-    ("/mezcla/{id_x}", fa_mezcla_por_id, ["POST"], {}),
-]:
-    fastapi.add_api_route(SONDA + camino, funcion, methods=metodos, **extra)
 
 
 # ===================== Las mismas sondas en Django =====================
@@ -282,10 +189,9 @@ urls_django.urlpatterns += [
 ]
 clear_url_caches()
 
-# Sin `with`: así no se dispara el arranque, que conectaría Firestore de
-# verdad. Y sin relanzar los errores del servidor, para poder comparar el 500.
-fa = TestClient(fastapi, raise_server_exceptions=False)
-dj = TestClient(despachador.django(), raise_server_exceptions=False)
+# Sin el arranque, que conectaría Firestore de verdad. Y sin relanzar los
+# errores del servidor, para poder comparar el 500.
+dj = crear_cliente(raise_server_exceptions=False)
 
 CABECERAS = (
     "content-type", "content-length", "location", "allow", "retry-after",
@@ -299,20 +205,13 @@ def _cabeceras(r) -> dict:
     return {k: r.headers[k] for k in CABECERAS if k in r.headers}
 
 
-# ===================== La grabación =====================
-# Para cuando FastAPI ya no esté: lo que contestó cada sonda queda grabado y
-# Django se compara contra eso. `ADAPTADORES_GRABAR=archivo` graba;
-# `ADAPTADORES_GRABADO=archivo` compara contra la grabación.
+# ===================== Lo que contestaba FastAPI =====================
+# Grabado antes de sacarlo, sonda por sonda.
 import base64 as _b64
 import json as _json
-import os as _os
 
-_GRABAR = _os.environ.get("ADAPTADORES_GRABAR")
-_GRABADO = _os.environ.get("ADAPTADORES_GRABADO")
-_grabacion: dict = {}
-if _GRABADO:
-    with open(_GRABADO, encoding="utf-8") as _f:
-        _grabacion = _json.load(_f)
+GRABACION = pathlib.Path(__file__).with_name("banco") / "grabaciones" / "adaptadores-fastapi.json"
+_grabacion: dict = _json.loads(GRABACION.read_text(encoding="utf-8"))
 
 
 class _Grabada:
@@ -324,31 +223,14 @@ class _Grabada:
         self.headers = dato["cabeceras"]
 
 
-def _de_fastapi(clave: str, pedir):
-    """La respuesta de FastAPI: en vivo, grabándola o desde la grabación."""
-    if _GRABADO:
-        return _Grabada(_grabacion[clave])
-    r = pedir()
-    if _GRABAR:
-        _grabacion[clave] = {
-            "estado": r.status_code,
-            "cuerpo": _b64.b64encode(r.content).decode(),
-            "cabeceras": {k: r.headers[k] for k in r.headers.keys()},
-        }
-    return r
-
-
-def _terminar_grabacion() -> None:
-    if _GRABAR:
-        with open(_GRABAR, "w", encoding="utf-8") as f:
-            _json.dump(_grabacion, f, ensure_ascii=False, indent=1, sort_keys=True)
-        print(f"\nGrabadas {len(_grabacion)} respuestas de FastAPI en {_GRABAR}")
+def _de_fastapi(clave: str) -> _Grabada:
+    return _Grabada(_grabacion[clave])
 
 
 def igual(nombre: str, metodo: str, camino: str, **extra) -> tuple:
     """La misma petición a las dos; comprueba código, bytes y cabeceras."""
     frenos.olvidar_todo()
-    a = _de_fastapi(f"igual:{nombre}", lambda: fa.request(metodo, camino, follow_redirects=False, **extra))
+    a = _de_fastapi(f"igual:{nombre}")
     frenos.olvidar_todo()
     b = dj.request(metodo, camino, follow_redirects=False, **extra)
 
@@ -503,7 +385,7 @@ def correr() -> None:
             cliente.post(f"{SONDA}/creado")
         return cliente.post(f"{SONDA}/creado")
 
-    a = _de_fastapi("freno:429", lambda: pasarse(fa))
+    a = _de_fastapi("freno:429")
     b = pasarse(dj)
     comprobar("pasarse del minuto da el mismo 429",
               (a.status_code, a.content, a.headers.get("retry-after"))
@@ -528,19 +410,13 @@ def correr() -> None:
     persistencia.activo = lambda: True
     persistencia.guardar_cambios = lambda: llamadas.__setitem__("n", llamadas["n"] + 1)
     try:
-        if _GRABADO:
-            en_fastapi = _grabacion["guardado:veces"]
-        else:
-            fa.get(f"{SONDA}/datos")
-            en_fastapi = llamadas["n"]
-            if _GRABAR:
-                _grabacion["guardado:veces"] = en_fastapi
+        en_fastapi = _grabacion["guardado:veces"]
         llamadas["n"] = 0
         dj.get(f"{SONDA}/datos")
         en_django = llamadas["n"]
     finally:
         persistencia.activo, persistencia.guardar_cambios = activo_real, guardar_real
-    comprobar("en FastAPI, una vez", en_fastapi == 1, en_fastapi)
+    comprobar("en FastAPI, una vez (grabado)", en_fastapi == 1, en_fastapi)
     comprobar("en Django, una vez", en_django == 1, en_django)
 
     # ------------------------------------------------------------------
@@ -562,8 +438,6 @@ def correr() -> None:
     prueba = [path("api/con", rutas(get=dj_datos)), path("api/sin", rutas(get=abierta))]
     comprobar("y el vigilante encuentra una abierta",
               vistas_sin_sesion(prueba, publicas) == ["api/sin"], vistas_sin_sesion(prueba, publicas))
-
-    _terminar_grabacion()
 
     # ------------------------------------------------------------------
     print("\n" + "-" * 52)

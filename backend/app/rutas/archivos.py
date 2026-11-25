@@ -8,7 +8,7 @@ están los permisos de cada carpeta del bucket.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Response
+from ..web import APIRouter, Body, Response
 
 from ..servicios import acceso_archivos as servicio
 from ..servicios.autenticacion import UsuarioActual

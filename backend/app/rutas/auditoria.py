@@ -11,7 +11,7 @@ dos llaman a las mismas funciones, en `servicios/consulta_auditoria.py`.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Response
+from ..web import APIRouter, Request, Response
 
 from ..servicios import consulta_auditoria as consulta
 from ..servicios.autenticacion import UsuarioActual

@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from fastapi import APIRouter, Body, HTTPException
+from ..web import APIRouter, Body, HTTPException
 
 from .. import datos as d
 from ..servicios import academico as ac

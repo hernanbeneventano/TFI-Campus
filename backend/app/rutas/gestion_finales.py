@@ -41,7 +41,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from ..web import APIRouter, Body, HTTPException, Query
 
 from .. import datos as d
 from ..servicios import academico as ac

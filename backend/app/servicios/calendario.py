@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from fastapi import HTTPException
+from ..web import HTTPException
 
 from .. import datos as d
 

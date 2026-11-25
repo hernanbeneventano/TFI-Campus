@@ -28,7 +28,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Response
+from ..web import APIRouter, Body, HTTPException, Response
 
 from .. import datos as d
 from ..servicios import cursada as c

@@ -1,23 +1,19 @@
-"""Lo que hace falta para que una vista de Django conteste igual que FastAPI.
+"""Lo que hace falta para que una vista de Django conteste como el campus.
 
-FastAPI hace solo muchas cosas que Django no: convierte y valida los
-parámetros, lee el cuerpo como JSON, rechaza los métodos que no van, arma el
-JSON de la respuesta. Cada una es un lugar donde una migración puede
+Django no hace solo varias cosas que el campus da por sentadas: convertir y
+validar los parámetros, leer el cuerpo como JSON, rechazar los métodos que no
+van, armar el JSON de la respuesta. Cada una es un lugar donde se puede
 contestar distinto sin que nadie lo note.
 
-La regla de este archivo: **usar las herramientas de FastAPI, no imitarlas.**
-Mientras conviven, la conversión la hace `pydantic` —el mismo motor que usa
-FastAPI—, el JSON lo arman su `jsonable_encoder` y el `JSONResponse` de
-Starlette, y los errores se lanzan con las mismas excepciones, que formatean
-los mismos manejadores. Una imitación sale parecida; esto sale igual. El día
-que FastAPI se vaya, este es el único archivo que hay que reescribir, y el
-banco de comparación dice si quedó igual.
+Estas reglas salieron de la migración desde FastAPI, que las hacía solas, y
+se verificaron contra lo que él contestaba, sonda por sonda
+(`pruebas/adaptadores.py`, contra la grabación). La conversión de los datos la
+hace `pydantic`; el JSON y las respuestas, `app/web.py`.
 
 Lo que no está acá porque no hace falta
 ---------------------------------------
-El freno, la auditoría, el guardado, el CORS y el formato de los errores:
-las peticiones que van a Django pasan por la misma pila que FastAPI (ver
-`despachador.py`).
+El freno, la auditoría, el guardado, el CORS y el formato de los errores: son
+capas que envuelven a Django (`campus_django/asgi.py`).
 
 Cómo se escribe una vista
 -------------------------
@@ -27,6 +23,9 @@ Cómo se escribe una vista
         return responder(curso)
 
     urlpatterns = [path("api/cursos/<str:id_curso>", rutas(get=ver_curso))]
+
+La mayoría de las vistas no se escriben: las arma `puente.py` desde las rutas
+anotadas en `app/rutas/`.
 """
 
 from __future__ import annotations
@@ -38,11 +37,9 @@ from functools import wraps
 from typing import Any, Callable
 
 from django.http import HttpResponse
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
 from pydantic import TypeAdapter, ValidationError
-from starlette.exceptions import HTTPException
-from starlette.responses import JSONResponse, Response
+
+from app.web import ErrorDeValidacion, HTTPException, JSONResponse, Response, a_json
 
 from app.servicios.autenticacion import identificar
 
@@ -50,7 +47,7 @@ OBLIGATORIO = object()
 
 
 # ===================== Las respuestas =====================
-def de_starlette(respuesta: Response) -> HttpResponse:
+def de_web(respuesta: Response) -> HttpResponse:
     """Una respuesta de Starlette pasada a Django sin cambiarle nada.
 
     Django pone `text/html; charset=utf-8` si no se le dice otra cosa, y una
@@ -60,7 +57,7 @@ def de_starlette(respuesta: Response) -> HttpResponse:
     """
     salida = HttpResponse(content=respuesta.body, status=respuesta.status_code)
     del salida["Content-Type"]
-    for nombre, valor in respuesta.headers.items():
+    for nombre, valor in respuesta.cabeceras:
         salida[nombre] = valor
     return salida
 
@@ -74,9 +71,7 @@ def responder(valor: Any, estado: int = 200, cabeceras: dict | None = None) -> H
     los acentos escapados, que el navegador lee igual pero no es lo mismo: el
     largo cambia, y una respuesta grabada deja de coincidir.
     """
-    return de_starlette(
-        JSONResponse(content=jsonable_encoder(valor), status_code=estado, headers=cabeceras)
-    )
+    return de_web(JSONResponse(a_json(valor), estado, cabeceras))
 
 
 def descargar(contenido: bytes, tipo: str, cabeceras: dict | None = None) -> HttpResponse:
@@ -86,17 +81,17 @@ def descargar(contenido: bytes, tipo: str, cabeceras: dict | None = None) -> Htt
     FastAPI— y se pasa tal cual: así el `content-type` lleva o no su
     `charset` exactamente igual, y el largo coincide.
     """
-    return de_starlette(Response(content=contenido, media_type=tipo, headers=cabeceras))
+    return de_web(Response(contenido, headers=cabeceras, media_type=tipo))
 
 
 # ===================== La validación =====================
-def _invalido() -> RequestValidationError:
+def _invalido() -> ErrorDeValidacion:
     """La misma excepción que lanza FastAPI cuando un dato no valida.
 
     El manejador del campus la convierte en 400 con «Los datos enviados no son
     válidos», así que no importa qué dato falló: el mensaje es el mismo.
     """
-    return RequestValidationError(errors=[])
+    return ErrorDeValidacion()
 
 
 def convertir(valor: Any, tipo: Any) -> Any:

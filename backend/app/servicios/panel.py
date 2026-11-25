@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException
+from ..web import HTTPException
 
 from .. import datos as d
 from . import asistencias as asis

@@ -29,7 +29,7 @@ import csv
 import io
 from typing import Any
 
-from fastapi import HTTPException
+from ..web import HTTPException
 
 from .. import datos as d
 from . import ambito

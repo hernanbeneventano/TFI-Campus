@@ -18,7 +18,7 @@ cambia ahí y nada más.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException
+from ..web import APIRouter, Body, HTTPException
 
 from .. import datos as d
 from ..servicios import asistencias as asis

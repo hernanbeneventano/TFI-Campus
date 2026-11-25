@@ -64,7 +64,7 @@ class _ClienteConDefecto:
 
 
 def _con_defecto(defecto) -> servidores.Aplicacion:
-    base = servidores.fastapi()
+    base = servidores.django()
     return servidores.Aplicacion(
         "FastAPI con defecto", _ClienteConDefecto(base.cliente, defecto), base.rutas
     )
@@ -117,7 +117,7 @@ def correr() -> int:
     escenario.cargar()
     frenos.olvidar_todo()
     base = estado.tomar()
-    a = servidores.fastapi()
+    a = servidores.django()
 
     fallas = 0
     for nombre, defecto, esperado in DEFECTOS:
@@ -136,7 +136,7 @@ def correr() -> int:
 
     # Y que sin defecto siga dando cero: un comparador que marca todo
     # tampoco sirve.
-    resultados = comparar_caso(a, servidores.fastapi(), CASO, base)
+    resultados = comparar_caso(a, servidores.django(), CASO, base)
     limpio = all(r.coincide for r in resultados)
     print(f"  {'ok   ' if limpio else 'FALLA'}  sin defecto, no inventa diferencias")
     if not limpio:

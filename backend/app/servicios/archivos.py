@@ -35,7 +35,7 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import HTTPException
+from ..web import HTTPException
 
 
 @dataclass

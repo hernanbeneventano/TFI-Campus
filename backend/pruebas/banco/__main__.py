@@ -29,6 +29,7 @@ modificado por A y cualquier diferencia sería culpa del banco.
 from __future__ import annotations
 
 import argparse
+import pathlib
 import logging
 import re
 import sys
@@ -282,15 +283,18 @@ def informar(resultados: list[Resultado], rutas: list[tuple[str, str]], detalle:
     return 0
 
 
+GRABACION = str(pathlib.Path(__file__).with_name("grabaciones") / "fastapi.json.gz")
+
+
 def main() -> int:
-    opciones = argparse.ArgumentParser(description="Compara dos backends del campus")
-    opciones.add_argument("--contra", default="fastapi", choices=sorted(servidores.DISPONIBLES))
+    opciones = argparse.ArgumentParser(description="Compara el campus contra lo que grabó FastAPI")
+    opciones.add_argument("--contra", default="django", choices=sorted(servidores.DISPONIBLES))
     opciones.add_argument("--detalle", type=int, default=6)
     opciones.add_argument("--solo", default=None, help="solo los casos que contengan ese texto")
     opciones.add_argument("--grabar", default=None,
-                          help="graba lo que contesta y guarda FastAPI, para compararlo sin él")
-    opciones.add_argument("--contra-grabado", default=None, dest="grabado",
-                          help="compara la aplicación de --contra contra una grabación")
+                          help="graba lo que contesta y guarda la aplicación, como nueva referencia")
+    opciones.add_argument("--contra-grabado", default=GRABACION, dest="grabado",
+                          help="la grabación contra la que se compara (por omisión, la de FastAPI)")
     opciones.add_argument("--autoprueba", action="store_true",
                           help="comprueba que el banco encuentre una diferencia cuando la hay")
     args = opciones.parse_args()
@@ -312,46 +316,16 @@ def main() -> int:
         from .autoprueba import correr
         return correr()
 
-    if args.grabado:
-        escenario.cargar()
-        base = estado.tomar()
-        return contra_grabado(servidores.DISPONIBLES[args.contra](), args.grabado, args.solo,
-                              base, args.detalle)
-
-    a = servidores.fastapi()
-    if args.grabar:
-        escenario.cargar()
-        base = estado.tomar()
-        lista = catalogo.todos(a.rutas)
-        return grabar(a, lista, base, args.grabar)
-    try:
-        b = servidores.DISPONIBLES[args.contra]()
-    except NotImplementedError as falta:
-        print(f"\n{falta}\n")
-        return 2
-
-    print(f"Banco de comparación: {a.nombre} contra {b.nombre}")
-    if a.nombre == b.nombre:
-        print("(contra sí mismo: esto valida el banco, tiene que dar cero)")
-
+    aplicacion = servidores.DISPONIBLES[args.contra]()
     escenario.cargar()
     base = estado.tomar()
 
-    lista = catalogo.todos(a.rutas)
-    if args.solo:
-        lista = [c for c in lista if args.solo.lower() in c.nombre.lower()]
-    print(f"{len(lista)} casos\n")
+    if args.grabar:
+        # Solo cuando un cambio de comportamiento es a propósito: la
+        # grabación es la referencia, y regrabarla acepta lo que hoy contesta.
+        return grabar(aplicacion, catalogo.todos(aplicacion.rutas), base, args.grabar)
 
-    resultados: list[Resultado] = []
-    for caso in lista:
-        try:
-            resultados += comparar_caso(a, b, caso, base)
-        except Exception:  # noqa: BLE001
-            print(f"\n  el caso «{caso.nombre}» rompió el banco:")
-            traceback.print_exc()
-            return 3
-
-    return informar(resultados, a.rutas, args.detalle)
+    return contra_grabado(aplicacion, args.grabado, args.solo, base, args.detalle)
 
 
 if __name__ == "__main__":

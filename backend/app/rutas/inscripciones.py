@@ -8,7 +8,7 @@ con la misma firma de siempre (las pruebas de concurrencia las llaman así).
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from ..web import APIRouter
 
 from ..servicios import inscripcion_materias as servicio
 from ..servicios.autenticacion import IdUsuarioActual

@@ -10,7 +10,7 @@ FastAPI. Por eso esta ruta se migra por su camino **exacto**, no por prefijo.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from ..web import APIRouter
 
 from ..servicios import tareas
 from ..servicios.autenticacion import UsuarioActual

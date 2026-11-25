@@ -1,20 +1,19 @@
 """El cliente con el que las pruebas le hablan al campus, y quién lo usa.
 
-**Es el único archivo de `pruebas/` que sabe qué framework hay abajo.** Las
-catorce suites piden el cliente acá y no lo arman por su cuenta, así que
-cambiar de framework es cambiar este archivo y nada más.
+**Es el único archivo de `pruebas/` que sabe cómo se le habla al servidor.**
+Las suites piden el cliente acá y no lo arman por su cuenta.
 
-Antes no era así: cada suite hacía
+El cliente es `httpx` con un transporte propio que entrega cada pedido al
+servidor del campus (`campus_django/asgi.py`) **en el mismo proceso**, sin
+levantar nada: las pruebas también miran la memoria del servidor
+—`d.auditoria`, `d.personas`— para comprobar que lo que devuelve una ruta es
+lo que de verdad quedó guardado.
 
-    app.dependency_overrides[identificar] = lambda: d.buscar_persona(...)
-    app.dependency_overrides[identificar_id] = lambda: ...
-    cliente = TestClient(app)
-
-`dependency_overrides` es de FastAPI y no tiene equivalente en otros
-frameworks, así que eran trece archivos atados al framework por el mecanismo
-central de todas las pruebas: poder hacer la misma petición como distintas
-personas. Ahora esa suplantación vive en `servicios/autenticacion.py`, en
-Python a secas, y acá queda solo el cliente.
+Arma cada pedido como lo armaba el `TestClient` de Starlette, que es con el
+que se grabaron las respuestas de referencia: el mismo `host`
+(`testserver`), las mismas cabeceras por omisión y el mismo cliente
+(`testclient:50000`, que es lo que ven el freno y la auditoría). Si el
+servidor se cae, el error llega a la prueba (salvo que se pida lo contrario).
 
 Qué necesita una suite de este archivo:
 
@@ -26,37 +25,138 @@ Qué necesita una suite de este archivo:
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+import io
+from urllib.parse import unquote
 
-from app.main import app
+import httpx
+from asgiref.sync import async_to_sync
+
 from app.servicios import autenticacion
 
 
-def crear_cliente() -> TestClient:
+class _Transporte(httpx.BaseTransport):
+    """Entrega el pedido a una aplicación ASGI y devuelve lo que contesta."""
+
+    def __init__(self, app, relanzar: bool = True) -> None:
+        self.app = app
+        self.relanzar = relanzar
+
+    def handle_request(self, pedido: httpx.Request) -> httpx.Response:
+        esquema = pedido.url.scheme
+        lugar = pedido.url.netloc.decode("ascii")
+        puerto_comun = {"http": 80, "https": 443}[esquema]
+        if ":" in lugar:
+            host, puerto = lugar.split(":", 1)
+            puerto = int(puerto)
+        else:
+            host, puerto = lugar, puerto_comun
+
+        cabeceras = [] if "host" in pedido.headers else [(b"host", host.encode())]
+        cabeceras += [(k.lower().encode(), v.encode()) for k, v in pedido.headers.multi_items()]
+
+        scope = {
+            "type": "http",
+            "http_version": "1.1",
+            "method": pedido.method,
+            "path": unquote(pedido.url.path),
+            "raw_path": pedido.url.raw_path.split(b"?", 1)[0],
+            "root_path": "",
+            "scheme": esquema,
+            "query_string": pedido.url.query,
+            "headers": cabeceras,
+            "client": ["testclient", 50000],
+            "server": [host, puerto],
+            "extensions": {"http.response.debug": {}},
+            "state": {},
+        }
+
+        cuerpo = pedido.read()
+        leido = False
+        respuesta: dict = {"stream": io.BytesIO()}
+        empezo = False
+        terminada = None  # se arma adentro del bucle de eventos del pedido
+
+        def _terminada():
+            nonlocal terminada
+            if terminada is None:
+                import asyncio
+
+                terminada = asyncio.Event()
+            return terminada
+
+        async def receive():
+            nonlocal leido
+            if leido:
+                # Como el TestClient de Starlette: la «desconexión» llega
+                # recién cuando la respuesta terminó. Si llegara antes, Django
+                # la toma como un cliente que se fue y descarta la respuesta.
+                await _terminada().wait()
+                return {"type": "http.disconnect"}
+            leido = True
+            return {"type": "http.request", "body": cuerpo}
+
+        async def send(mensaje):
+            nonlocal empezo
+            if mensaje["type"] == "http.response.start":
+                respuesta["status_code"] = mensaje["status"]
+                respuesta["headers"] = [(k.decode(), v.decode()) for k, v in mensaje.get("headers", [])]
+                empezo = True
+            elif mensaje["type"] == "http.response.body":
+                if pedido.method != "HEAD":
+                    respuesta["stream"].write(mensaje.get("body", b""))
+                if not mensaje.get("more_body", False):
+                    _terminada().set()
+
+        try:
+            async_to_sync(self.app)(scope, receive, send)
+        except BaseException:
+            if self.relanzar:
+                raise
+        if not empezo:
+            respuesta = {"status_code": 500, "headers": [], "stream": io.BytesIO()}
+        respuesta["stream"].seek(0)
+        salida = httpx.Response(
+            status_code=respuesta["status_code"],
+            headers=respuesta["headers"],
+            stream=httpx.ByteStream(respuesta["stream"].read()),
+            request=pedido,
+        )
+        salida.read()
+        return salida
+
+
+class ClienteDePrueba(httpx.Client):
+    """Un `httpx.Client` que le habla al campus en el mismo proceso."""
+
+    def __init__(self, app, raise_server_exceptions: bool = True, follow_redirects: bool = True):
+        super().__init__(
+            base_url="http://testserver",
+            headers={"user-agent": "testclient"},
+            transport=_Transporte(app, raise_server_exceptions),
+            follow_redirects=follow_redirects,
+        )
+
+
+def crear_cliente(**opciones) -> ClienteDePrueba:
     """Un cliente que le pega al campus sin levantar el servidor.
 
-    En proceso a propósito: las pruebas también miran la memoria del servidor
-    —`d.auditoria`, `d.personas`— para comprobar que lo que devuelve una ruta
-    es lo que de verdad quedó guardado.
+    Sin el arranque (`lifespan`), a propósito: conectaría Firestore y R2 de
+    verdad. Las pruebas trabajan sobre la memoria.
     """
-    return TestClient(app)
+    from campus_django.asgi import aplicacion
+
+    return ClienteDePrueba(aplicacion, **opciones)
 
 
 def como(persona_id: int | None) -> None:
     """Las siguientes peticiones las hace esa persona.
 
-    Es lo que reemplaza a `dependency_overrides`: `identificar` lo consulta
-    antes de mirar el token, así que no hace falta Firebase ni una sesión de
-    verdad para probar quién ve qué.
+    `identificar` lo consulta antes de mirar el token, así que no hace falta
+    Firebase ni una sesión de verdad para probar quién ve qué.
     """
     autenticacion.actuar_como(persona_id)
 
 
 def sin_suplantar() -> None:
-    """Vuelve a la verificación de siempre.
-
-    Cada suite corre en su propio proceso, así que en la práctica no hace
-    falta limpiar; está para la prueba que comprueba que la costura arranca
-    apagada.
-    """
+    """Vuelve a la verificación de siempre."""
     autenticacion.actuar_como(None)

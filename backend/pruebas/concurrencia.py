@@ -851,7 +851,7 @@ def ventana(modulo, nombre: str, segundos: float = 0.002):
 
 def _codigo(funcion) -> int:
     """Lo que contestaría la ruta: el estado de su HTTPException, o 500."""
-    from fastapi import HTTPException
+    from app.web import HTTPException
 
     try:
         funcion()

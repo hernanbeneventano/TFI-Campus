@@ -37,7 +37,7 @@ import unicodedata
 from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Body, HTTPException, Request, Response
+from ..web import APIRouter, Body, HTTPException, Request, Response
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm

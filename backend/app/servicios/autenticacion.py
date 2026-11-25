@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import Depends, HTTPException, Request
+from ..web import Depends, HTTPException, Request
 from firebase_admin import auth
 
 from .. import datos as d

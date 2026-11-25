@@ -18,7 +18,7 @@ el identificador de quien pregunta, como `IdUsuarioActual`.
 
 from __future__ import annotations
 
-from fastapi import HTTPException
+from ..web import HTTPException
 
 from .. import datos as d
 from . import academico as ac

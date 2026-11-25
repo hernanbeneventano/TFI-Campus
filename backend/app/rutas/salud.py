@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from ..web import APIRouter, HTTPException
 
 from .. import datos as d
 from ..servicios.autenticacion import UsuarioActual
