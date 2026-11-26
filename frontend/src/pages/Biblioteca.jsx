@@ -8,7 +8,7 @@ import {
   marcarFavoritoBiblioteca,
   aprobarMaterial,
   rechazarMaterial,
-  enlaceDescarga,
+  descargarArchivoBiblioteca,
 } from '../services/api.js';
 import { avisar } from '../services/avisos.js';
 import Encabezado from '../components/Encabezado.jsx';
@@ -659,7 +659,16 @@ export default function Biblioteca() {
                     <dt>Archivo</dt>
                     <dd>
                       {m.tieneArchivo ? (
-                        <a href={enlaceDescarga(m.id)}>{m.archivo.nombre}</a>
+                        <button
+                          type="button"
+                          className="aporte-archivo"
+                          onClick={() =>
+                            descargarArchivoBiblioteca(m.id, m.archivo.nombre)
+                              .catch((error) => avisar(error.message, 'error'))
+                          }
+                        >
+                          {m.archivo.nombre}
+                        </button>
                       ) : m.enlace ? (
                         <a href={m.enlace} target="_blank" rel="noreferrer noopener">
                           Enlace a la fuente

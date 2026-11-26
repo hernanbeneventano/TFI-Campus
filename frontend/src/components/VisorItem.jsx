@@ -9,7 +9,7 @@ import {
   IconoSubir,
 } from './Iconos.jsx';
 import {
-  enlaceArchivoDeElemento,
+  descargarArchivoDeElemento,
   obtenerMiEntrega,
   obtenerEntregasDeTarea,
   publicarEnTablero,
@@ -51,21 +51,18 @@ function Pagina({ item }) {
 function Archivo({ curso, carpeta, item }) {
   const esVideo = item.formato === 'Video';
   const subido = item.archivo;
-  // Un PDF o un Word se miran acá mismo: es lo que más se sube a un módulo, y
-  // bajar cada apunte para ver si es el que buscás es trabajo al pedo.
-  //
-  // **La dirección tiene que ser la firmada** (`subido.url`): los bytes se
-  // piden sin la cabecera de sesión, igual que una foto de perfil.
-  //
-  // Los archivos subidos antes de que existiera la firma no la tienen: ahí no
-  // se ofrece vista previa, solo la descarga, que sí lleva la sesión.
   const seVe = sePuedeVer(subido);
-  const paraBajar = subido ? enlaceArchivoDeElemento(curso.id, carpeta.id, item.id) : null;
+
+  function descargar() {
+    if (!subido) return;
+    descargarArchivoDeElemento(curso.id, carpeta.id, item.id, subido.nombre)
+      .catch((error) => avisar(error.message, 'error'));
+  }
 
   return (
     <div className="visor-archivo">
       {seVe ? (
-        <VisorDocumento archivo={subido} descarga={paraBajar} />
+        <VisorDocumento archivo={subido} descargar={descargar} />
       ) : (
         <div className="visor-previo">
           {esVideo ? <IconoVideo width={56} height={56} /> : <IconoArchivo width={56} height={56} />}
@@ -83,10 +80,10 @@ function Archivo({ curso, carpeta, item }) {
       {/* Cuando se puede mirar, el visor ya trae su propio Descargar, pegado
           al borde del documento. */}
       {subido && !seVe && (
-        <a className="boton-principal" href={paraBajar} download={subido.nombre}>
+        <button type="button" className="boton-principal" onClick={descargar}>
           <IconoDescargar />
           Descargar
-        </a>
+        </button>
       )}
     </div>
   );

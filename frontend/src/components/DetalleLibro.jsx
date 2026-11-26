@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { obtenerMaterial, enlaceDescarga, retirarMaterial } from '../services/api.js';
+import {
+  obtenerMaterial,
+  descargarArchivoBiblioteca,
+  retirarMaterial,
+} from '../services/api.js';
 import { hace } from '../services/fechas.js';
 import { nombreTipo, nombreEstado } from './TarjetaLibro.jsx';
 import {
@@ -76,6 +80,11 @@ export default function DetalleLibro({ libro: inicial, onCerrar, onFavorito, onC
         setError(e.message);
         setRetirando(false);
       });
+  }
+
+  function descargar() {
+    descargarArchivoBiblioteca(libro.id, libro.archivo?.nombre)
+      .catch((e) => setError(e.message));
   }
 
   return (
@@ -159,10 +168,10 @@ export default function DetalleLibro({ libro: inicial, onCerrar, onFavorito, onC
         {/* Solo lo que la fuente ofrece de verdad. Si no hay nada, se dice. */}
         <div className="ficha-acciones">
           {libro.tieneArchivo && (
-            <a className="boton-principal" href={enlaceDescarga(libro.id)} download>
+            <button type="button" className="boton-principal" onClick={descargar}>
               <IconoDescargar width={18} height={18} />
               Descargar {libro.archivo?.nombre?.split('.').pop()?.toUpperCase()}
-            </a>
+            </button>
           )}
           {libro.enlaceLectura && (
             <a

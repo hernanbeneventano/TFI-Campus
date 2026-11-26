@@ -93,7 +93,7 @@ function limpiar(html) {
   return doc.body.innerHTML;
 }
 
-export default function VisorDocumento({ archivo, descarga }) {
+export default function VisorDocumento({ archivo, descargar }) {
   const marco = useRef(null);
   const hojas = useRef(null);
   const lienzos = useRef([]);
@@ -339,11 +339,11 @@ export default function VisorDocumento({ archivo, descarga }) {
               <span>Imprimir</span>
             </button>
           )}
-          {descarga && (
-            <a className="documento-accion" href={descarga} download={archivo.nombre}>
+          {descargar && (
+            <button type="button" className="documento-accion" onClick={descargar}>
               <IconoDescargar width={15} height={15} />
               <span>Descargar</span>
-            </a>
+            </button>
           )}
           <button
             type="button"

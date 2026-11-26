@@ -10966,6 +10966,19 @@ a.proxima:hover {
   color: var(--principal);
 }
 
+.aporte-datos button.aporte-archivo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--principal);
+  font: inherit;
+  cursor: pointer;
+}
+
+.aporte-datos button.aporte-archivo:hover {
+  text-decoration: underline;
+}
+
 /* ---------- Elegir varias materias ----------
    Es el filtro que manda en la Biblioteca: una biblioteca por materia, y acá
    se eligen una, varias o todas. Se viste como los demás desplegables de la
