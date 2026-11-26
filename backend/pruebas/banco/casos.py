@@ -11,12 +11,12 @@ De dónde salen
 De dos lugares, a propósito:
 
 - **Automáticos**: todos los GET sin parámetros, sacados de la tabla de rutas
-  de la captura histórica del contrato. Son gratis y cubren la mitad del
+  de la grabación de referencia del contrato. Son gratis y cubren la mitad del
   campus sin escribir nada. Una ruta que falte en Django aparece como un 404,
   que es justo lo que queremos detectar.
 - **Escritos a mano**: los que llevan parámetros —hay que saber qué
   identificador existe en el escenario— y los que escriben. Estos últimos
-  son los que más importan: una migración rompe más fácil un POST que un GET.
+  son los que más importan: un cambio rompe más fácil un POST que un GET.
 
 Quién hace cada petición
 ------------------------
@@ -733,7 +733,7 @@ def con_parametros() -> list[Caso]:
 
 
 # ===================== Los que escriben =====================
-# Son los que más importan: una migración rompe más fácil un POST que un GET,
+# Son los que más importan: un cambio rompe más fácil un POST que un GET,
 # y acá se compara además **qué quedó guardado**, no solo qué contestó.
 def escriben() -> list[Caso]:
     return [
@@ -950,7 +950,7 @@ def barrido(rutas: list[tuple[str, str]]) -> list[Caso]:
     """Cuatro pedidos a cada ruta que escribe o que lleva parámetros.
 
     No buscan el camino feliz —para eso están los casos de cada apartado—
-    sino lo que una migración rompe sin que se note: la sesión, la
+    sino lo que un cambio rompe sin que se note: la sesión, la
     conversión de los parámetros, el cuerpo, los permisos y el orden de los
     errores. Como administración con un cuerpo vacío, como docente, sin
     sesión y con un identificador que no es un número.

@@ -14,10 +14,10 @@ la maneja con su cliente en proceso (`pruebas/cliente.py`). Tres motivos:
 
 Contra qué se compara
 ---------------------
-Durante la migración se comparaban dos aplicaciones vivas: FastAPI, que era
-la referencia, contra Django. FastAPI ya no está: lo que contestaba y lo que
-guardaba quedó **grabado** (`grabaciones/fastapi.json.gz`) y Django se compara
-contra esa grabación.
+Contra la **grabación del contrato** (`grabaciones/contrato.json.gz`): lo que
+el campus contesta en cada caso y en qué queda la memoria al terminar. Es un
+fixture de pruebas; no contiene ni ejecuta código de servidor. Cualquier
+cambio que altere una respuesta o lo que se guarda salta en el informe.
 
 Lo que esto no prueba
 ---------------------
@@ -42,8 +42,8 @@ class Aplicacion:
 
 
 def rutas_del_campus() -> list[tuple[str, str]]:
-    """Los contratos históricos que el banco debe resolver en Django."""
-    grabacion = Path(__file__).with_name("grabaciones") / "fastapi.json.gz"
+    """Las rutas del contrato que el banco debe resolver en Django."""
+    grabacion = Path(__file__).with_name("grabaciones") / "contrato.json.gz"
     with gzip.open(grabacion, "rt", encoding="utf-8") as archivo:
         rutas = json.load(archivo)["rutas"]
     return sorted({(metodo, camino) for metodo, camino in rutas})

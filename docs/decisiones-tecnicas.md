@@ -384,7 +384,7 @@ cubierto de manera parcial mientras esto siga pendiente.
 manteniendo React y Vite en el frontend.
 
 **Decisión.** Usar Django para el backend principal y mantener la interfaz HTTP que
-consume el frontend. Las URLconf y vistas nativas de Django están en `backend/`.
+consume el frontend. Las URLconf y vistas de Django están en `backend/`.
 
 **Alternativas descartadas.** Continuar ampliando el servidor Express existente.
 

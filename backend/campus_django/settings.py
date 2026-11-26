@@ -60,7 +60,7 @@ ALLOWED_HOSTS = [
 INSTALLED_APPS: list[str] = []
 DATABASES: dict = {}
 
-# ===================== Middleware nativo =====================
+# ===================== Middleware =====================
 # El orden conserva la política de respuesta: el freno ocurre antes de CORS;
 # los errores de las vistas pasan por CORS y los errores internos no.
 MIDDLEWARE = [

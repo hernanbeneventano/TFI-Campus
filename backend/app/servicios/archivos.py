@@ -42,7 +42,7 @@ from ..errores import ErrorDeAPI
 class Archivo:
     """Un archivo para bajar: los bytes, su tipo y las cabeceras que lleva.
 
-    El servicio valida y prepara los bytes; la vista nativa de Django los
+    El servicio valida y prepara los bytes; la vista de Django los
     entrega con el tipo y las cabeceras correspondientes.
     """
 

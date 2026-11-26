@@ -1,4 +1,4 @@
-"""Pruebas de las vistas Django nativas de Mensajes, Foro y Novedades."""
+"""Pruebas de las vistas de Mensajes, Foro y Novedades."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from app.servicios import autenticacion
 from . import escenario
 
 
-class ComunicacionNativaTests(unittest.TestCase):
+class ComunicacionTests(unittest.TestCase):
     def setUp(self):
         escenario.cargar()
         autenticacion.actuar_como(1)

@@ -8,8 +8,8 @@ lista de diferencias, cada una con el camino exacto y de qué tipo es.
 Los cuatro tipos importan porque no significan lo mismo:
 
 - **falta**  el campo está en la primera y no en la segunda. Es el error más
-             común al migrar: una respuesta que se armó de nuevo y se olvidó
-             un campo. La pantalla lo muestra vacío y nadie se entera.
+             común: una respuesta que se armó de nuevo y se olvidó un
+             campo. La pantalla lo muestra vacío y nadie se entera.
 - **sobra**  está en la segunda y no en la primera. Suele ser un campo
              interno que se escapó, y a veces es información que no tenía
              que salir.

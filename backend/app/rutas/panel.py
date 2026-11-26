@@ -5,7 +5,7 @@ Es de **solo lectura**: todo lo que se ve acá se resuelve en la pantalla a la
 que lleva cada alerta, no desde el panel. Un tablero que además escribe
 termina siendo una copia de las otras pantallas.
 
-Las vistas nativas de Django delegan en estas funciones y en
+Las vistas de Django delegan en estas funciones y en
 `servicios/panel.py`.
 """
 

@@ -1,11 +1,11 @@
-"""Compara el contrato actual de Django con la captura histórica.
+"""Compara el contrato actual de Django con la grabación de referencia.
 
-    python -m pruebas.banco                    # Django contra la captura histórica
+    python -m pruebas.banco                    # Django contra la grabación
     python -m pruebas.banco --detalle 10       # hasta 10 diferencias por caso
     python -m pruebas.banco --solo foro        # los casos cuyo nombre contenga eso
 
-La referencia se grabó antes de retirar la implementación anterior. Es un
-fixture de pruebas; no contiene ni ejecuta código de servidor.
+La referencia es un fixture de pruebas: no contiene ni ejecuta código de
+servidor, solo lo que el campus contestó y en qué quedó la memoria.
 
 Cómo corre cada caso
 --------------------
@@ -141,7 +141,7 @@ def comparar_caso(
 
 
 # ===================== La grabación =====================
-# La captura histórica guarda lo que contestó y lo que quedó, caso por caso.
+# La grabación de referencia guarda lo que contestó y lo que quedó, caso a caso.
 # De lo guardado se registra **qué cambió** respecto del campus de partida
 # —no el campus entero, que serían decenas de megas por nada—.
 def _cambios(base: dict, foto: dict) -> list[str]:
@@ -275,7 +275,7 @@ def informar(resultados: list[Resultado], rutas: list[tuple[str, str]], detalle:
             print(f"    {x}")
 
     if distintos:
-        print("\nHay diferencias. Cada una es o un error de la migración o algo")
+        print("\nHay diferencias. Cada una es o un cambio de comportamiento o algo")
         print("variable que falta normalizar en `normalizar.py`.")
         return 1
     print("\nNinguna diferencia.")
@@ -290,18 +290,18 @@ def _especificidad(camino: str) -> tuple[int, int, int]:
     return len(fijos), sum(map(len, fijos)), -parametros_path
 
 
-GRABACION = str(pathlib.Path(__file__).with_name("grabaciones") / "fastapi.json.gz")
+GRABACION = str(pathlib.Path(__file__).with_name("grabaciones") / "contrato.json.gz")
 
 
 def main() -> int:
-    opciones = argparse.ArgumentParser(description="Compara Django contra la captura histórica del contrato")
+    opciones = argparse.ArgumentParser(description="Compara Django contra la grabación de referencia del contrato")
     opciones.add_argument("--contra", default="django", choices=sorted(servidores.DISPONIBLES))
     opciones.add_argument("--detalle", type=int, default=6)
     opciones.add_argument("--solo", default=None, help="solo los casos que contengan ese texto")
     opciones.add_argument("--grabar", default=None,
                           help="graba lo que contesta y guarda la aplicación, como nueva referencia")
     opciones.add_argument("--contra-grabado", default=GRABACION, dest="grabado",
-                          help="captura de referencia para comparar respuestas y estado")
+                          help="grabación de referencia para comparar respuestas y estado")
     opciones.add_argument("--autoprueba", action="store_true",
                           help="comprueba que el banco encuentre una diferencia cuando la hay")
     args = opciones.parse_args()
@@ -323,7 +323,7 @@ def main() -> int:
         from .autoprueba import correr
         return correr()
 
-    # La captura histórica se hizo el 23/11/2026. El escenario usa fechas
+    # La grabación de referencia se hizo el 23/11/2026. El escenario usa fechas
     # relativas a hoy, así que el banco debe reponer ese mismo día para
     # comparar calendario, finales y nombres de exportación sin ruido.
     reloj = datetime(2026, 11, 23, 12).astimezone()

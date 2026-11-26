@@ -1,4 +1,4 @@
-"""Comprobaciones de la aplicación y las vistas nativas de Django."""
+"""Comprobaciones de la aplicación Django: sesión, middleware, errores y rutas."""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ def comprobar(nombre: str, condicion: bool, detalle=None) -> None:
     raise AssertionError(nombre)
 
 
-def _rutas_historicas() -> list[tuple[str, str]]:
-    archivo = Path(__file__).with_name("banco") / "grabaciones" / "fastapi.json.gz"
+def _rutas_del_contrato() -> list[tuple[str, str]]:
+    archivo = Path(__file__).with_name("banco") / "grabaciones" / "contrato.json.gz"
     with gzip.open(archivo, "rt", encoding="utf-8") as fuente:
         return [tuple(ruta) for ruta in json.load(fuente)["rutas"]]
 
@@ -38,7 +38,7 @@ def correr() -> int:
     frenos.olvidar_todo()
     cliente = crear_cliente()
 
-    print("Vistas y middleware Django nativos\n")
+    print("Vistas y middleware de Django\n")
     sin_suplantar()
     respuesta = cliente.get("/api/me")
     comprobar("rechaza la sesión ausente", respuesta.status_code == 401, respuesta.status_code)
@@ -84,7 +84,7 @@ def correr() -> int:
         respuesta.headers.get("access-control-allow-origin") == ORIGEN,
     )
 
-    rutas = _rutas_historicas()
+    rutas = _rutas_del_contrato()
     no_resueltas = []
     for metodo, plantilla in rutas:
         camino = re.sub(r"{[^}:]+:path}", "muestra/archivo", plantilla)
@@ -93,11 +93,11 @@ def correr() -> int:
             resolve(camino)
         except Resolver404:
             no_resueltas.append((metodo, plantilla))
-    comprobar("resuelve los 169 contratos históricos", len(rutas) == 169 and not no_resueltas, no_resueltas[:5])
+    comprobar("resuelve las 169 rutas del contrato", len(rutas) == 169 and not no_resueltas, no_resueltas[:5])
 
     como(None)
     sin_suplantar()
-    print("\nComprobaciones Django nativo completas.")
+    print("\nComprobaciones del servidor completas.")
     return 0
 
 

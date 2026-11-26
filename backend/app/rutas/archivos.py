@@ -1,6 +1,6 @@
 """Los archivos del campus: subirlos, verlos y saber qué hay.
 
-Las vistas nativas de Django delegan en estas funciones; los permisos de cada
+Las vistas de Django delegan en estas funciones; los permisos de cada
 carpeta del bucket están en `servicios/acceso_archivos.py`.
 """
 

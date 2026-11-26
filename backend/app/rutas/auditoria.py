@@ -4,7 +4,7 @@
 `servicios/auditoria.registrar` desde cada módulo, y desde afuera el registro
 solo se lee. Que no exista la ruta es más fuerte que prohibirla.
 
-Las vistas nativas de Django delegan en estas funciones y en
+Las vistas de Django delegan en estas funciones y en
 `servicios/consulta_auditoria.py`.
 """
 

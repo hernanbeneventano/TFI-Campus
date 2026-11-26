@@ -1,4 +1,4 @@
-"""Registro de las rutas nativas de Django."""
+"""Registro de las rutas del campus."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
 
 El servidor atiende varias peticiones al mismo tiempo, cada una en su hilo, y
 todas leen y escriben las listas de `datos.py`. Lo que se prueba acá son las
-carreras que salieron del análisis de la migración: cosas que con una sola
+carreras que salieron del análisis del servidor: cosas que con una sola
 persona usando el campus no pasan nunca, y con un aula entera sí.
 
 **Ninguna toca Firestore.** El guardado se prueba contra un Firestore falso

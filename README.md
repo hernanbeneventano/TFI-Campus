@@ -6,7 +6,7 @@ React y una API en Python.
 ## Estructura
 
 - `frontend/`: interfaz React 18 y Vite.
-- `backend/`: el campus. API en Python, servida exclusivamente por Django.
+- `backend/`: el campus. API en Python, servida por Django.
 - `backend-node/`: el servicio de catálogos externos (Google Books y Open
   Library). Es el segundo backend, y está en Node porque es la única parte sin
   datos propios: ver [su README](backend-node/README.md).

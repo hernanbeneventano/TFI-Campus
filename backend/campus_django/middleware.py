@@ -1,4 +1,4 @@
-"""Middleware nativo de Django para errores, límites, auditoría y CORS."""
+"""Middleware de errores, límites, auditoría y CORS."""
 
 from __future__ import annotations
 

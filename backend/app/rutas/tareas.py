@@ -1,6 +1,6 @@
 """Tareas pendientes y atrasadas.
 
-Las vistas nativas de Django delegan en estas funciones y en
+Las vistas de Django delegan en estas funciones y en
 `servicios/tareas.pendientes_de`.
 
 Las rutas de entrega `/api/tareas/{id}/...` también están registradas

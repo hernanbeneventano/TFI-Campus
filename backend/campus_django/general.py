@@ -1,4 +1,4 @@
-"""Rutas nativas de Django para salud, perfil y contadores."""
+"""Rutas de salud, perfil y contadores."""
 
 from __future__ import annotations
 

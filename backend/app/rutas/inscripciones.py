@@ -1,6 +1,6 @@
 """Inscripción a materias: el plan de estudios del alumno y su avance.
 
-Las vistas nativas de Django delegan en estas funciones y en
+Las vistas de Django delegan en estas funciones y en
 `servicios/inscripcion_materias.py`.
 """
 

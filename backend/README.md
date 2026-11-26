@@ -1,8 +1,7 @@
 # Backend de CampusTFI
 
 El backend principal está implementado con **Django**. Las rutas se registran
-en URLconf de Django y se sirven mediante su aplicación ASGI; Uvicorn es el
-servidor ASGI, no un framework web.
+en URLconf y se sirven mediante su aplicación ASGI, con Uvicorn como servidor.
 
 ## Requisitos
 
@@ -41,15 +40,15 @@ suben al repositorio.
 Las pruebas del backend se ejecutan desde `backend/`:
 
 ```powershell
-python -m pruebas.django_nativo
+python -m pruebas.servidor
 python -m pruebas.banco
 ```
 
-La primera prueba verifica Django ASGI, middleware, errores HTTP y las 169
-rutas registradas. El banco compara las respuestas y el estado del campus con
-una captura histórica del contrato; esa captura es un fixture y no una
-implementación de servidor. También se conserva `adaptadores-fastapi.json`
-como dato histórico de pruebas; ninguna prueba ni módulo activo lo importa.
+La primera verifica la aplicación ASGI, el middleware, los errores HTTP y las
+169 rutas registradas. El banco compara las respuestas y el estado del campus
+con la grabación de referencia del contrato
+(`pruebas/banco/grabaciones/contrato.json.gz`), que es un fixture de pruebas y
+no una implementación de servidor.
 
 La especificación OpenAPI mantenida en el repositorio está en
 [`../docs/api/openapi.yaml`](../docs/api/openapi.yaml); no se genera en tiempo

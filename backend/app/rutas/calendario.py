@@ -1,6 +1,6 @@
 """Calendario académico: entregas, exámenes, clases y eventos de un rango.
 
-La vista nativa de Django delega en `servicios/calendario.del_rango`.
+La vista de Django delega en `servicios/calendario.del_rango`.
 """
 
 from __future__ import annotations

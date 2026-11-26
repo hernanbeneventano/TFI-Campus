@@ -93,7 +93,7 @@ def aplicar(valor: Any, camino: str = "cuerpo", extra: frozenset[str] = frozense
 # ===================== Las cabeceras =====================
 # No se comparan todas: `date`, `server` y el largo cambian siempre y no
 # dicen nada. Estas sí, porque cada una es una decisión del campus y que se
-# pierda al migrar es un error que no se ve mirando el cuerpo.
+# pierda es un error que no se ve mirando el cuerpo.
 CABECERAS: tuple[str, ...] = (
     "content-type",
     "content-disposition",

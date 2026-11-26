@@ -3,7 +3,7 @@
 Es la mitad del alumno del apartado Finales; la de la cátedra está en
 `rutas/gestion_finales.py`.
 
-Las vistas nativas de Django delegan en estas funciones y en
+Las vistas de Django delegan en estas funciones y en
 `servicios/finales_alumno.py`. Las pruebas de concurrencia también ejercitan
 las funciones de servicio directamente.
 """

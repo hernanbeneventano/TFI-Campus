@@ -6,9 +6,9 @@ info:
   description: |
     Interfaz de programación del campus virtual CampusTFI.
 
-    **Implementación.** Django atiende las rutas mediante URLconf y vistas
-    nativas. La autenticación de las peticiones se valida a partir del token
-    de Firebase.
+    **Implementación.** Django atiende las rutas mediante URLconf y vistas.
+    La autenticación de las peticiones se valida a partir del token de
+    Firebase.
 
     **Datos.** Firestore es la persistencia cuando está configurada; las
     pruebas pueden trabajar con datos aislados en memoria.

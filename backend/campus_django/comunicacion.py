@@ -1,4 +1,4 @@
-"""Vistas Django nativas para Mensajes, Foro y Novedades."""
+"""Vistas de Mensajes, Foro y Novedades."""
 
 from __future__ import annotations
 
