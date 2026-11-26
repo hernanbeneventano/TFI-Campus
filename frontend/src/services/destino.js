@@ -19,3 +19,13 @@ const DESTINO = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
 
 /** La dirección completa de una ruta del campus: `api('/cursos')`. */
 export const api = (ruta) => `${DESTINO}/api${ruta}`;
+
+/** Resuelve URLs del backend y recursos estáticos bajo la base del sitio. */
+export function urlDeRecurso(direccion) {
+  if (typeof direccion !== 'string' || !direccion) return direccion;
+  if (direccion.startsWith('/api/')) return `${DESTINO}${direccion}`;
+  if (direccion.startsWith('/novedades/')) {
+    return `${import.meta.env.BASE_URL}${direccion.slice(1)}`;
+  }
+  return direccion;
+}

@@ -8,6 +8,7 @@ import {
   subirImagenDeNovedad,
 } from '../services/api.js';
 import { avisar } from '../services/avisos.js';
+import { urlDeRecurso } from '../services/destino.js';
 import MotivoDeRetiro from '../components/MotivoDeRetiro.jsx';
 import { hace } from '../services/fechas.js';
 import Desplegable from '../components/Desplegable.jsx';
@@ -137,7 +138,7 @@ function Editor({ inicial, onGuardar, onCancelar }) {
   // La imagen elegida, todavía sin subir: se manda después de guardar la
   // novedad, porque hasta entonces no hay id al que colgarla.
   const [imagen, setImagen] = useState(null);
-  const [vistaPrevia, setVistaPrevia] = useState(inicial?.imagen ?? null);
+  const [vistaPrevia, setVistaPrevia] = useState(urlDeRecurso(inicial?.imagen) ?? null);
   const [errorImagen, setErrorImagen] = useState(null);
 
   function enviar(e) {
@@ -325,7 +326,7 @@ function Portada({ destacadas, onEditar, onVerTodas, onAbrir, onReaccionar }) {
                   >
                     {p.imagen ? (
                       <div className="portada-ilustracion con-imagen">
-                        <img src={p.imagen} alt="" />
+                        <img src={urlDeRecurso(p.imagen)} alt="" />
                       </div>
                     ) : (
                       <div className="portada-ilustracion" aria-hidden="true">
@@ -514,7 +515,7 @@ function Lector({ publicacion, origen, onCerrar, onReaccionar }) {
 
         {publicacion.imagen && (
           <div className="lector-imagen">
-            <img src={publicacion.imagen} alt="" />
+            <img src={urlDeRecurso(publicacion.imagen)} alt="" />
           </div>
         )}
 
@@ -572,7 +573,7 @@ function Publicacion({ publicacion, onEditar, onRetirar, onAbrir, onReaccionar }
           onClick={(e) => onAbrir(publicacion, e.currentTarget.closest('.publicacion'))}
           aria-label={`Abrir «${publicacion.titulo}»`}
         >
-          <img src={publicacion.imagen} alt="" loading="lazy" />
+          <img src={urlDeRecurso(publicacion.imagen)} alt="" loading="lazy" />
         </button>
       )}
 

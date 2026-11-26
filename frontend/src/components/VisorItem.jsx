@@ -19,6 +19,7 @@ import {
 import Avatar from './Avatar.jsx';
 import VisorDocumento, { sePuedeVer } from './VisorDocumento.jsx';
 import { avisar } from '../services/avisos.js';
+import { urlDeRecurso } from '../services/destino.js';
 import Cuestionario from './modulo/Cuestionario.jsx';
 
 function formatearFecha(iso) {
@@ -196,7 +197,11 @@ function MiEntrega({ tareaId, onCambio }) {
             {entrega.comentario && <p className="entrega-comentario">{entrega.comentario}</p>}
           </div>
           {entrega.archivo?.url ? (
-            <a className="boton-suave" href={entrega.archivo.url} download={entrega.archivo.nombre}>
+            <a
+              className="boton-suave"
+              href={urlDeRecurso(entrega.archivo.url)}
+              download={entrega.archivo.nombre}
+            >
               <IconoDescargar width={15} height={15} />
               {entrega.archivo.nombre}
             </a>
@@ -331,7 +336,7 @@ function EntregasDelCurso({ cursoId, tareaId, onCorregir, version }) {
               {a.archivo?.url ? (
                 <a
                   className="boton-suave"
-                  href={a.archivo.url}
+                  href={urlDeRecurso(a.archivo.url)}
                   download={a.archivo.nombre}
                   title={`${a.archivo.nombre}${a.archivo.tamano ? ` · ${pesoDe(a.archivo.tamano)}` : ''}`}
                 >

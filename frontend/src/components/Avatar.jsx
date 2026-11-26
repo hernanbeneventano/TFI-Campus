@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 
 import { IconoEstudiante, IconoUsuario } from './Iconos.jsx';
+import { urlDeRecurso } from '../services/destino.js';
 
 /** Si esa persona es estudiante, mire como mire la pantalla sus roles. */
 function esEstudiante(persona) {
@@ -32,7 +33,7 @@ export default function Avatar({ persona, tamano = 20, className = '' }) {
   // subir una foto nueva después de que la anterior diera error.
   useEffect(() => setFallo(false), [persona?.foto]);
 
-  const foto = !fallo ? persona?.foto : null;
+  const foto = !fallo ? urlDeRecurso(persona?.foto) : null;
   const Silueta = esEstudiante(persona) ? IconoEstudiante : IconoUsuario;
 
   if (foto) {

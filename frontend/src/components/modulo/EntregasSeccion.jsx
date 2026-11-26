@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { hace } from '../../services/fechas.js';
+import { urlDeRecurso } from '../../services/destino.js';
 import {
   IconoCerrar,
   IconoCheckCirculo,
@@ -75,7 +76,7 @@ function Alumno({ alumno, onCorregir }) {
                     {t.archivo?.url ? (
                       <a
                         className="entrega-archivo"
-                        href={t.archivo.url}
+                        href={urlDeRecurso(t.archivo.url)}
                         download={t.archivo.nombre}
                         title={`Bajar ${t.archivo.nombre}`}
                         onClick={(e) => e.stopPropagation()}

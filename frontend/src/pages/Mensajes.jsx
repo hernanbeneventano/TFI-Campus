@@ -12,6 +12,7 @@ import {
 } from '../services/api.js';
 import { hace } from '../services/fechas.js';
 import { avisar } from '../services/avisos.js';
+import { urlDeRecurso } from '../services/destino.js';
 import Encabezado from '../components/Encabezado.jsx';
 import {
   IconoUsuario,
@@ -598,10 +599,15 @@ export default function Mensajes() {
                           onClick={() => setMirando(a)}
                           title={`Ver ${a.nombre}`}
                         >
-                          <img src={a.url} alt={a.nombre} loading="lazy" />
+                          <img src={urlDeRecurso(a.url)} alt={a.nombre} loading="lazy" />
                         </button>
                       ) : a.url ? (
-                        <a key={a.url} className="adjunto" href={a.url} download={a.nombre}>
+                        <a
+                          key={a.url}
+                          className="adjunto"
+                          href={urlDeRecurso(a.url)}
+                          download={a.nombre}
+                        >
                           <IconoArchivo width={16} height={16} />
                           {a.nombre}
                           <small>{pesoDe(a.tamano)}</small>
@@ -741,12 +747,16 @@ function VisorDeImagen({ adjunto, onCerrar }) {
       role="presentation"
     >
       <figure>
-        <img src={adjunto.url} alt={adjunto.nombre} />
+        <img src={urlDeRecurso(adjunto.url)} alt={adjunto.nombre} />
         <figcaption>
           <span>{adjunto.nombre}</span>
           {/* Bajarla es lo otro que se quiere hacer con una imagen que se
               está mirando, así que va acá y no escondido en el hilo. */}
-          <a href={adjunto.url} download={adjunto.nombre} className="boton-suave">
+          <a
+            href={urlDeRecurso(adjunto.url)}
+            download={adjunto.nombre}
+            className="boton-suave"
+          >
             Descargar
           </a>
         </figcaption>

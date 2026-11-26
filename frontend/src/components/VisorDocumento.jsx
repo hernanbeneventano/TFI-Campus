@@ -27,6 +27,7 @@ import {
   IconoPantallaCompleta,
   IconoSalirPantallaCompleta,
 } from './Iconos.jsx';
+import { urlDeRecurso } from '../services/destino.js';
 
 // pdf.js y mammoth pesan más que todo el resto del campus junto, y la mayoría
 // de las pantallas no abren un documento nunca. Se piden al abrir el primero:
@@ -110,7 +111,7 @@ export default function VisorDocumento({ archivo, descargar }) {
   const [completa, setCompleta] = useState(false);
 
   const esPdf = archivo?.tipo === TIPO_PDF;
-  const url = archivo?.url;
+  const url = urlDeRecurso(archivo?.url);
   const paginas = documento?.numPages ?? 0;
 
   // ---------- abrir el archivo (una vez) ----------
