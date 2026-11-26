@@ -53,6 +53,35 @@ jobs:
       - name: Instalar las dependencias
         run: npm ci
 
+      # Sin esto, las claves que falten quedan como cadena vacía y el sitio se
+      # publica igual: carga, no da ningún error de construcción y recién en el
+      # navegador avisa que falta la configuración de Firebase. Es preferible
+      # que falle acá y diga cuál falta.
+      - name: Comprobar que estén las claves
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: |
+          falta=0
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::Falta la VARIABLE VITE_API_URL. Va en Settings › Secrets and variables › Actions › pestaña Variables (no Secrets), a nivel repositorio."
+            falta=1
+          fi
+          for clave in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_APP_ID; do
+            if [ -z "${!clave}" ]; then
+              echo "::error::Falta el SECRETO $clave. Va en Settings › Secrets and variables › Actions › pestaña Secrets, a nivel repositorio (Repository secrets), no dentro de un Environment."
+              falta=1
+            fi
+          done
+          if [ "$falta" = "1" ]; then
+            echo "::error::No se publica un sitio al que le faltan las claves: quedaria cargando sin poder iniciar sesion."
+            exit 1
+          fi
+          echo "Las claves estan."
+
       - name: Construir
         env:
           # El sitio vive en https://<usuario>.github.io/<repositorio>/, así
