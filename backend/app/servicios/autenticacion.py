@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import os
 
-from fastapi import Depends, HTTPException, Request
+from django.http import HttpRequest as Request
+
+from ..errores import ErrorDeAPI
 from firebase_admin import auth
 
 from .. import datos as d
@@ -91,6 +93,40 @@ def _permite_usuario_de_prueba() -> bool:
     return (os.environ.get("PERMITIR_USUARIO_SIN_TOKEN") or "no").lower() in ("si", "1", "true")
 
 
+# ===================== Quién actúa, en las pruebas =====================
+# Las pruebas necesitan hacer la misma petición como distintas personas:
+# `identificar` consulta este estado de proceso antes de verificar el token.
+#
+# **No agrega superficie de ataque.** Se enciende únicamente llamando a
+# `actuar_como()` desde adentro del proceso: no hay ruta, cabecera ni variable
+# de entorno que lo haga, y nada de `app/` la llama (hay una comprobación en
+# `pruebas/usuarios.py` que lo verifica). Quien pueda ejecutar Python dentro
+# del servidor ya puede editar `datos.personas` directamente, así que esto no
+# le da nada que no tuviera.
+#
+# Se guarda **el identificador y no la persona**: las pruebas recargan su
+# escenario y reemplazan el contenido de `datos.personas`, así que una
+# referencia al diccionario quedaría apuntando a alguien que ya no está.
+_suplantado: dict[str, int | None] = {"personaId": None}
+
+
+def actuar_como(persona_id: int | None) -> None:
+    """Hace que `identificar` devuelva a esa persona. **Solo para pruebas.**
+
+    Con `None` se apaga y se vuelve a la verificación de siempre.
+    """
+    _suplantado["personaId"] = persona_id
+
+
+def suplantando() -> int | None:
+    """A quién se está suplantando, o `None` si a nadie.
+
+    Está para poder comprobarlo desde las pruebas, que es la forma de dejar
+    anotado que en el campus de verdad esto vale `None`.
+    """
+    return _suplantado["personaId"]
+
+
 def _persona_por_correo(correo: str | None) -> dict | None:
     if not correo:
         return None
@@ -109,10 +145,20 @@ def _token_de(peticion: Request) -> str | None:
 def identificar(peticion: Request) -> dict:
     """Devuelve la persona del campus que hace la consulta.
 
-    Pensada para usarse como dependencia de FastAPI:
-
-        def mi_ruta(yo: dict = Depends(identificar)):
+    Recibe un `HttpRequest` de Django y verifica el token de Firebase.
     """
+    # Las pruebas dicen quién actúa sin pasar por Firebase (ver arriba). En el
+    # campus de verdad esto vale siempre None y la función sigue de largo.
+    #
+    # Si apuntara a alguien que no existe se sigue por el camino normal y la
+    # petición termina en 401: es preferible que una prueba mal escrita falle
+    # fuerte a que entre como quien no quiso.
+    suplantada = _suplantado["personaId"]
+    if suplantada is not None:
+        persona = d.buscar_persona(suplantada)
+        if persona:
+            return persona
+
     token = _token_de(peticion)
 
     if token is None:
@@ -120,7 +166,7 @@ def identificar(peticion: Request) -> dict:
             persona = d.buscar_persona(d.usuario_actual["id"])
             if persona:
                 return persona
-        raise HTTPException(401, "Hay que iniciar sesión")
+        raise ErrorDeAPI(401, "Hay que iniciar sesión")
 
     try:
         # `check_revoked` hace que Firebase mire también si esa cuenta fue
@@ -131,17 +177,17 @@ def identificar(peticion: Request) -> dict:
         datos_token = auth.verify_id_token(token, check_revoked=True)
     except auth.ExpiredIdTokenError:
         _anotar_fallo("La sesión venció")
-        raise HTTPException(401, "La sesión venció. Volvé a iniciar sesión.")
+        raise ErrorDeAPI(401, "La sesión venció. Volvé a iniciar sesión.")
     except auth.RevokedIdTokenError:
         _anotar_fallo("La sesión había sido cerrada")
-        raise HTTPException(401, "La sesión fue cerrada. Volvé a iniciar sesión.")
+        raise ErrorDeAPI(401, "La sesión fue cerrada. Volvé a iniciar sesión.")
     except (auth.InvalidIdTokenError, auth.UserDisabledError):
         _anotar_fallo("Token inválido o cuenta deshabilitada")
-        raise HTTPException(401, "La sesión no es válida. Volvé a iniciar sesión.")
+        raise ErrorDeAPI(401, "La sesión no es válida. Volvé a iniciar sesión.")
     except Exception:
         # Un fallo al verificar no puede interpretarse como "pase"
         _anotar_fallo("No se pudo verificar la sesión")
-        raise HTTPException(503, "No se pudo verificar la sesión. Probá de nuevo.")
+        raise ErrorDeAPI(503, "No se pudo verificar la sesión. Probá de nuevo.")
 
     persona = _persona_por_correo(datos_token.get("email"))
 
@@ -154,7 +200,7 @@ def identificar(peticion: Request) -> dict:
         _anotar_fallo(
             f"La cuenta está {persona.get('estado')}", datos_token.get("email")
         )
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Tu cuenta no está habilitada para entrar al campus. Consultá en la secretaría.",
         )
@@ -164,7 +210,7 @@ def identificar(peticion: Request) -> dict:
         # campus. Es un caso real: alguien de la facultad con cuenta de Google
         # que todavía no fue dado de alta.
         _anotar_fallo("El correo no está dado de alta en el campus", datos_token.get("email"))
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Tu cuenta no está dada de alta en el campus. Pedí el alta en la secretaría.",
         )
@@ -174,10 +220,5 @@ def identificar(peticion: Request) -> dict:
 
 
 def identificar_id(peticion: Request) -> int:
-    """El identificador de quien consulta, para las rutas que solo necesitan eso."""
+    """Devuelve el identificador de la persona que hizo la petición Django."""
     return identificar(peticion)["id"]
-
-
-# Atajos para leer en las rutas
-UsuarioActual = Depends(identificar)
-IdUsuarioActual = Depends(identificar_id)

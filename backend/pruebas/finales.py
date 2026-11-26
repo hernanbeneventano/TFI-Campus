@@ -1,7 +1,7 @@
 """Pruebas de Finales (gestión docente).
 
 A diferencia de las de la Biblioteca, estas corren **dentro del proceso**, con
-el cliente de pruebas de FastAPI: hace falta actuar como personas distintas
+el cliente ASGI de Django: hace falta actuar como personas distintas
 (un estudiante, la titular de una materia, otro docente) y sin login real el
 servidor en marcha siempre responde como el usuario de prueba, que es
 estudiante. Acá se reemplaza la identificación por la persona que se quiera.
@@ -21,13 +21,11 @@ from __future__ import annotations
 import sys
 from datetime import date, timedelta
 
-from fastapi.testclient import TestClient
 
 from app import datos as d
-from app.main import app
 
 from . import escenario
-from app.servicios.autenticacion import identificar, identificar_id
+from .cliente import como, crear_cliente
 
 BASE = "/api/finales/gestion"
 
@@ -45,20 +43,12 @@ BASES = 110
 pasadas = 0
 fallas: list[str] = []
 
-_quien = {"id": MARIA}
 # El campus arranca vacío, así que las pruebas cargan el suyo. Ver
 # `escenario.py`: no toca ningún archivo, solo la memoria de este proceso.
 escenario.cargar()
 
-app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
-# Algunas rutas piden solo el identificador: esa es otra dependencia y hay
-# que suplantarla también, o se resuelve contra la sesión de verdad.
-app.dependency_overrides[identificar_id] = lambda: _quien["id"]
-cliente = TestClient(app)
-
-
-def como(persona_id: int) -> None:
-    _quien["id"] = persona_id
+cliente = crear_cliente()
+como(MARIA)
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:

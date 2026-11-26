@@ -45,6 +45,7 @@ import {
   IconoVolver,
 } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 const VISTAS_ALUMNO = [
   { id: 'inscripciones', nombre: 'Inscripciones', Icono: IconoFinales },
   { id: 'fechas', nombre: 'Fechas próximas', Icono: IconoCalendario },
@@ -582,6 +583,7 @@ function Problema({ error, alReintentar }) {
 }
 
 export default function Finales({ usuario }) {
+  useTitulo('Finales');
   const { vista } = useParams();
 
   // Hasta saber quién mira no se puede elegir la mitad: mostrar la del rol

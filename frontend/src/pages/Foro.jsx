@@ -28,6 +28,7 @@ import {
 } from '../components/Iconos.jsx';
 import Avatar from '../components/Avatar.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 /** La cara de quien escribió, con su foto si la tiene. */
 function Cara({ persona, grande }) {
   return (
@@ -314,6 +315,7 @@ function Tema({ id, onVolver, onCambio }) {
 }
 
 export default function Foro() {
+  useTitulo('Foro');
   const [datos, setDatos] = useState(null);
   const [cursos, setCursos] = useState([]);
   const [asignatura, setAsignatura] = useState('todas');

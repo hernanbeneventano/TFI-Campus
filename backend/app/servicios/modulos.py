@@ -20,6 +20,8 @@ cursos— creen el módulo de la misma manera, en vez de tener cada una su copia
 
 from __future__ import annotations
 
+import threading
+
 from .. import datos as d
 
 # Los colores de la banda de cada módulo. Son tonos de la misma familia y
@@ -35,6 +37,22 @@ def periodo_de(materia: dict) -> str:
     return f"{anio} – {ORDINAL.get(materia.get('cuatrimestre'), '1.er')} cuatrimestre"
 
 
+# ===================== De a uno =====================
+# `modulo_para` es el único lugar del campus que crea módulos, y se llama
+# desde cinco caminos: el docente y la secretaría al abrir Módulos, el
+# alumno al abrirla o al inscribirse, y la institución al ponerlo en una
+# comisión. Varios corren a la vez todo el tiempo —el menú lateral y la
+# grilla piden la lista al mismo tiempo al entrar—, y «¿ya tiene módulo? → no
+# → crearlo» hecho por dos peticiones juntas creaba dos módulos para la misma
+# materia, muchas veces con el mismo id (`pruebas/concurrencia.py`).
+#
+# El candado cubre exactamente eso: volver a mirar, armar el módulo y
+# anotarlo en la materia. Todo en memoria, sin red ni esperas, y sin tomar
+# ningún otro candado adentro. El camino de siempre —el módulo ya existe—
+# ni siquiera lo toca.
+_creando = threading.Lock()
+
+
 def modulo_para(materia: dict, por_inscripcion: bool = False) -> dict:
     """El módulo de esa materia. Si no existe, se crea.
 
@@ -46,6 +64,17 @@ def modulo_para(materia: dict, por_inscripcion: bool = False) -> dict:
     if existente:
         return existente
 
+    with _creando:
+        # Se vuelve a mirar adentro: otra petición pudo haberlo creado entre
+        # la primera mirada y el candado.
+        existente = d.buscar_curso(materia.get("cursoId"))
+        if existente:
+            return existente
+        return _crear(materia, por_inscripcion)
+
+
+def _crear(materia: dict, por_inscripcion: bool) -> dict:
+    """Arma el módulo y lo anota. Solo se llama con `_creando` tomado."""
     docentes = d.docentes_de_materia(materia["id"])
     docente = d.buscar_persona(docentes[0]) if docentes else None
 

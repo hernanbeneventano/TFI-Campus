@@ -28,14 +28,12 @@ from __future__ import annotations
 
 import sys
 
-from fastapi.testclient import TestClient
 
 from app import datos as d
-from app.main import app
 from app.servicios import frenos
-from app.servicios.autenticacion import identificar, identificar_id
 
 from . import escenario
+from .cliente import como, crear_cliente
 
 SANTIAGO = 1  # estudiante, cursa el módulo 1
 MARIA = 2  # docente del módulo 1
@@ -47,16 +45,10 @@ CLAUDIA = 19  # Supervisor
 pasadas = 0
 fallas: list[str] = []
 
-_quien = {"id": SANTIAGO}
 escenario.cargar()
 
-app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
-app.dependency_overrides[identificar_id] = lambda: _quien["id"]
-cliente = TestClient(app)
-
-
-def como(persona_id: int) -> None:
-    _quien["id"] = persona_id
+cliente = crear_cliente()
+como(SANTIAGO)
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:
@@ -305,6 +297,41 @@ def correr() -> None:
     )
     comprobar("el freno es por sesión y no por dirección", otra.status_code == 200, otra.status_code)
     frenos.olvidar_todo()
+
+    # ------------------------------------------------------------------
+    grupo("El docente edita, mueve y borra el material de su módulo")
+    # Se caían con un 500: había dos funciones `_buscar_item` en
+    # rutas/gestion_modulo.py y la segunda tapaba a la primera.
+    escenario.cargar()
+    como(MARIA)
+    carpeta = d.contenidos[1][0]
+    item = carpeta["items"][0]
+    base = f"/api/cursos/1/carpetas/{carpeta['id']}/items/{item['id']}"
+    r = cliente.patch(base, json={"titulo": "Renombrado"})
+    comprobar("editar un elemento", r.status_code == 200 and item["titulo"] == "Renombrado", r.status_code)
+    r = cliente.post(f"{base}/mover", json={"hacia": "abajo"})
+    comprobar("moverlo", r.status_code == 200, r.status_code)
+    r = cliente.delete(base)
+    comprobar("borrarlo", r.status_code == 200 and item not in carpeta["items"], r.status_code)
+    comprobar("y otra vez da 404", cliente.delete(base).status_code == 404)
+    como(SANTIAGO)
+    comprobar("el alumno no puede editar", cliente.patch(
+        f"/api/cursos/1/carpetas/{carpeta['id']}/items/{carpeta['items'][0]['id']}",
+        json={"titulo": "No"}).status_code in (403, 404))
+
+    grupo("Ninguna función del backend está definida dos veces")
+    import ast
+    import pathlib
+    repetidas = []
+    for archivo in sorted(pathlib.Path(__file__).resolve().parents[1].joinpath("app").rglob("*.py")):
+        arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+        vistos = set()
+        for nodo in arbol.body:
+            if isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if nodo.name in vistos:
+                    repetidas.append(f"{archivo.name}:{nodo.name}")
+                vistos.add(nodo.name)
+    comprobar("la segunda tapa a la primera sin avisar", not repetidas, repetidas)
 
     # ------------------------------------------------------------------
     print("\n" + "-" * 52)

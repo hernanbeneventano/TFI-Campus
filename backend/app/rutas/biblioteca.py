@@ -37,15 +37,15 @@ import unicodedata
 from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Body, HTTPException, Request, Response
+from app.errores import ErrorDeAPI
+from campus_django.respuestas import descargar
+from django.http import HttpRequest as Request
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm
 from ..servicios import ambito, auditoria
-from ..servicios.autenticacion import UsuarioActual
 from ..servicios.libros_externos import buscar_libros_externos, obtener_libro_externo
 
-router = APIRouter(prefix="/api/biblioteca", tags=["Biblioteca"])
 
 
 # ===================== El alcance de cada uno =====================
@@ -145,7 +145,7 @@ def _exigir_ver(material: dict, persona: dict) -> None:
     """Un material fuera de alcance se niega como inexistente: decir "no tenés
     permiso" ya cuenta que existe y de qué materia es."""
     if not _puede_ver(material, persona):
-        raise HTTPException(404, "Material no encontrado")
+        raise ErrorDeAPI(404, "Material no encontrado")
 
 
 # ===================== Límite de pedidos =====================
@@ -328,8 +328,7 @@ def _paginar(lista: list[dict], p: dict) -> dict:
 # (mismo cuidado que en mensajes).
 
 
-@router.get("/opciones", summary="Las materias y los filtros de la pantalla")
-def opciones_biblioteca(yo: dict = UsuarioActual):
+def opciones_biblioteca(yo: dict ):
     materias = _materias_visibles(yo)
     ids = {m["id"] for m in materias}
     modera = _materias_que_modera(yo)
@@ -379,8 +378,7 @@ def opciones_biblioteca(yo: dict = UsuarioActual):
     }
 
 
-@router.get("/mis-aportes", summary="Los aportes propios, con estado y motivo")
-def mis_aportes(yo: dict = UsuarioActual):
+def mis_aportes(yo: dict ):
     # Los propios se ven siempre, incluso si la cursada terminó: el estudiante
     # tiene que poder leer por qué le rechazaron algo.
     mios = [m for m in d.materiales if m["subidoPor"] == yo["id"]]
@@ -404,15 +402,14 @@ def mis_aportes(yo: dict = UsuarioActual):
     }
 
 
-@router.get("/pendientes", summary="Los aportes a revisar")
-def pendientes(yo: dict = UsuarioActual):
+def pendientes(yo: dict ):
     """La cola de revisión, recortada a las materias que modera quien pregunta.
 
     Un docente no revisa el material de una cátedra que no es la suya.
     """
     modera = _materias_que_modera(yo)
     if modera is not None and not modera:
-        raise HTTPException(
+        raise ErrorDeAPI(
             403, "Solo el docente de la materia o un supervisor revisan los aportes"
         )
 
@@ -424,8 +421,7 @@ def pendientes(yo: dict = UsuarioActual):
     return {"materiales": [_con_datos(m, yo) for m in _ordenar(cola, "fecha")]}
 
 
-@router.get("/favoritos", summary="Materiales guardados")
-def obtener_favoritos(yo: dict = UsuarioActual):
+def obtener_favoritos(yo: dict ):
     mios = [f for f in d.favoritos_biblioteca if f["personaId"] == yo["id"]]
 
     # Los favoritos pueden ser propios o externos: los propios se resuelven
@@ -447,9 +443,8 @@ def obtener_favoritos(yo: dict = UsuarioActual):
 
 
 # ===================== La biblioteca =====================
-@router.get("", summary="El material de tus materias")
-async def listar_materiales(request: Request, yo: dict = UsuarioActual):
-    p = dict(request.query_params)
+async def listar_materiales(request: Request, yo: dict ):
+    p = request.GET.dict()
     fuente = p.get("fuente") or "campus"
     texto = (p.get("q") or "").strip()
 
@@ -496,19 +491,18 @@ async def listar_materiales(request: Request, yo: dict = UsuarioActual):
     return respuesta
 
 
-@router.post("", status_code=201, summary="Subir material o enviar un aporte")
-def crear_material(cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def crear_material(cuerpo: dict[str, Any] = {}, yo: dict = None ):
     if not _dentro_del_limite(f"aportar:{yo['id']}", 10, 60 * 60):
-        raise HTTPException(429, "Demasiados aportes seguidos. Probá de nuevo en un rato.")
+        raise ErrorDeAPI(429, "Demasiados aportes seguidos. Probá de nuevo en un rato.")
 
     campos = _leer_campos(cuerpo)
     problema = _validar(campos, cuerpo, yo, exigir_autorizacion=True)
     if problema:
-        raise HTTPException(400, problema)
+        raise ErrorDeAPI(400, problema)
 
     repetido = _repetido(campos, None)
     if repetido:
-        raise HTTPException(
+        raise ErrorDeAPI(
             409,
             f'"{repetido["titulo"]}" ya está en la biblioteca de esta materia.',
         )
@@ -699,48 +693,47 @@ def _buscar_material(id_material: str) -> dict:
     try:
         buscado = int(id_material)
     except (TypeError, ValueError):
-        raise HTTPException(404, "Material no encontrado")
+        raise ErrorDeAPI(404, "Material no encontrado")
     material = next((m for m in d.materiales if m["id"] == buscado), None)
     if not material:
-        raise HTTPException(404, "Material no encontrado")
+        raise ErrorDeAPI(404, "Material no encontrado")
     return material
 
 
-@router.post("/{id_material:path}/archivo", status_code=201, summary="Subir el archivo")
 def subir_archivo(
-    id_material: str, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_material: str, cuerpo: dict[str, Any] = {}, yo: dict = None
 ):
     material = _buscar_material(id_material)
     _exigir_ver(material, yo)
     if not _puede_editar(material, yo):
-        raise HTTPException(403, "Solo quien lo subió puede cambiar el archivo")
+        raise ErrorDeAPI(403, "Solo quien lo subió puede cambiar el archivo")
     if not _dentro_del_limite(f"subir:{yo['id']}", 20, 60 * 60):
-        raise HTTPException(429, "Demasiadas subidas seguidas. Probá de nuevo en un rato.")
+        raise ErrorDeAPI(429, "Demasiadas subidas seguidas. Probá de nuevo en un rato.")
 
     extension = str(cuerpo.get("extension") or "").lower().lstrip(".")
     formato = FORMATOS.get(extension)
     if not formato:
         aceptados = " y ".join(e.upper() for e in FORMATOS)
-        raise HTTPException(415, f"Solo se aceptan archivos {aceptados}")
+        raise ErrorDeAPI(415, f"Solo se aceptan archivos {aceptados}")
 
     # El tipo que declara el navegador tiene que coincidir con la extensión…
     declarado = str(cuerpo.get("tipo") or "")
     if declarado and declarado != formato["mime"]:
-        raise HTTPException(415, "El tipo del archivo no coincide con su extensión")
+        raise ErrorDeAPI(415, "El tipo del archivo no coincide con su extensión")
 
     try:
         bytes_archivo = base64.b64decode(str(cuerpo.get("contenido") or ""), validate=False)
     except Exception:
-        raise HTTPException(400, "No se pudo leer el archivo")
+        raise ErrorDeAPI(400, "No se pudo leer el archivo")
 
     if len(bytes_archivo) == 0:
-        raise HTTPException(400, "El archivo está vacío")
+        raise ErrorDeAPI(400, "El archivo está vacío")
     if len(bytes_archivo) > MAX_BYTES:
-        raise HTTPException(413, f"El archivo supera los {MAX_MB} MB")
+        raise ErrorDeAPI(413, f"El archivo supera los {MAX_MB} MB")
     # …y el contenido real tiene que ser lo que dice ser. La extensión sola no
     # prueba nada: cualquiera renombra un .exe a .pdf.
     if not formato["firma"](bytes_archivo):
-        raise HTTPException(415, f"El archivo no es un {extension.upper()} válido")
+        raise ErrorDeAPI(415, f"El archivo no es un {extension.upper()} válido")
 
     nombre = _nombre_seguro(cuerpo.get("nombre"), extension)
     objeto = alm.clave(alm.BIBLIOTECA, material["materiaId"], material["id"], nombre=nombre)
@@ -757,7 +750,7 @@ def subir_archivo(
     try:
         alm.subir(objeto, bytes_archivo, formato["mime"])
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(502, f"No se pudo guardar el archivo: {error}")
+        raise ErrorDeAPI(502, f"No se pudo guardar el archivo: {error}")
 
     alm.registrar(
         objeto,
@@ -782,8 +775,7 @@ def subir_archivo(
     return _con_datos(material, yo)
 
 
-@router.get("/{id_material:path}/archivo", summary="Descargar el archivo")
-def descargar_archivo(id_material: str, yo: dict = UsuarioActual):
+def descargar_archivo(id_material: str, yo: dict ):
     """Pasa por el mismo control que la ficha: el archivo de una materia ajena
     no se baja aunque alguien adivine el id."""
     material = _buscar_material(id_material)
@@ -796,7 +788,7 @@ def descargar_archivo(id_material: str, yo: dict = UsuarioActual):
     if contenido is None:
         contenido = d.leer_archivo(material["id"])
     if not contenido or not material.get("archivo"):
-        raise HTTPException(404, "Este material no tiene un archivo alojado en el campus")
+        raise ErrorDeAPI(404, "Este material no tiene un archivo alojado en el campus")
 
     auditoria.registrar(
         yo,
@@ -809,10 +801,10 @@ def descargar_archivo(id_material: str, yo: dict = UsuarioActual):
         detalle=f"Descargó {material['archivo']['nombre']}",
     )
 
-    return Response(
-        content=contenido,
-        media_type=material["archivo"]["tipo"],
-        headers={
+    return descargar(
+        contenido,
+        material["archivo"]["tipo"],
+        {
             # Siempre como descarga y sin dejar que el navegador adivine el
             # tipo: un archivo de otra persona no se abre dentro del campus.
             "Content-Disposition": f'attachment; filename="{material["archivo"]["nombre"]}"',
@@ -829,15 +821,15 @@ def _revisar(id_material: str, accion: str, motivo: str, yo: dict) -> dict:
     # material se niega como inexistente, igual que en el resto.
     if not _modera(yo, material["materiaId"]):
         if material["materiaId"] not in _ids_visibles(yo):
-            raise HTTPException(404, "Material no encontrado")
-        raise HTTPException(
+            raise ErrorDeAPI(404, "Material no encontrado")
+        raise ErrorDeAPI(
             403, "Solo el docente de la materia o un supervisor revisan los aportes"
         )
 
     # Rechazar sin decir por qué no le sirve a nadie: quien aportó no sabe qué
     # corregir.
     if accion == "rechazado" and not motivo:
-        raise HTTPException(400, "Hay que indicar el motivo del rechazo")
+        raise ErrorDeAPI(400, "Hay que indicar el motivo del rechazo")
 
     ahora = d.iso(d.ahora())
     estado_antes = material["estado"]
@@ -884,21 +876,18 @@ def _revisar(id_material: str, accion: str, motivo: str, yo: dict) -> dict:
     return _con_datos(material, yo)
 
 
-@router.post("/{id_material:path}/aprobar", summary="Aprobar un aporte")
-def aprobar_material(id_material: str, yo: dict = UsuarioActual):
+def aprobar_material(id_material: str, yo: dict ):
     return _revisar(id_material, "aprobado", "", yo)
 
 
-@router.post("/{id_material:path}/rechazar", summary="Rechazar un aporte")
 def rechazar_material(
-    id_material: str, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_material: str, cuerpo: dict[str, Any] = {}, yo: dict = None
 ):
     return _revisar(id_material, "rechazado", str(cuerpo.get("motivo") or "").strip(), yo)
 
 
 # ===================== Favoritos =====================
-@router.post("/{id_material:path}/favorito", status_code=201, summary="Guardar en favoritos")
-def agregar_favorito(id_material: str, yo: dict = UsuarioActual):
+def agregar_favorito(id_material: str, yo: dict ):
     """Vale tanto para un material de una materia como para un libro externo:
     el id externo ("google:xxx") es estable y se guarda tal cual."""
     es_externo = ":" in id_material
@@ -920,8 +909,7 @@ def agregar_favorito(id_material: str, yo: dict = UsuarioActual):
     return {"id": clave, "favorito": True}
 
 
-@router.delete("/{id_material:path}/favorito", summary="Quitar de favoritos")
-def quitar_favorito(id_material: str, yo: dict = UsuarioActual):
+def quitar_favorito(id_material: str, yo: dict ):
     for i, f in enumerate(d.favoritos_biblioteca):
         if f["personaId"] == yo["id"] and str(f["materialId"]) == str(id_material):
             d.favoritos_biblioteca.pop(i)
@@ -931,8 +919,7 @@ def quitar_favorito(id_material: str, yo: dict = UsuarioActual):
 
 # ===================== Ficha, edición y baja =====================
 # Van al final: su patrón admite barras y se comería a las rutas de arriba.
-@router.get("/{id_material:path}", summary="Ficha de un material")
-async def obtener_material(id_material: str, yo: dict = UsuarioActual):
+async def obtener_material(id_material: str, yo: dict ):
     # Un id con dos puntos es de un catálogo externo ("google:xxx")
     if ":" in id_material:
         try:
@@ -940,7 +927,7 @@ async def obtener_material(id_material: str, yo: dict = UsuarioActual):
         except Exception:
             libro = None
         if not libro:
-            raise HTTPException(404, "No se encontró ese libro")
+            raise ErrorDeAPI(404, "No se encontró ese libro")
         return {
             **libro,
             "favorito": any(
@@ -973,14 +960,13 @@ async def obtener_material(id_material: str, yo: dict = UsuarioActual):
     }
 
 
-@router.patch("/{id_material:path}", summary="Editar un material")
 def editar_material(
-    id_material: str, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_material: str, cuerpo: dict[str, Any] = {}, yo: dict = None
 ):
     material = _buscar_material(id_material)
     _exigir_ver(material, yo)
     if not _puede_editar(material, yo):
-        raise HTTPException(403, "Solo quien lo subió o el docente de la materia puede editarlo")
+        raise ErrorDeAPI(403, "Solo quien lo subió o el docente de la materia puede editarlo")
 
     # Lo que había antes, para que el registro diga qué cambió
     antes_de_editar = {
@@ -991,11 +977,11 @@ def editar_material(
     campos = _leer_campos({**material, **cuerpo})
     problema = _validar(campos, cuerpo, yo, exigir_autorizacion=False)
     if problema:
-        raise HTTPException(400, problema)
+        raise ErrorDeAPI(400, problema)
 
     repetido = _repetido(campos, material["id"])
     if repetido:
-        raise HTTPException(
+        raise ErrorDeAPI(
             409, f'"{repetido["titulo"]}" ya está en la biblioteca de esta materia.'
         )
 
@@ -1034,12 +1020,11 @@ def editar_material(
     return _con_datos(material, yo)
 
 
-@router.delete("/{id_material:path}", summary="Retirar un material")
-def borrar_material(id_material: str, yo: dict = UsuarioActual):
+def borrar_material(id_material: str, yo: dict ):
     material = _buscar_material(id_material)
     _exigir_ver(material, yo)
     if not _puede_editar(material, yo):
-        raise HTTPException(403, "Solo quien lo subió o el docente de la materia puede retirarlo")
+        raise ErrorDeAPI(403, "Solo quien lo subió o el docente de la materia puede retirarlo")
 
     auditoria.registrar(
         yo,

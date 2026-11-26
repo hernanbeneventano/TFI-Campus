@@ -18,13 +18,11 @@ from __future__ import annotations
 import base64
 import sys
 
-from fastapi.testclient import TestClient
 
 from app import datos as d
-from app.main import app
 
 from . import escenario
-from app.servicios.autenticacion import identificar, identificar_id
+from .cliente import como, crear_cliente
 
 SANTIAGO = 1  # estudiante
 OTRO = 3  # otro estudiante del mismo módulo
@@ -35,16 +33,10 @@ PDF = base64.b64encode(b"%PDF-1.4\n% trabajo\n%%EOF\n").decode()
 pasadas = 0
 fallas: list[str] = []
 
-_quien = {"id": SANTIAGO}
 escenario.cargar()
 
-app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
-app.dependency_overrides[identificar_id] = lambda: _quien["id"]
-cliente = TestClient(app)
-
-
-def como(persona_id: int) -> None:
-    _quien["id"] = persona_id
+cliente = crear_cliente()
+como(SANTIAGO)
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:

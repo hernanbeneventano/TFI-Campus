@@ -26,6 +26,7 @@ import {
   IconoCerrar,
 } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 const campos = [
   { valor: 'todo', nombre: 'En todo' },
   { valor: 'titulo', nombre: 'Título' },
@@ -156,6 +157,7 @@ function MotivoDelRechazo({ material, trabajando, onCerrar, onRechazar }) {
 }
 
 export default function Biblioteca() {
+  useTitulo('Biblioteca');
   const [opciones, setOpciones] = useState(null);
   const [pestana, setPestana] = useState('catalogo');
 

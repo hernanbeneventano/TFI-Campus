@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 
 from .. import datos as d
 
@@ -48,6 +49,30 @@ DIGITOS = 4
 
 # Quiénes llevan legajo del campus en vez de legajo de carrera.
 ROLES_CON_LEGAJO = ("Docente", "Administrador", "Supervisor")
+
+# ===================== De a uno =====================
+# Un legajo es «el más alto que existe + 1», así que elegirlo y anotarlo
+# tienen que ir juntos: dos inscripciones a la vez miraban la misma lista,
+# sacaban el mismo número y los dos estudiantes quedaban con el mismo legajo
+# (`pruebas/concurrencia.py`). Hay dos numeraciones y cada una vive en una
+# lista distinta, así que hay dos candados: una inscripción a carrera no
+# tiene por qué esperar a un alta de cuenta.
+#
+# Quien elige un número **y lo anota** toma el candado de esa lista:
+#
+#     with legajos.inscripciones_a_carrera:
+#         ... comprobar, armar con proximo_de_carrera(), append ...
+#
+# Adentro, solo memoria: nada de Firebase, de R2 ni de esperas.
+
+# Las inscripciones a carrera (`d.asociaciones_academicas`): el legajo de
+# carrera y la regla de no inscribir dos veces a la misma persona.
+inscripciones_a_carrera = threading.Lock()
+
+# El padrón (`d.personas`): el legajo del personal, y para quien da de alta
+# a alguien, también el id y el correo. Reentrante porque quien da de alta lo
+# tiene tomado cuando llama a `asegurar_institucional`, que lo toma también.
+padron = threading.RLock()
 
 
 def _prefijo_de_carrera(carrera: dict | None) -> str:
@@ -119,5 +144,7 @@ def asegurar_institucional(persona: dict) -> str | None:
     if not d.tiene_rol(persona, *ROLES_CON_LEGAJO):
         return None
 
-    persona["legajo"] = proximo_institucional(d.ahora().year)
-    return persona["legajo"]
+    with padron:
+        if not persona.get("legajo"):  # otro pudo habérselo puesto recién
+            persona["legajo"] = proximo_institucional(d.ahora().year)
+        return persona["legajo"]

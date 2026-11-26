@@ -23,16 +23,14 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from fastapi import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import academico as ac
 from ..servicios import legajos
 from ..servicios import auditoria
 from ..servicios import modulos as mod
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api/institucion", tags=["Institución"])
 
 MAX_NOMBRE = 150
 MAX_CODIGO = 20
@@ -51,7 +49,7 @@ def es_supervisor(yo: dict) -> bool:
 
 def _exigir_administrador(yo: dict) -> None:
     if not es_administrador(yo):
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Solo el administrador puede modificar la estructura académica.",
         )
@@ -59,7 +57,7 @@ def _exigir_administrador(yo: dict) -> None:
 
 def _exigir_supervisor(yo: dict) -> None:
     if not es_supervisor(yo):
-        raise HTTPException(403, "Solo el supervisor puede asignar estudiantes.")
+        raise ErrorDeAPI(403, "Solo el supervisor puede asignar estudiantes.")
 
 
 def _exigir_que_administre_lo_academico(yo: dict) -> None:
@@ -75,7 +73,7 @@ def _exigir_que_administre_lo_academico(yo: dict) -> None:
     administrador: eso define qué es la facultad, no cuándo abre.
     """
     if not es_supervisor(yo):
-        raise HTTPException(
+        raise ErrorDeAPI(
             403,
             "Solo la administración de la facultad cambia la configuración académica.",
         )
@@ -92,13 +90,13 @@ def _fecha_de(valor, que: str):
     """
     texto = str(valor or "").strip()
     if not texto:
-        raise HTTPException(400, f"Falta {que}")
+        raise ErrorDeAPI(400, f"Falta {que}")
     try:
         if len(texto) == 10:  # AAAA-MM-DD
             return d.desde_iso(texto + "T00:00:00").astimezone()
         return d.desde_iso(texto)
     except (ValueError, TypeError):
-        raise HTTPException(400, f"{que.capitalize()} no es una fecha válida")
+        raise ErrorDeAPI(400, f"{que.capitalize()} no es una fecha válida")
 
 
 def _sin_tildes(texto) -> str:
@@ -110,20 +108,20 @@ def _sin_tildes(texto) -> str:
 def _texto(valor, campo: str, maximo: int = MAX_NOMBRE, obligatorio: bool = True) -> str | None:
     if valor is None or (isinstance(valor, str) and not valor.strip()):
         if obligatorio:
-            raise HTTPException(400, f"Falta {campo}")
+            raise ErrorDeAPI(400, f"Falta {campo}")
         return None
     if not isinstance(valor, str):
-        raise HTTPException(400, f"{campo} tiene que ser texto")
+        raise ErrorDeAPI(400, f"{campo} tiene que ser texto")
     limpio = valor.strip()
     if len(limpio) > maximo:
-        raise HTTPException(400, f"{campo} no puede pasar de {maximo} caracteres")
+        raise ErrorDeAPI(400, f"{campo} no puede pasar de {maximo} caracteres")
     return limpio
 
 
 def _referencia(coleccion: list[dict], valor, que: str) -> dict:
     encontrado = d.buscar_en(coleccion, valor)
     if not encontrado:
-        raise HTTPException(400, f"{que} no existe")
+        raise ErrorDeAPI(400, f"{que} no existe")
     return encontrado
 
 
@@ -152,24 +150,28 @@ def _vincular_con_las_materias(persona_id: int, comision_id: int | None) -> list
             continue
         if not materia.get("activa", True):
             continue
-        # Ya inscripto, o ya cursada: no se toca
-        if any(
-            i["personaId"] == persona_id and i["materiaId"] == materia["id"]
-            for i in d.inscripciones_materias
-        ):
-            continue
-        if d.condicion_en(persona_id, materia["id"]):
-            continue
+        # «¿Ya está?» y anotar van juntos: el alumno se puede estar anotando
+        # solo a la misma materia en ese momento. Ver
+        # `academico.inscripciones_a_materias`.
+        with ac.inscripciones_a_materias:
+            # Ya inscripto, o ya cursada: no se toca
+            if any(
+                i["personaId"] == persona_id and i["materiaId"] == materia["id"]
+                for i in d.inscripciones_materias
+            ):
+                continue
+            if d.condicion_en(persona_id, materia["id"]):
+                continue
 
-        d.inscripciones_materias.append(
-            {
-                "id": d.nuevo_id_inscripcion_materia(),
-                "personaId": persona_id,
-                "materiaId": materia["id"],
-                "fecha": d.iso(d.ahora()),
-                "porComision": comision_id,
-            }
-        )
+            d.inscripciones_materias.append(
+                {
+                    "id": d.nuevo_id_inscripcion_materia(),
+                    "personaId": persona_id,
+                    "materiaId": materia["id"],
+                    "fecha": d.iso(d.ahora()),
+                    "porComision": comision_id,
+                }
+            )
         # Y la materia entra a Módulos, igual que cuando el estudiante se
         # anota por su cuenta. Sin esto quedaba inscripto a seis materias y
         # su pantalla de Módulos vacía: la inscripción existía pero el módulo
@@ -236,8 +238,7 @@ def _anotar(
 
 
 # ===================== El catálogo =====================
-@router.get("", summary="Toda la estructura académica")
-def catalogo(yo: dict = UsuarioActual):
+def catalogo(yo: dict ):
     """Carreras, sedes, planes y comisiones, con lo que cada uno tiene colgando.
 
     La lee cualquiera que haya iniciado sesión: un alumno necesita ver el
@@ -294,12 +295,11 @@ def catalogo(yo: dict = UsuarioActual):
 
 
 # ===================== Carreras =====================
-@router.post("/carreras", status_code=201, summary="Crear una carrera")
-def crear_carrera(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_carrera(cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     nombre = _texto(cuerpo.get("nombre"), "el nombre de la carrera")
     if any(c["nombre"].lower() == nombre.lower() for c in d.carreras_institucion):
-        raise HTTPException(409, "Ya existe una carrera con ese nombre")
+        raise ErrorDeAPI(409, "Ya existe una carrera con ese nombre")
 
     carrera = {
         "id": d.nuevo_id_carrera(),
@@ -313,8 +313,7 @@ def crear_carrera(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return catalogo(yo)
 
 
-@router.patch("/carreras/{id_carrera}", summary="Editar una carrera")
-def editar_carrera(id_carrera: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_carrera(id_carrera: int, cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     carrera = _referencia(d.carreras_institucion, id_carrera, "La carrera")
 
@@ -324,7 +323,7 @@ def editar_carrera(id_carrera: int, cuerpo: dict = Body(...), yo: dict = Usuario
             c["nombre"].lower() == nombre.lower() and c["id"] != carrera["id"]
             for c in d.carreras_institucion
         ):
-            raise HTTPException(409, "Ya existe otra carrera con ese nombre")
+            raise ErrorDeAPI(409, "Ya existe otra carrera con ese nombre")
         carrera["nombre"] = nombre
     if "codigo" in cuerpo:
         carrera["codigo"] = _texto(cuerpo["codigo"], "el código", MAX_CODIGO, obligatorio=False)
@@ -335,8 +334,7 @@ def editar_carrera(id_carrera: int, cuerpo: dict = Body(...), yo: dict = Usuario
     return catalogo(yo)
 
 
-@router.delete("/carreras/{id_carrera}", summary="Dar de baja una carrera")
-def borrar_carrera(id_carrera: int, yo: dict = UsuarioActual):
+def borrar_carrera(id_carrera: int, yo: dict ):
     """Se elimina solo si no la usa nadie; si no, se da de baja.
 
     Borrar una carrera con estudiantes dejaría sus inscripciones apuntando a
@@ -362,12 +360,11 @@ def borrar_carrera(id_carrera: int, yo: dict = UsuarioActual):
 
 
 # ===================== Sedes =====================
-@router.post("/sedes", status_code=201, summary="Crear una sede")
-def crear_sede(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_sede(cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     nombre = _texto(cuerpo.get("nombre"), "el nombre de la sede")
     if any(s["nombre"].lower() == nombre.lower() for s in d.sedes):
-        raise HTTPException(409, "Ya existe una sede con ese nombre")
+        raise ErrorDeAPI(409, "Ya existe una sede con ese nombre")
 
     d.sedes.append(
         {
@@ -381,8 +378,7 @@ def crear_sede(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return catalogo(yo)
 
 
-@router.patch("/sedes/{id_sede}", summary="Editar una sede")
-def editar_sede(id_sede: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_sede(id_sede: int, cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     sede = _referencia(d.sedes, id_sede, "La sede")
     if "nombre" in cuerpo:
@@ -395,8 +391,7 @@ def editar_sede(id_sede: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
     return catalogo(yo)
 
 
-@router.delete("/sedes/{id_sede}", summary="Dar de baja una sede")
-def borrar_sede(id_sede: int, yo: dict = UsuarioActual):
+def borrar_sede(id_sede: int, yo: dict ):
     _exigir_administrador(yo)
     sede = _referencia(d.sedes, id_sede, "La sede")
     if any(c["sedeId"] == id_sede for c in d.comisiones):
@@ -409,8 +404,7 @@ def borrar_sede(id_sede: int, yo: dict = UsuarioActual):
 
 
 # ===================== Planes de estudio =====================
-@router.post("/planes", status_code=201, summary="Crear un plan de estudio")
-def crear_plan(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_plan(cuerpo: dict , yo: dict ):
     """Un plan es siempre de una carrera: la misma carrera puede tener el
     plan 2008 y el 2023 conviviendo."""
     _exigir_administrador(yo)
@@ -421,11 +415,11 @@ def crear_plan(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
         p["carreraId"] == carrera["id"] and p["nombre"].lower() == nombre.lower()
         for p in d.planes_estudio
     ):
-        raise HTTPException(409, "Esa carrera ya tiene un plan con ese nombre")
+        raise ErrorDeAPI(409, "Esa carrera ya tiene un plan con ese nombre")
 
     anio = cuerpo.get("anio")
     if anio is not None and (not isinstance(anio, int) or not 1950 <= anio <= 2100):
-        raise HTTPException(400, "El año del plan no es válido")
+        raise ErrorDeAPI(400, "El año del plan no es válido")
 
     d.planes_estudio.append(
         {
@@ -441,8 +435,7 @@ def crear_plan(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return catalogo(yo)
 
 
-@router.patch("/planes/{id_plan}", summary="Editar un plan")
-def editar_plan(id_plan: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_plan(id_plan: int, cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     plan = _referencia(d.planes_estudio, id_plan, "El plan")
     if "nombre" in cuerpo:
@@ -453,8 +446,7 @@ def editar_plan(id_plan: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
     return catalogo(yo)
 
 
-@router.delete("/planes/{id_plan}", summary="Dar de baja un plan")
-def borrar_plan(id_plan: int, yo: dict = UsuarioActual):
+def borrar_plan(id_plan: int, yo: dict ):
     _exigir_administrador(yo)
     plan = _referencia(d.planes_estudio, id_plan, "El plan")
     en_uso = any(m.get("planId") == id_plan for m in d.materias_plan) or any(
@@ -470,8 +462,7 @@ def borrar_plan(id_plan: int, yo: dict = UsuarioActual):
 
 
 # ===================== Comisiones =====================
-@router.post("/comisiones", status_code=201, summary="Crear una comisión")
-def crear_comision(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_comision(cuerpo: dict , yo: dict ):
     """Una comisión es de una carrera **y** de una sede.
 
     La misma sede dicta varias carreras, y la misma carrera se dicta en
@@ -488,15 +479,15 @@ def crear_comision(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
         and c["nombre"].lower() == nombre.lower()
         for c in d.comisiones
     ):
-        raise HTTPException(409, "Ya existe esa comisión en esa carrera y sede")
+        raise ErrorDeAPI(409, "Ya existe esa comisión en esa carrera y sede")
 
     turno = cuerpo.get("turno")
     if turno is not None and turno not in d.TURNOS:
-        raise HTTPException(400, "Ese turno no existe")
+        raise ErrorDeAPI(400, "Ese turno no existe")
 
     anio = cuerpo.get("anio")
     if anio is not None and (not isinstance(anio, int) or not 1 <= anio <= 10):
-        raise HTTPException(400, "El año de la comisión no es válido")
+        raise ErrorDeAPI(400, "El año de la comisión no es válido")
 
     # La comisión es de un plan: la misma carrera puede tener el 2008 y el
     # 2023 conviviendo, con materias distintas.
@@ -504,7 +495,7 @@ def crear_comision(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     if cuerpo.get("planId"):
         plan = _referencia(d.planes_estudio, cuerpo["planId"], "El plan")
         if plan["carreraId"] != carrera["id"]:
-            raise HTTPException(400, "Ese plan no es de esa carrera")
+            raise ErrorDeAPI(400, "Ese plan no es de esa carrera")
 
     d.comisiones.append(
         {
@@ -523,8 +514,7 @@ def crear_comision(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return catalogo(yo)
 
 
-@router.get("/comisiones/{id_comision}", summary="Una comisión con sus materias")
-def ver_comision(id_comision: int, yo: dict = UsuarioActual):
+def ver_comision(id_comision: int, yo: dict ):
     """La comisión, qué materias se dictan en ella y quién las da.
 
     Se listan **todas las materias del plan**, no solo las que ya tienen
@@ -587,9 +577,8 @@ def ver_comision(id_comision: int, yo: dict = UsuarioActual):
     }
 
 
-@router.put("/comisiones/{id_comision}/materias/{id_materia}", summary="Dictar una materia")
 def configurar_dictado(
-    id_comision: int, id_materia: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_comision: int, id_materia: int, cuerpo: dict, yo: dict
 ):
     """Pone una materia a dictarse en la comisión y le asigna docentes.
 
@@ -601,19 +590,19 @@ def configurar_dictado(
     comision = _referencia(d.comisiones, id_comision, "La comisión")
     materia = d.buscar_materia(id_materia)
     if not materia:
-        raise HTTPException(404, "La materia no existe")
+        raise ErrorDeAPI(404, "La materia no existe")
     if materia.get("carreraId") != comision["carreraId"]:
-        raise HTTPException(400, "Esa materia no es de la carrera de la comisión")
+        raise ErrorDeAPI(400, "Esa materia no es de la carrera de la comisión")
 
     docentes = cuerpo.get("docentes") or []
     if not isinstance(docentes, list):
-        raise HTTPException(400, "Los docentes tienen que venir en una lista")
+        raise ErrorDeAPI(400, "Los docentes tienen que venir en una lista")
     for persona_id in docentes:
         persona = d.buscar_persona(persona_id)
         if not persona:
-            raise HTTPException(400, "Una de las personas elegidas no existe")
+            raise ErrorDeAPI(400, "Una de las personas elegidas no existe")
         if not d.tiene_rol(persona, "Docente"):
-            raise HTTPException(
+            raise ErrorDeAPI(
                 400, f"{persona['nombre']} no tiene el rol de docente"
             )
 
@@ -669,8 +658,7 @@ def configurar_dictado(
     return ver_comision(id_comision, yo)
 
 
-@router.delete("/comisiones/{id_comision}/materias/{id_materia}", summary="Dejar de dictarla")
-def quitar_dictado(id_comision: int, id_materia: int, yo: dict = UsuarioActual):
+def quitar_dictado(id_comision: int, id_materia: int, yo: dict ):
     """La materia deja de dictarse en esa comisión.
 
     No toca a los alumnos ya inscriptos: lo que cursaron, cursaron. Deja de
@@ -683,7 +671,7 @@ def quitar_dictado(id_comision: int, id_materia: int, yo: dict = UsuarioActual):
         None,
     )
     if not dictado:
-        raise HTTPException(404, "Esa materia no se dicta en esta comisión")
+        raise ErrorDeAPI(404, "Esa materia no se dicta en esta comisión")
     d.dictados.remove(dictado)
     materia = d.buscar_materia(id_materia)
     if materia:
@@ -704,15 +692,14 @@ def quitar_dictado(id_comision: int, id_materia: int, yo: dict = UsuarioActual):
     return ver_comision(id_comision, yo)
 
 
-@router.patch("/comisiones/{id_comision}", summary="Editar una comisión")
-def editar_comision(id_comision: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_comision(id_comision: int, cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     comision = _referencia(d.comisiones, id_comision, "La comisión")
     if "nombre" in cuerpo:
         comision["nombre"] = _texto(cuerpo["nombre"], "el nombre de la comisión")
     if "turno" in cuerpo:
         if cuerpo["turno"] not in d.TURNOS:
-            raise HTTPException(400, "Ese turno no existe")
+            raise ErrorDeAPI(400, "Ese turno no existe")
         comision["turno"] = cuerpo["turno"]
     if "sedeId" in cuerpo:
         comision["sedeId"] = _referencia(d.sedes, cuerpo["sedeId"], "La sede")["id"]
@@ -722,8 +709,7 @@ def editar_comision(id_comision: int, cuerpo: dict = Body(...), yo: dict = Usuar
     return catalogo(yo)
 
 
-@router.delete("/comisiones/{id_comision}", summary="Dar de baja una comisión")
-def borrar_comision(id_comision: int, yo: dict = UsuarioActual):
+def borrar_comision(id_comision: int, yo: dict ):
     _exigir_administrador(yo)
     comision = _referencia(d.comisiones, id_comision, "La comisión")
     if any(a.get("comisionId") == id_comision for a in d.asociaciones_academicas):
@@ -736,9 +722,8 @@ def borrar_comision(id_comision: int, yo: dict = UsuarioActual):
 
 
 # ===================== Distribución de estudiantes =====================
-@router.get("/asignaciones", summary="Quién está en cada carrera y comisión")
 def asignaciones(
-    yo: dict = UsuarioActual,
+    yo: dict ,
     carreraId: int | None = None,
     sedeId: int | None = None,
     comisionId: int | None = None,
@@ -794,8 +779,7 @@ def asignaciones(
     }
 
 
-@router.get("/legajo-siguiente", summary="El legajo que le tocaría a quien se inscriba")
-def legajo_siguiente(carreraId: int | None = None, yo: dict = UsuarioActual):
+def legajo_siguiente(carreraId: int | None = None, yo: dict = None ):
     """Para mostrarlo en el formulario **antes** de inscribir.
 
     Quien carga ve el número que le va a quedar, en vez de un campo vacío
@@ -818,8 +802,7 @@ def legajo_siguiente(carreraId: int | None = None, yo: dict = UsuarioActual):
     }
 
 
-@router.post("/asignaciones", status_code=201, summary="Inscribir a un estudiante")
-def crear_asignacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_asignacion(cuerpo: dict , yo: dict ):
     """Mete a un estudiante en una carrera, con su sede, comisión y plan.
 
     Es lo que hace el supervisor al ingreso. La comisión puede quedar vacía
@@ -829,48 +812,52 @@ def crear_asignacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
 
     persona = d.buscar_persona(cuerpo.get("personaId"))
     if not persona:
-        raise HTTPException(404, "Esa persona no existe")
+        raise ErrorDeAPI(404, "Esa persona no existe")
     if not d.tiene_rol(persona, "Estudiante"):
-        raise HTTPException(400, "Solo se inscribe a quien tenga el rol de estudiante")
+        raise ErrorDeAPI(400, "Solo se inscribe a quien tenga el rol de estudiante")
 
     carrera = _referencia(d.carreras_institucion, cuerpo.get("carreraId"), "La carrera")
     if not carrera["activa"]:
-        raise HTTPException(400, "Esa carrera está dada de baja")
+        raise ErrorDeAPI(400, "Esa carrera está dada de baja")
 
     sede = _referencia(d.sedes, cuerpo.get("sedeId"), "La sede")
     plan = _referencia(d.planes_estudio, cuerpo.get("planId"), "El plan")
     if plan["carreraId"] != carrera["id"]:
-        raise HTTPException(400, "Ese plan no es de esa carrera")
+        raise ErrorDeAPI(400, "Ese plan no es de esa carrera")
 
     comision = None
     if cuerpo.get("comisionId"):
         comision = _referencia(d.comisiones, cuerpo["comisionId"], "La comisión")
         if comision["carreraId"] != carrera["id"] or comision["sedeId"] != sede["id"]:
-            raise HTTPException(400, "Esa comisión no es de esa carrera y sede")
+            raise ErrorDeAPI(400, "Esa comisión no es de esa carrera y sede")
 
-    # Una persona no se inscribe dos veces a la misma carrera
-    if any(
-        a["personaId"] == persona["id"] and a["carreraId"] == carrera["id"]
-        for a in d.asociaciones_academicas
-    ):
-        raise HTTPException(409, "Esa persona ya está inscripta en esa carrera")
+    # Comprobar, numerar y anotar van juntos (ver `legajos.py`): dos
+    # inscripciones a la vez sacaban el mismo legajo, y la misma persona
+    # mandada dos veces pasaba dos veces por «todavía no está inscripta».
+    with legajos.inscripciones_a_carrera:
+        # Una persona no se inscribe dos veces a la misma carrera
+        if any(
+            a["personaId"] == persona["id"] and a["carreraId"] == carrera["id"]
+            for a in d.asociaciones_academicas
+        ):
+            raise ErrorDeAPI(409, "Esa persona ya está inscripta en esa carrera")
 
-    asociacion = {
-        "id": d.nuevo_id_asociacion(),
-        "personaId": persona["id"],
-        "carreraId": carrera["id"],
-        "sedeId": sede["id"],
-        "comisionId": comision["id"] if comision else None,
-        "planId": plan["id"],
-        # Si no lo escriben, lo arma el sistema: es un contador por carrera
-        # y nadie que carga tiene cómo saber cuál fue el último.
-        "legajo": _texto(cuerpo.get("legajo"), "el legajo", 40, obligatorio=False)
-        or legajos.proximo_de_carrera(carrera["id"], d.ahora().year),
-        "estado": "activa",
-        "desde": d.iso(d.ahora()),
-        "ingreso": d.ahora().year,
-    }
-    d.asociaciones_academicas.append(asociacion)
+        asociacion = {
+            "id": d.nuevo_id_asociacion(),
+            "personaId": persona["id"],
+            "carreraId": carrera["id"],
+            "sedeId": sede["id"],
+            "comisionId": comision["id"] if comision else None,
+            "planId": plan["id"],
+            # Si no lo escriben, lo arma el sistema: es un contador por carrera
+            # y nadie que carga tiene cómo saber cuál fue el último.
+            "legajo": _texto(cuerpo.get("legajo"), "el legajo", 40, obligatorio=False)
+            or legajos.proximo_de_carrera(carrera["id"], d.ahora().year),
+            "estado": "activa",
+            "desde": d.iso(d.ahora()),
+            "ingreso": d.ahora().year,
+        }
+        d.asociaciones_academicas.append(asociacion)
 
     # Pertenecer a la comisión es cursar sus materias: no hace falta
     # inscribirlo a una por una.
@@ -889,8 +876,7 @@ def crear_asignacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     }
 
 
-@router.patch("/asignaciones/{id_asociacion}", summary="Cambiar de comisión o de plan")
-def editar_asignacion(id_asociacion: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_asignacion(id_asociacion: int, cuerpo: dict , yo: dict ):
     """Cambios de comisión, de plan o de estado.
 
     La carrera no se cambia: cambiar de carrera es otra inscripción, con su
@@ -909,7 +895,7 @@ def editar_asignacion(id_asociacion: int, cuerpo: dict = Body(...), yo: dict = U
         else:
             comision = _referencia(d.comisiones, cuerpo["comisionId"], "La comisión")
             if comision["carreraId"] != asociacion["carreraId"]:
-                raise HTTPException(400, "Esa comisión no es de la carrera del estudiante")
+                raise ErrorDeAPI(400, "Esa comisión no es de la carrera del estudiante")
             asociacion["comisionId"] = comision["id"]
             asociacion["sedeId"] = comision["sedeId"]
             # Al cambiarlo de comisión queda en las materias de la nueva
@@ -919,12 +905,12 @@ def editar_asignacion(id_asociacion: int, cuerpo: dict = Body(...), yo: dict = U
     if "planId" in cuerpo:
         plan = _referencia(d.planes_estudio, cuerpo["planId"], "El plan")
         if plan["carreraId"] != asociacion["carreraId"]:
-            raise HTTPException(400, "Ese plan no es de la carrera del estudiante")
+            raise ErrorDeAPI(400, "Ese plan no es de la carrera del estudiante")
         asociacion["planId"] = plan["id"]
 
     if "estado" in cuerpo:
         if cuerpo["estado"] not in d.ESTADOS_ASOCIACION:
-            raise HTTPException(400, "Ese estado no existe")
+            raise ErrorDeAPI(400, "Ese estado no existe")
         asociacion["estado"] = cuerpo["estado"]
 
     if "legajo" in cuerpo:
@@ -947,8 +933,7 @@ def editar_asignacion(id_asociacion: int, cuerpo: dict = Body(...), yo: dict = U
     return {"asociacion": despues, "materiasVinculadas": materias}
 
 
-@router.delete("/asignaciones/{id_asociacion}", summary="Dar de baja una inscripción")
-def borrar_asignacion(id_asociacion: int, yo: dict = UsuarioActual):
+def borrar_asignacion(id_asociacion: int, yo: dict ):
     """Se marca como suspendida, no se borra: el alumno cursó, y eso pasó.
 
     Para sacarlo definitivamente habría que borrar también sus notas y sus
@@ -968,8 +953,7 @@ def borrar_asignacion(id_asociacion: int, yo: dict = UsuarioActual):
 
 
 # ===================== Historial =====================
-@router.get("/historial", summary="Los cambios sobre la estructura y la gente")
-def historial(yo: dict = UsuarioActual):
+def historial(yo: dict ):
     """Los últimos movimientos académicos.
 
     Es una vista del **registro central** de auditoría, no un historial
@@ -1013,7 +997,7 @@ def _grupo_de_correlativas(cuerpo, clave: str, materia_id, plan_id) -> dict:
     grupo = (cuerpo.get("correlativas") or {}).get(clave) or {}
     modo = grupo.get("modo") or "todas"
     if modo not in d.MODOS_CORRELATIVA:
-        raise HTTPException(400, "Ese modo de correlatividad no existe")
+        raise ErrorDeAPI(400, "Ese modo de correlatividad no existe")
 
     salida = []
     vistos = set()
@@ -1021,20 +1005,20 @@ def _grupo_de_correlativas(cuerpo, clave: str, materia_id, plan_id) -> dict:
         try:
             otra_id = int(r.get("materiaId"))
         except (TypeError, ValueError):
-            raise HTTPException(400, "Una correlativa no tiene materia")
+            raise ErrorDeAPI(400, "Una correlativa no tiene materia")
 
         condicion = r.get("condicion") or "Aprobada"
         if condicion not in d.CONDICIONES_CORRELATIVA:
-            raise HTTPException(400, f"La condición «{condicion}» no existe")
+            raise ErrorDeAPI(400, f"La condición «{condicion}» no existe")
 
         if materia_id is not None and otra_id == materia_id:
-            raise HTTPException(400, "Una materia no puede ser correlativa de sí misma")
+            raise ErrorDeAPI(400, "Una materia no puede ser correlativa de sí misma")
 
         otra = d.buscar_materia(otra_id)
         if not otra:
-            raise HTTPException(400, "Una de las correlativas no existe")
+            raise ErrorDeAPI(400, "Una de las correlativas no existe")
         if otra.get("planId") != plan_id:
-            raise HTTPException(
+            raise ErrorDeAPI(
                 400,
                 f"«{otra['nombre']}» es de otro plan de estudio: no puede ser correlativa",
             )
@@ -1048,7 +1032,7 @@ def _grupo_de_correlativas(cuerpo, clave: str, materia_id, plan_id) -> dict:
         for r in salida:
             if _hay_ciclo(materia_id, r["materiaId"], clave):
                 otra = d.buscar_materia(r["materiaId"])
-                raise HTTPException(
+                raise ErrorDeAPI(
                     400,
                     f"«{otra['nombre']}» ya depende de esta materia: quedarían encadenadas "
                     "y ninguna de las dos se podría cursar.",
@@ -1083,7 +1067,7 @@ def _leer_materia(cuerpo: dict, materia_id=None) -> dict:
     carrera = _referencia(d.carreras_institucion, cuerpo.get("carreraId"), "La carrera")
     plan = _referencia(d.planes_estudio, cuerpo.get("planId"), "El plan de estudio")
     if plan.get("carreraId") != carrera["id"]:
-        raise HTTPException(400, "Ese plan no es de la carrera elegida")
+        raise ErrorDeAPI(400, "Ese plan no es de la carrera elegida")
 
     # El código identifica a la materia dentro de su plan: repetido, dos
     # materias distintas se confunden en los listados y en las actas.
@@ -1094,29 +1078,29 @@ def _leer_materia(cuerpo: dict, materia_id=None) -> dict:
         for m in d.materias_plan
     )
     if repetido:
-        raise HTTPException(409, "Ya hay una materia con ese código en este plan")
+        raise ErrorDeAPI(409, "Ya hay una materia con ese código en este plan")
 
     anio = cuerpo.get("anio")
     if not isinstance(anio, int) or not 1 <= anio <= 7:
-        raise HTTPException(400, "El año de cursado va de 1 a 7")
+        raise ErrorDeAPI(400, "El año de cursado va de 1 a 7")
 
     cuatrimestre = cuerpo.get("cuatrimestre")
     if cuatrimestre not in (1, 2, 3):
-        raise HTTPException(400, "El cuatrimestre es 1, 2 o 3 (anual)")
+        raise ErrorDeAPI(400, "El cuatrimestre es 1, 2 o 3 (anual)")
 
     horas = cuerpo.get("cargaHoraria")
     if horas is not None and (not isinstance(horas, int) or not 1 <= horas <= 1000):
-        raise HTTPException(400, "La carga horaria no es válida")
+        raise ErrorDeAPI(400, "La carga horaria no es válida")
 
     modalidad = cuerpo.get("modalidad") or d.MODALIDADES_MATERIA[0]
     if modalidad not in d.MODALIDADES_MATERIA:
-        raise HTTPException(400, "Esa modalidad no existe")
+        raise ErrorDeAPI(400, "Esa modalidad no existe")
 
     # Vacío es **sin límite**, la misma regla que el cupo de una mesa: poner
     # un número por defecto sería inventar un tope que nadie configuró.
     cupo = cuerpo.get("cupo")
     if cupo is not None and (not isinstance(cupo, int) or not 1 <= cupo <= 1000):
-        raise HTTPException(400, "El cupo va de 1 a 1000")
+        raise ErrorDeAPI(400, "El cupo va de 1 a 1000")
 
     return {
         "nombre": nombre,
@@ -1219,8 +1203,7 @@ def _config_academica(yo: dict) -> dict:
     }
 
 
-@router.get("/configuracion", summary="La configuración académica de la facultad")
-def ver_configuracion(yo: dict = UsuarioActual):
+def ver_configuracion(yo: dict ):
     """La ve y la cambia quien supervisa: es el calendario de la secretaría.
 
     El docente y el estudiante no entran acá, pero sí ven el resultado: si
@@ -1231,8 +1214,7 @@ def ver_configuracion(yo: dict = UsuarioActual):
     return _config_academica(yo)
 
 
-@router.put("/configuracion/periodo", summary="Abrir o cerrar la inscripción a materias")
-def cambiar_periodo(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def cambiar_periodo(cuerpo: dict , yo: dict ):
     """Las dos fechas del período de inscripción.
 
     **No se valida contra hoy.** Un período que ya pasó es un dato legítimo
@@ -1245,7 +1227,7 @@ def cambiar_periodo(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     desde = _fecha_de(cuerpo.get("desde"), "la fecha de apertura")
     hasta = _fecha_de(cuerpo.get("hasta"), "la fecha de cierre")
     if hasta < desde:
-        raise HTTPException(400, "La inscripción no puede cerrar antes de abrir")
+        raise ErrorDeAPI(400, "La inscripción no puede cerrar antes de abrir")
 
     antes = dict(d.periodo_inscripcion_materias)
     d.periodo_inscripcion_materias["desde"] = d.iso(desde)
@@ -1261,8 +1243,7 @@ def cambiar_periodo(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return _config_academica(yo)
 
 
-@router.put("/configuracion/asistencia", summary="El mínimo de asistencia exigido")
-def cambiar_asistencia(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def cambiar_asistencia(cuerpo: dict , yo: dict ):
     """El porcentaje que la facultad exige para regularizar.
 
     Cambiarlo **no recalcula nada hacia atrás**: la condición de cada alumno
@@ -1274,11 +1255,11 @@ def cambiar_asistencia(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
 
     minimo = cuerpo.get("minimoPorDefecto")
     if not isinstance(minimo, int) or not MINIMO_ASISTENCIA_MIN <= minimo <= MINIMO_ASISTENCIA_MAX:
-        raise HTTPException(400, "El mínimo de asistencia va de 0 a 100")
+        raise ErrorDeAPI(400, "El mínimo de asistencia va de 0 a 100")
 
     descuenta = cuerpo.get("justificadaDescuenta")
     if not isinstance(descuenta, bool):
-        raise HTTPException(400, "Hay que decir si la falta justificada descuenta")
+        raise ErrorDeAPI(400, "Hay que decir si la falta justificada descuenta")
 
     antes = dict(d.CONFIG_ASISTENCIA)
     d.CONFIG_ASISTENCIA["minimoPorDefecto"] = minimo
@@ -1311,27 +1292,27 @@ def _hora_de(valor, que: str) -> str | None:
     if not texto:
         return None
     if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", texto):
-        raise HTTPException(400, f"{que.capitalize()} tiene que ser una hora como 09:00")
+        raise ErrorDeAPI(400, f"{que.capitalize()} tiene que ser una hora como 09:00")
     return texto
 
 
 def _leer_evento(cuerpo: dict) -> dict:
     tipo = str(cuerpo.get("tipo") or "evento").strip()
     if tipo not in TIPOS_EVENTO:
-        raise HTTPException(400, "Ese tipo de evento no existe")
+        raise ErrorDeAPI(400, "Ese tipo de evento no existe")
 
     fecha = _fecha_de(cuerpo.get("fecha"), "la fecha del evento")
     desde = _hora_de(cuerpo.get("desde"), "la hora de inicio")
     hasta = _hora_de(cuerpo.get("hasta"), "la hora de fin")
     if desde and hasta and hasta < desde:
-        raise HTTPException(400, "El evento no puede terminar antes de empezar")
+        raise ErrorDeAPI(400, "El evento no puede terminar antes de empezar")
 
     # Un evento puede ser de un módulo —un parcial— o de toda la facultad.
     curso_id = cuerpo.get("cursoId")
     if curso_id is not None:
         curso = d.buscar_curso(curso_id)
         if not curso:
-            raise HTTPException(400, "Ese módulo no existe")
+            raise ErrorDeAPI(400, "Ese módulo no existe")
         curso_id = curso["id"]
 
     return {
@@ -1350,8 +1331,7 @@ def _evento_publico(evento: dict) -> dict:
     return {**evento, "curso": curso["nombre"] if curso else None}
 
 
-@router.get("/eventos", summary="Los eventos del calendario académico")
-def listar_eventos(yo: dict = UsuarioActual):
+def listar_eventos(yo: dict ):
     """Los ve quien supervisa. El resto del campus los ve en el Calendario,
     que es donde sirven."""
     _exigir_supervisor(yo)
@@ -1363,8 +1343,7 @@ def listar_eventos(yo: dict = UsuarioActual):
     }
 
 
-@router.post("/eventos", status_code=201, summary="Agregar un evento")
-def crear_evento(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_evento(cuerpo: dict , yo: dict ):
     _exigir_que_administre_lo_academico(yo)
     evento = {"id": d.nuevo_id_evento(), **_leer_evento(cuerpo)}
     d.eventos.append(evento)
@@ -1379,12 +1358,11 @@ def crear_evento(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return _evento_publico(evento)
 
 
-@router.put("/eventos/{id_evento}", summary="Modificar un evento")
-def editar_evento(id_evento: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_evento(id_evento: int, cuerpo: dict , yo: dict ):
     _exigir_que_administre_lo_academico(yo)
     evento = d.buscar_en(d.eventos, id_evento)
     if not evento:
-        raise HTTPException(404, "Ese evento no existe")
+        raise ErrorDeAPI(404, "Ese evento no existe")
 
     antes = {k: evento.get(k) for k in ("titulo", "fecha", "tipo", "lugar")}
     evento.update(_leer_evento({**evento, **cuerpo}))
@@ -1400,14 +1378,13 @@ def editar_evento(id_evento: int, cuerpo: dict = Body(...), yo: dict = UsuarioAc
     return _evento_publico(evento)
 
 
-@router.delete("/eventos/{id_evento}", summary="Quitar un evento")
-def borrar_evento(id_evento: int, yo: dict = UsuarioActual):
+def borrar_evento(id_evento: int, yo: dict ):
     """Se borra de verdad: un evento no deja historial del que colgarse, al
     revés que una materia o una comisión."""
     _exigir_que_administre_lo_academico(yo)
     evento = d.buscar_en(d.eventos, id_evento)
     if not evento:
-        raise HTTPException(404, "Ese evento no existe")
+        raise ErrorDeAPI(404, "Ese evento no existe")
 
     d.eventos.remove(evento)
     _anotar(
@@ -1420,9 +1397,8 @@ def borrar_evento(id_evento: int, yo: dict = UsuarioActual):
     return {"eliminado": id_evento}
 
 
-@router.get("/materias", summary="Todas las materias del plan de estudios")
 def listar_materias(
-    yo: dict = UsuarioActual,
+    yo: dict ,
     q: str | None = None,
     carreraId: int | None = None,
     planId: int | None = None,
@@ -1471,8 +1447,7 @@ def listar_materias(
     }
 
 
-@router.post("/materias", status_code=201, summary="Crear una materia")
-def crear_materia(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_materia(cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     datos = _leer_materia(cuerpo)
 
@@ -1491,12 +1466,11 @@ def crear_materia(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return _materia_completa(materia)
 
 
-@router.patch("/materias/{id_materia}", summary="Editar una materia")
-def editar_materia(id_materia: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def editar_materia(id_materia: int, cuerpo: dict , yo: dict ):
     _exigir_administrador(yo)
     materia = d.buscar_materia(id_materia)
     if not materia:
-        raise HTTPException(404, "Esa materia no existe")
+        raise ErrorDeAPI(404, "Esa materia no existe")
 
     antes = {
         "nombre": materia["nombre"],
@@ -1527,8 +1501,7 @@ def editar_materia(id_materia: int, cuerpo: dict = Body(...), yo: dict = Usuario
     return _materia_completa(materia)
 
 
-@router.delete("/materias/{id_materia}", summary="Dar de baja o eliminar una materia")
-def borrar_materia(id_materia: int, yo: dict = UsuarioActual):
+def borrar_materia(id_materia: int, yo: dict ):
     """Si la materia tiene actividad académica **no se elimina**: se da de baja.
 
     Borrarla dejaría historiales apuntando a una materia que no existe, actas
@@ -1538,7 +1511,7 @@ def borrar_materia(id_materia: int, yo: dict = UsuarioActual):
     _exigir_administrador(yo)
     materia = d.buscar_materia(id_materia)
     if not materia:
-        raise HTTPException(404, "Esa materia no existe")
+        raise ErrorDeAPI(404, "Esa materia no existe")
 
     actividad = _actividad_de_materia(materia)
     tiene_historia = any(

@@ -34,7 +34,9 @@ import {
   IconoCalendario,
 } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 export default function Administracion() {
+  useTitulo('Administración');
   const { vista } = useParams();
   const navegar = useNavigate();
 

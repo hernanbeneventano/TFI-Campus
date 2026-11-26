@@ -1,7 +1,7 @@
 """Pruebas de la Biblioteca.
 
-Corren **dentro del proceso**, con el cliente de pruebas de FastAPI, por el
-mismo motivo que las de Finales: lo que hay que comprobar es quién ve qué, y
+Corren **dentro del proceso**, con el cliente ASGI de Django, por el mismo
+motivo que las de Finales: lo que hay que comprobar es quién ve qué, y
 para eso hay que poder ser el docente de una materia, el de otra, un alumno
 inscripto, uno que no y el supervisor. Contra el servidor en marcha, sin
 login, todos serían la misma persona.
@@ -27,13 +27,11 @@ from __future__ import annotations
 import base64
 import sys
 
-from fastapi.testclient import TestClient
 
 from app import datos as d
-from app.main import app
 
 from . import escenario
-from app.servicios.autenticacion import identificar, identificar_id
+from .cliente import como, crear_cliente
 
 BASE = "/api/biblioteca"
 
@@ -52,20 +50,12 @@ DISCRETA = 116  # la cursa Hernán, no Santiago
 pasadas = 0
 fallas: list[str] = []
 
-_quien = {"id": SANTIAGO}
 # El campus arranca vacío, así que las pruebas cargan el suyo. Ver
 # `escenario.py`: no toca ningún archivo, solo la memoria de este proceso.
 escenario.cargar()
 
-app.dependency_overrides[identificar] = lambda: d.buscar_persona(_quien["id"])
-# Algunas rutas piden solo el identificador: esa es otra dependencia y hay
-# que suplantarla también, o se resuelve contra la sesión de verdad.
-app.dependency_overrides[identificar_id] = lambda: _quien["id"]
-cliente = TestClient(app)
-
-
-def como(persona_id: int) -> None:
-    _quien["id"] = persona_id
+cliente = crear_cliente()
+como(SANTIAGO)
 
 
 def comprobar(nombre: str, condicion: bool, detalle=None) -> None:

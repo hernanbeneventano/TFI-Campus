@@ -30,6 +30,7 @@ import {
   IconoInscribirse,
 } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 // Cada estado con su color y su ícono. Son los mismos tres niveles que usan
 // las barras de avance: verde lo terminado, ámbar lo que está en marcha,
 // gris lo que no se puede todavía.
@@ -175,6 +176,7 @@ function Materia({ materia, onInscribirse, onBaja, trabajando }) {
 }
 
 export default function InscripcionMaterias() {
+  useTitulo('Inscribirme');
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);

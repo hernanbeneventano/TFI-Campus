@@ -12,6 +12,7 @@ los días.
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -739,10 +740,19 @@ _proximos = {
 }
 
 
+# Leer el contador y sumarle uno son dos pasos: dos peticiones a la vez
+# podrían leer el mismo número. En CPython 3.11 no pasa porque el intérprete
+# no cambia de hilo entre esas dos líneas, pero eso es un detalle de esta
+# versión, no una garantía: el candado sí lo es. Cubre solo el contador, no
+# toma ningún otro adentro, y se lo puede pedir con otro candado tomado.
+_contando = threading.Lock()
+
+
 def _nuevo_id(clave: str) -> int:
-    valor = _proximos[clave]
-    _proximos[clave] = valor + 1
-    return valor
+    with _contando:
+        valor = _proximos[clave]
+        _proximos[clave] = valor + 1
+        return valor
 
 
 def nuevo_id_mensaje() -> int:

@@ -19,6 +19,7 @@
  */
 
 import { salir } from './sesion.js';
+import { api } from './destino.js';
 
 const CLAVE = 'campustfi:instancia';
 
@@ -47,7 +48,7 @@ function guardar(valor) {
 export async function cerrarSiElServidorReinicio() {
   let instancia;
   try {
-    const respuesta = await fetch('/api/salud');
+    const respuesta = await fetch(api('/salud'));
     if (!respuesta.ok) return false;
     instancia = (await respuesta.json()).instancia;
   } catch {

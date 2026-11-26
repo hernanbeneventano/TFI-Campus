@@ -65,6 +65,7 @@ import {
 } from '../components/Iconos.jsx';
 import Avatar from '../components/Avatar.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 function formatearFecha(iso) {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 }
@@ -250,6 +251,7 @@ export default function Modulo() {
   const [versionNotas, setVersionNotas] = useState(0);
 
   const puedeGestionar = Boolean(datos?.puedeGestionar);
+  useTitulo(datos?.curso?.nombre ?? 'Módulo');
 
   const traerSeguimiento = useCallback(() => {
     obtenerSeguimiento(id).then(setSeguimiento).catch(() => setSeguimiento(null));

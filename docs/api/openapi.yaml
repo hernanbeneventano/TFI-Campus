@@ -6,15 +6,15 @@ info:
   description: |
     Interfaz de programación del campus virtual CampusTFI.
 
-    **Estado actual.** Todavía no hay inicio de sesión. Todas las operaciones se
-    resuelven como si las realizara un usuario de prueba fijo, definido en
-    `backend/app/datos.py`. El servidor usa FastAPI.
+    **Implementación.** Django atiende las rutas mediante URLconf y vistas.
+    La autenticación de las peticiones se valida a partir del token de
+    Firebase.
 
-    **Datos.** Residen en memoria y se reinician al reiniciar el servidor. La
-    persistencia en una base de datos todavía no está implementada.
+    **Datos.** Firestore es la persistencia cuando está configurada; las
+    pruebas pueden trabajar con datos aislados en memoria.
 
-    Para probar los puntos de acceso se puede importar este archivo en Postman o
-    abrirlo con Swagger Editor.
+    Este archivo describe el contrato HTTP documentado y se puede importar en
+    Postman o abrir con Swagger Editor. No se genera en tiempo de ejecución.
 
 servers:
   - url: http://localhost:3000/api

@@ -26,6 +26,7 @@ import {
   IconoActividad,
 } from '../components/Iconos.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 const FILTROS_VACIOS = {
   q: '',
   usuarioId: '',
@@ -176,6 +177,7 @@ function Movimiento({ id, onCerrar }) {
 }
 
 export default function Auditoria({ dentroDeAdministracion = false }) {
+  useTitulo(dentroDeAdministracion ? 'Administración' : 'Actividad');
   const [opciones, setOpciones] = useState(null);
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [escrito, setEscrito] = useState('');

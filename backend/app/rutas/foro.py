@@ -4,13 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import auditoria
-from ..servicios.autenticacion import UsuarioActual
-
-router = APIRouter(prefix="/api/foro", tags=["Foro"])
 
 
 def _modera(persona: dict | None) -> bool:
@@ -100,12 +97,11 @@ def _detalle_de(tema: dict, yo: dict) -> dict:
 def _buscar_tema(id_tema: int) -> dict:
     tema = next((t for t in d.temas_foro if t["id"] == id_tema), None)
     if not tema:
-        raise HTTPException(404, "Tema no encontrado")
+        raise ErrorDeAPI(404, "Tema no encontrado")
     return tema
 
 
-@router.get("", summary="Los temas y las asignaturas que tienen alguno")
-def listar_temas(yo: dict = UsuarioActual):
+def listar_temas(yo: dict):
     temas = sorted(
         (_resumir(t, yo) for t in d.temas_foro),
         key=lambda t: d.desde_iso(t["ultimaActividad"]),
@@ -121,16 +117,15 @@ def listar_temas(yo: dict = UsuarioActual):
     return {"temas": temas, "asignaturas": asignaturas}
 
 
-@router.post("", status_code=201, summary="Abrir un tema")
-def crear_tema(cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def crear_tema(cuerpo: dict[str, Any], yo: dict):
     curso = _curso_de(cuerpo.get("cursoId"))
     titulo = str(cuerpo.get("titulo") or "").strip()
     texto = str(cuerpo.get("texto") or "").strip()
 
     if not curso:
-        raise HTTPException(400, "Hay que elegir una asignatura")
+        raise ErrorDeAPI(400, "Hay que elegir una asignatura")
     if not titulo or not texto:
-        raise HTTPException(400, "El tema necesita un título y una consulta")
+        raise ErrorDeAPI(400, "El tema necesita un título y una consulta")
 
     ahora = d.iso(d.ahora())
     tema = {
@@ -155,20 +150,18 @@ def crear_tema(cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActu
     return _resumir(tema, yo)
 
 
-@router.get("/{id_tema}", summary="Abrir un tema con sus respuestas")
-def obtener_tema(id_tema: int, yo: dict = UsuarioActual):
+def obtener_tema(id_tema: int, yo: dict):
     return _detalle_de(_buscar_tema(id_tema), yo)
 
 
-@router.post("/{id_tema}", status_code=201, summary="Responder un tema")
 def responder(
-    id_tema: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_tema: int, cuerpo: dict[str, Any], yo: dict
 ):
     tema = _buscar_tema(id_tema)
 
     texto = str(cuerpo.get("texto") or "").strip()
     if not texto:
-        raise HTTPException(400, "La respuesta no puede estar vacía")
+        raise ErrorDeAPI(400, "La respuesta no puede estar vacía")
 
     mensaje = {
         "id": d.nuevo_id_mensaje_foro(),
@@ -182,8 +175,7 @@ def responder(
     return {**_con_votos(mensaje, yo), "autor": _autor_de(yo["id"])}
 
 
-@router.post("/{id_tema}/seguir", summary="Seguir el tema, o dejar de seguirlo")
-def seguir(id_tema: int, yo: dict = UsuarioActual):
+def seguir(id_tema: int, yo: dict):
     """Por ahora solo se guarda: los avisos van a llegar cuando haya
     notificaciones de verdad."""
     tema = _buscar_tema(id_tema)
@@ -198,15 +190,14 @@ def seguir(id_tema: int, yo: dict = UsuarioActual):
     return _detalle_de(tema, yo)
 
 
-@router.post("/{id_tema}/mensajes/{id_mensaje}/voto", summary="Marcar una respuesta como útil")
-def votar(id_tema: int, id_mensaje: int, yo: dict = UsuarioActual):
+def votar(id_tema: int, id_mensaje: int, yo: dict):
     """O sacar el voto, si ya estaba puesto."""
     tema = next((t for t in d.temas_foro if t["id"] == id_tema), None)
     mensaje = (
         next((m for m in tema["mensajes"] if m["id"] == id_mensaje), None) if tema else None
     )
     if not mensaje:
-        raise HTTPException(404, "Mensaje no encontrado")
+        raise ErrorDeAPI(404, "Mensaje no encontrado")
 
     votos = mensaje.setdefault("votos", [])
     mensaje["votos"] = (
@@ -232,21 +223,20 @@ def _exigir_retiro(autor_id: int, yo: dict, cuerpo: dict) -> tuple[bool, str]:
     """Comprueba quién retira y devuelve si es suyo y con qué motivo."""
     es_mio = autor_id == yo["id"]
     if not es_mio and not _modera(yo):
-        raise HTTPException(
+        raise ErrorDeAPI(
             403, "Solo quien lo escribió, o la administración, pueden retirarlo"
         )
 
     motivo = str(cuerpo.get("motivo") or "").strip()
     if not es_mio and not motivo:
-        raise HTTPException(400, "Hay que indicar por qué se retira")
+        raise ErrorDeAPI(400, "Hay que indicar por qué se retira")
     if len(motivo) > 500:
-        raise HTTPException(400, "El motivo es demasiado largo")
+        raise ErrorDeAPI(400, "El motivo es demasiado largo")
     return es_mio, motivo
 
 
-@router.delete("/{id_tema}", summary="Retirar un tema entero")
 def retirar_tema(
-    id_tema: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_tema: int, cuerpo: dict[str, Any], yo: dict
 ):
     """Se lleva el tema y todas sus respuestas.
 
@@ -281,12 +271,11 @@ def retirar_tema(
     return {"retirado": tema["id"]}
 
 
-@router.delete("/{id_tema}/mensajes/{id_mensaje}", summary="Retirar una respuesta")
 def retirar_respuesta(
     id_tema: int,
     id_mensaje: int,
-    cuerpo: dict[str, Any] = Body(default={}),
-    yo: dict = UsuarioActual,
+    cuerpo: dict[str, Any],
+    yo: dict,
 ):
     """Saca una respuesta suelta.
 
@@ -299,9 +288,9 @@ def retirar_respuesta(
 
     mensaje = next((m for m in mensajes if m["id"] == id_mensaje), None)
     if not mensaje:
-        raise HTTPException(404, "Esa respuesta no existe")
+        raise ErrorDeAPI(404, "Esa respuesta no existe")
     if mensajes and mensajes[0]["id"] == id_mensaje:
-        raise HTTPException(
+        raise ErrorDeAPI(
             409,
             "Esa es la consulta que abre el tema: para sacarla hay que retirar el tema entero",
         )

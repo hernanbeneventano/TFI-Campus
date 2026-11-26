@@ -24,9 +24,11 @@ import {
   IconoCheckChico,
   IconoPulgar,
   IconoDuda,
+  IconoSubir,
 } from '../components/Iconos.jsx';
 import Avatar from '../components/Avatar.jsx';
 
+import useTitulo from '../hooks/useTitulo';
 // Lo mismo que exige el servidor (`IMAGENES_MAX_MB` en servicios/archivos.py).
 const MAXIMO_IMAGEN_MB = 10;
 
@@ -597,6 +599,7 @@ function Publicacion({ publicacion, onEditar, onRetirar, onAbrir, onReaccionar }
 }
 
 export default function Novedades() {
+  useTitulo('Novedades');
   const [datos, setDatos] = useState(null);
   const [escribiendo, setEscribiendo] = useState(false);
   // La novedad que se está leyendo entera, superpuesta

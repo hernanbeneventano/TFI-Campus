@@ -78,18 +78,27 @@ export const IconoEstrella = ({ llena, ...p }) => (
   </svg>
 );
 
-// Logo: birrete sobre un libro abierto
-export const Logo = (p) => (
-  <svg width={64} height={64} viewBox="0 0 64 64" fill="none" aria-hidden="true" {...p}>
-    <path d="M32 8L6 19l26 11 26-11L32 8z" fill="currentColor" />
-    <path d="M16 24v9c0 4 7 7 16 7s16-3 16-7v-9l-16 7-16-7z" fill="currentColor" />
-    <path d="M52 20v10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-    <circle cx="52" cy="32" r="2.5" fill="currentColor" />
-    <path
-      d="M8 46c8-3 17-3 24 2 7-5 16-5 24-2v8c-8-3-17-3-24 2-7-5-16-5-24-2v-8z"
-      fill="currentColor"
-    />
-  </svg>
+// Logo: el escudo del campus. Es una imagen y no un SVG dibujado acá: es el
+// logo de la marca, blanco sobre transparente, y va siempre sobre fondo
+// oscuro (el menú, la barra y la tarjeta del inicio de sesión). Sale de
+// `public/logo-campus.png`, una versión de 256 px recortada al escudo; el
+// original pesa 700 KB y no tiene por qué bajar en cada visita.
+//
+// La ruta se arma con BASE_URL y no se escribe fija: Vite reescribe las
+// rutas de index.html y las del CSS cuando el sitio no vive en la raíz del
+// dominio, pero no las cadenas que están dentro del JavaScript. Con `/` fija,
+// en GitHub Pages el logo se pediría a la raíz del dominio y no estaría.
+export const Logo = ({ width = 64, height = 64, ...p }) => (
+  <img
+    src={`${import.meta.env.BASE_URL}logo-campus.png`}
+    width={width}
+    height={height}
+    alt=""
+    aria-hidden="true"
+    draggable="false"
+    className="logo-campus"
+    {...p}
+  />
 );
 
 export const IconoVolver = (p) => (

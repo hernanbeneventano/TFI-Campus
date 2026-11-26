@@ -755,7 +755,7 @@ select {
     flex-direction: row;
     margin: 0;
   }
-  .menu-logo svg {
+  .menu-logo .logo-campus {
     width: 32px;
     height: 32px;
   }
@@ -1854,7 +1854,7 @@ a.panel-tarea:focus-visible {
     display: none;
   }
 
-  .menu.cerrado .menu-logo svg {
+  .menu.cerrado .menu-logo .logo-campus {
     width: 40px;
     height: 40px;
   }
@@ -13626,4 +13626,11 @@ input[type='time']::-webkit-calendar-picker-indicator:hover {
 .visor-entrega-sin {
   flex: none;
   padding-right: 12px;
+}
+
+/* El escudo del campus es una imagen (ver `Logo` en Iconos.jsx): que no se
+   deforme si algún contenedor le cambia una sola medida. */
+.logo-campus {
+  object-fit: contain;
+  flex-shrink: 0;
 }

@@ -18,14 +18,12 @@ cambia ahí y nada más.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import asistencias as asis
 from ..servicios import auditoria
-from ..servicios.autenticacion import UsuarioActual
 
-router = APIRouter(prefix="/api", tags=["Asistencias"])
 
 MAX_TEMA = 200
 MAX_MOTIVO = 1000
@@ -48,18 +46,18 @@ def puede_administrar(yo: dict, curso: dict) -> bool:
 def _curso_que_administra(id_curso: int, yo: dict) -> dict:
     curso = d.buscar_curso(id_curso)
     if not curso:
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
     if not puede_administrar(yo, curso):
-        raise HTTPException(403, "Solo el docente a cargo maneja las asistencias de este módulo")
+        raise ErrorDeAPI(403, "Solo el docente a cargo maneja las asistencias de este módulo")
     return curso
 
 
 def _curso_en_el_que_estoy(id_curso: int, yo: dict) -> dict:
     curso = d.buscar_curso(id_curso)
     if not curso:
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
     if not any(p["id"] == yo["id"] for p in d.participantes_de_curso(curso)):
-        raise HTTPException(403, "No cursás este módulo")
+        raise ErrorDeAPI(403, "No cursás este módulo")
     return curso
 
 
@@ -70,13 +68,13 @@ def _alumnos_de(curso: dict) -> list[dict]:
 def _texto(valor, campo: str, maximo: int, obligatorio: bool = True) -> str | None:
     if valor is None or (isinstance(valor, str) and not valor.strip()):
         if obligatorio:
-            raise HTTPException(400, f"Falta {campo}")
+            raise ErrorDeAPI(400, f"Falta {campo}")
         return None
     if not isinstance(valor, str):
-        raise HTTPException(400, f"{campo} tiene que ser texto")
+        raise ErrorDeAPI(400, f"{campo} tiene que ser texto")
     limpio = valor.strip()
     if len(limpio) > maximo:
-        raise HTTPException(400, f"{campo} no puede pasar de {maximo} caracteres")
+        raise ErrorDeAPI(400, f"{campo} no puede pasar de {maximo} caracteres")
     return limpio
 
 
@@ -86,13 +84,12 @@ def _buscar_clase(id_clase: int, curso_id: int) -> dict:
         None,
     )
     if not clase:
-        raise HTTPException(404, "La clase no existe en este módulo")
+        raise ErrorDeAPI(404, "La clase no existe en este módulo")
     return clase
 
 
 # ===================== Planificación =====================
-@router.get("/cursos/{id_curso}/asistencias/planificacion", summary="Las clases previstas")
-def ver_planificacion(id_curso: int, yo: dict = UsuarioActual):
+def ver_planificacion(id_curso: int, yo: dict ):
     """Cuántas clases hay previstas y cuántas se dictaron.
 
     La ven docente y alumno: el alumno necesita saber desde el primer día
@@ -100,11 +97,11 @@ def ver_planificacion(id_curso: int, yo: dict = UsuarioActual):
     """
     curso = d.buscar_curso(id_curso)
     if not curso:
-        raise HTTPException(404, "El módulo no existe")
+        raise ErrorDeAPI(404, "El módulo no existe")
     if not puede_administrar(yo, curso) and not any(
         p["id"] == yo["id"] for p in d.participantes_de_curso(curso)
     ):
-        raise HTTPException(403, "No tenés acceso a este módulo")
+        raise ErrorDeAPI(403, "No tenés acceso a este módulo")
 
     plan = asis.planificacion_de(id_curso)
     dictadas = asis.clases_de(id_curso, solo_dictadas=True)
@@ -130,8 +127,7 @@ def ver_planificacion(id_curso: int, yo: dict = UsuarioActual):
     }
 
 
-@router.put("/cursos/{id_curso}/asistencias/planificacion", summary="Fijar las clases previstas")
-def guardar_planificacion(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def guardar_planificacion(id_curso: int, cuerpo: dict , yo: dict ):
     """Lo único que decide la cátedra es cuántas clases va a dar.
 
     El porcentaje mínimo lo fija la institución (75 %) y no se toca desde
@@ -141,11 +137,11 @@ def guardar_planificacion(id_curso: int, cuerpo: dict = Body(...), yo: dict = Us
 
     total = cuerpo.get("clasesPlanificadas")
     if not isinstance(total, int) or not 1 <= total <= 300:
-        raise HTTPException(400, "Las clases previstas tienen que ser un número de 1 a 300")
+        raise ErrorDeAPI(400, "Las clases previstas tienen que ser un número de 1 a 300")
 
     dictadas = len(asis.clases_de(id_curso, solo_dictadas=True))
     if total < dictadas:
-        raise HTTPException(
+        raise ErrorDeAPI(
             400,
             f"Ya se dictaron {dictadas} clases: no se pueden planificar menos.",
         )
@@ -216,8 +212,7 @@ def _auditar(yo, accion, curso_id, **extra):
 
 
 # ===================== Las clases y la lista =====================
-@router.get("/cursos/{id_curso}/asistencias/clases", summary="Las clases de la materia")
-def listar_clases(id_curso: int, yo: dict = UsuarioActual):
+def listar_clases(id_curso: int, yo: dict ):
     """Las clases con cuántos presentes tuvo cada una, de la última a la
     primera: el docente casi siempre viene a tomar la de hoy."""
     curso = _curso_que_administra(id_curso, yo)
@@ -238,8 +233,7 @@ def listar_clases(id_curso: int, yo: dict = UsuarioActual):
     }
 
 
-@router.post("/cursos/{id_curso}/asistencias/clases", status_code=201, summary="Registrar una clase")
-def crear_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def crear_clase(id_curso: int, cuerpo: dict , yo: dict ):
     """Da de alta una clase para poder tomarle lista.
 
     Una clase **suspendida** se registra igual: deja constancia de por qué no
@@ -249,23 +243,23 @@ def crear_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActua
 
     fecha = cuerpo.get("fecha")
     if not isinstance(fecha, str) or not fecha.strip():
-        raise HTTPException(400, "Falta la fecha de la clase")
+        raise ErrorDeAPI(400, "Falta la fecha de la clase")
     try:
         cuando = d.desde_iso(fecha)
     except ValueError:
-        raise HTTPException(400, "La fecha no es válida")
+        raise ErrorDeAPI(400, "La fecha no es válida")
     if cuando > d.ahora():
-        raise HTTPException(400, "No se puede tomar lista de una clase que todavía no pasó")
+        raise ErrorDeAPI(400, "No se puede tomar lista de una clase que todavía no pasó")
 
     # Una sola clase por materia y día: si no, la misma clase cargada dos
     # veces le cuenta doble falta al que no fue.
     dia = d.clave_dia(fecha)
     if any(d.clave_dia(c["fecha"]) == dia for c in asis.clases_de(id_curso)):
-        raise HTTPException(409, "Ya hay una clase registrada para ese día")
+        raise ErrorDeAPI(409, "Ya hay una clase registrada para ese día")
 
     estado = cuerpo.get("estado") or "dictada"
     if estado not in ("dictada", "suspendida"):
-        raise HTTPException(400, "La clase es dictada o suspendida")
+        raise ErrorDeAPI(400, "La clase es dictada o suspendida")
 
     clase = {
         "id": d.nuevo_id_clase_asistencia(),
@@ -282,8 +276,7 @@ def crear_clase(id_curso: int, cuerpo: dict = Body(...), yo: dict = UsuarioActua
     return listar_clases(id_curso, yo)
 
 
-@router.get("/cursos/{id_curso}/asistencias/clases/{id_clase}", summary="La lista de una clase")
-def ver_clase(id_curso: int, id_clase: int, yo: dict = UsuarioActual):
+def ver_clase(id_curso: int, id_clase: int, yo: dict ):
     """Los alumnos de la materia con lo que tenga cada uno en esa clase.
 
     Van todos, con o sin registro: tomar lista es completar la lista entera,
@@ -323,9 +316,8 @@ def ver_clase(id_curso: int, id_clase: int, yo: dict = UsuarioActual):
     }
 
 
-@router.put("/cursos/{id_curso}/asistencias/clases/{id_clase}", summary="Guardar la lista")
 def guardar_lista(
-    id_curso: int, id_clase: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_curso: int, id_clase: int, cuerpo: dict, yo: dict
 ):
     """Guarda la asistencia de toda la clase de una vez.
 
@@ -337,7 +329,7 @@ def guardar_lista(
     clase = _buscar_clase(id_clase, id_curso)
 
     if clase["estado"] == "suspendida":
-        raise HTTPException(400, "La clase está suspendida: no hay lista que tomar")
+        raise ErrorDeAPI(400, "La clase está suspendida: no hay lista que tomar")
 
     # Un registro cerrado solo lo corrige quien tiene permiso, y dejando el
     # motivo: es lo que convierte una corrección en algo auditable.
@@ -347,19 +339,19 @@ def guardar_lista(
 
     registros = cuerpo.get("asistencias")
     if not isinstance(registros, list) or not registros:
-        raise HTTPException(400, "Falta la lista")
+        raise ErrorDeAPI(400, "Falta la lista")
 
     alumnos = {a["id"]: a for a in _alumnos_de(curso)}
     validados = []
     for fila in registros:
         if not isinstance(fila, dict):
-            raise HTTPException(400, "La lista no tiene el formato esperado")
+            raise ErrorDeAPI(400, "La lista no tiene el formato esperado")
         persona_id = fila.get("personaId")
         if persona_id not in alumnos:
-            raise HTTPException(400, "Hay alguien en la lista que no cursa este módulo")
+            raise ErrorDeAPI(400, "Hay alguien en la lista que no cursa este módulo")
         estado = fila.get("estado")
         if estado not in d.ESTADOS_ASISTENCIA:
-            raise HTTPException(400, f"«{estado}» no es un estado de asistencia válido")
+            raise ErrorDeAPI(400, f"«{estado}» no es un estado de asistencia válido")
         validados.append(
             {
                 "personaId": persona_id,
@@ -371,7 +363,7 @@ def guardar_lista(
         )
 
     if len({f["personaId"] for f in validados}) != len(validados):
-        raise HTTPException(400, "Hay un alumno repetido en la lista")
+        raise ErrorDeAPI(400, "Hay un alumno repetido en la lista")
 
     # Recién ahora se escribe
     for fila in validados:
@@ -408,8 +400,7 @@ def guardar_lista(
 
 
 # ===================== El curso visto por el docente =====================
-@router.get("/cursos/{id_curso}/asistencias/alumnos", summary="Cómo viene cada alumno")
-def asistencia_por_alumno(id_curso: int, yo: dict = UsuarioActual):
+def asistencia_por_alumno(id_curso: int, yo: dict ):
     """El porcentaje de cada alumno, los que están en riesgo primero."""
     curso = _curso_que_administra(id_curso, yo)
     alumnos = _alumnos_de(curso)
@@ -435,8 +426,7 @@ def asistencia_por_alumno(id_curso: int, yo: dict = UsuarioActual):
 
 
 # ===================== Lo que ve el alumno =====================
-@router.get("/asistencias/mi-situacion", summary="Mis asistencias en todas mis materias")
-def mi_situacion(yo: dict = UsuarioActual):
+def mi_situacion(yo: dict ):
     """Una fila por materia, con lo suyo y nada de nadie más.
 
     De quién son los datos sale de la sesión: no hay parámetro que permita
@@ -475,8 +465,7 @@ def mi_situacion(yo: dict = UsuarioActual):
     }
 
 
-@router.get("/cursos/{id_curso}/asistencias/mi-detalle", summary="Mi asistencia en una materia")
-def mi_detalle(id_curso: int, yo: dict = UsuarioActual):
+def mi_detalle(id_curso: int, yo: dict ):
     """Clase por clase, con el estado de cada una y si pedí justificarla."""
     curso = _curso_en_el_que_estoy(id_curso, yo)
     clases = asis.clases_de(id_curso)
@@ -522,8 +511,7 @@ def mi_detalle(id_curso: int, yo: dict = UsuarioActual):
 
 
 # ===================== Justificaciones =====================
-@router.get("/asistencias/justificaciones", summary="Las justificaciones que me tocan")
-def listar_justificaciones(yo: dict = UsuarioActual):
+def listar_justificaciones(yo: dict ):
     """Al alumno, las suyas. Al docente, las de sus materias.
 
     Las pendientes primero: son las que hay que resolver.
@@ -564,8 +552,7 @@ def listar_justificaciones(yo: dict = UsuarioActual):
     }
 
 
-@router.post("/asistencias/justificaciones", status_code=201, summary="Pedir una justificación")
-def pedir_justificacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def pedir_justificacion(cuerpo: dict , yo: dict ):
     """Un alumno pide que le justifiquen una falta.
 
     Solo de una falta propia y real: si no faltó, o ya pidió por esa clase,
@@ -574,15 +561,15 @@ def pedir_justificacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     id_clase = cuerpo.get("claseId")
     clase = next((c for c in d.clases_asistencia if c["id"] == id_clase), None)
     if not clase:
-        raise HTTPException(404, "La clase no existe")
+        raise ErrorDeAPI(404, "La clase no existe")
 
     curso = _curso_en_el_que_estoy(clase["cursoId"], yo)
 
     registro = asis.registro_de(id_clase, yo["id"])
     if not registro or registro["estado"] != asis.AUSENTE:
-        raise HTTPException(400, "Esa clase no figura como una falta tuya")
+        raise ErrorDeAPI(400, "Esa clase no figura como una falta tuya")
     if asis.justificacion_de(yo["id"], id_clase):
-        raise HTTPException(409, "Ya pediste justificar esa falta")
+        raise ErrorDeAPI(409, "Ya pediste justificar esa falta")
 
     motivo = _texto(cuerpo.get("motivo"), "el motivo", MAX_MOTIVO)
     archivo = _texto(cuerpo.get("archivo"), "el archivo", 200, obligatorio=False)
@@ -615,9 +602,8 @@ def pedir_justificacion(cuerpo: dict = Body(...), yo: dict = UsuarioActual):
     return listar_justificaciones(yo)
 
 
-@router.put("/asistencias/justificaciones/{id_justificacion}", summary="Resolver una justificación")
 def resolver_justificacion(
-    id_justificacion: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual
+    id_justificacion: int, cuerpo: dict, yo: dict
 ):
     """Aprobar o rechazar.
 
@@ -630,13 +616,13 @@ def resolver_justificacion(
         (j for j in d.justificaciones if j["id"] == id_justificacion), None
     )
     if not justificacion:
-        raise HTTPException(404, "La justificación no existe")
+        raise ErrorDeAPI(404, "La justificación no existe")
 
     curso = _curso_que_administra(justificacion["cursoId"], yo)
 
     estado = cuerpo.get("estado")
     if estado not in ("Aprobada", "Rechazada"):
-        raise HTTPException(400, "La justificación se aprueba o se rechaza")
+        raise ErrorDeAPI(400, "La justificación se aprueba o se rechaza")
 
     observacion = _texto(
         cuerpo.get("observacion"),
@@ -683,8 +669,7 @@ def resolver_justificacion(
 
 
 # ===================== Historial de cambios =====================
-@router.get("/cursos/{id_curso}/asistencias/historial", summary="Quién cambió qué")
-def historial(id_curso: int, yo: dict = UsuarioActual):
+def historial(id_curso: int, yo: dict ):
     """Las correcciones hechas sobre los registros de la materia."""
     _curso_que_administra(id_curso, yo)
     clases = {c["id"] for c in asis.clases_de(id_curso)}

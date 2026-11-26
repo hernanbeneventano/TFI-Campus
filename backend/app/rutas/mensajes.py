@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import secrets
+import threading
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm
 from ..servicios import archivos, fotos
-from ..servicios.autenticacion import IdUsuarioActual
 
-router = APIRouter(prefix="/api/mensajes", tags=["Mensajes"])
 
 # Mientras no haya login, el que escribe es siempre el usuario de prueba.
 # Una conversación es **de las dos personas que están en ella y de nadie
@@ -80,12 +79,11 @@ def _resumir(conversacion: dict, yo: int) -> dict:
 def _buscar(id_conversacion: int, yo: int) -> dict:
     conversacion = next((c for c in d.conversaciones if c["id"] == id_conversacion), None)
     if not conversacion or not _es_mia(conversacion, yo):
-        raise HTTPException(404, "Conversación no encontrada")
+        raise ErrorDeAPI(404, "Conversación no encontrada")
     return conversacion
 
 
-@router.get("", summary="Las conversaciones del usuario y el total sin leer")
-def listar_conversaciones(yo: int = IdUsuarioActual):
+def listar_conversaciones(yo: int):
     lista = sorted(
         (_resumir(c, yo) for c in d.conversaciones if _es_mia(c, yo)),
         key=lambda c: d.desde_iso(c["ultimo"]["fecha"]) if c["ultimo"] else d.desde_iso("1970-01-01T00:00:00.000Z"),
@@ -94,15 +92,13 @@ def listar_conversaciones(yo: int = IdUsuarioActual):
     return {"conversaciones": lista, "sinLeer": sum(c["sinLeer"] for c in lista)}
 
 
-@router.get("/contactos", summary="Gente de tus módulos con la que podés hablar")
-def listar_contactos(yo: int = IdUsuarioActual):
+def listar_contactos(yo: int):
     """Va declarada antes que /{id}: si no, "contactos" se tomaría como un
     identificador."""
     return [{**d.con_presencia(c), "modulos": c["modulos"]} for c in d.contactos_de(yo)]
 
 
-@router.get("/{id_conversacion}", summary="Abrir una conversación y darla por leída")
-def obtener_conversacion(id_conversacion: int, yo: int = IdUsuarioActual):
+def obtener_conversacion(id_conversacion: int, yo: int):
     conversacion = _buscar(id_conversacion, yo)
 
     for mensaje in conversacion["mensajes"]:
@@ -136,7 +132,7 @@ def _guardar_adjunto(crudo: dict, conversacion: dict, yo: int) -> dict:
     try:
         alm.subir(objeto, contenido, ficha["tipo"])
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(502, f"No se pudo guardar «{ficha['nombre']}»: {error}")
+        raise ErrorDeAPI(502, f"No se pudo guardar «{ficha['nombre']}»: {error}")
 
     alm.registrar(
         objeto,
@@ -160,9 +156,8 @@ def _guardar_adjunto(crudo: dict, conversacion: dict, yo: int) -> dict:
     }
 
 
-@router.post("/{id_conversacion}", status_code=201, summary="Enviar un mensaje")
 def enviar_mensaje(
-    id_conversacion: int, cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUsuarioActual
+    id_conversacion: int, cuerpo: dict[str, Any], yo: int
 ):
     conversacion = _buscar(id_conversacion, yo)
 
@@ -181,7 +176,7 @@ def enviar_mensaje(
             adjuntos.append(_guardar_adjunto(a or {}, conversacion, yo))
 
     if not texto and not adjuntos:
-        raise HTTPException(400, "El mensaje no puede estar vacío")
+        raise ErrorDeAPI(400, "El mensaje no puede estar vacío")
 
     mensaje = {
         "id": d.nuevo_id_mensaje(),
@@ -199,16 +194,15 @@ def enviar_mensaje(
 def _buscar_mensaje(conversacion: dict, id_mensaje: int) -> dict:
     mensaje = next((m for m in conversacion["mensajes"] if m["id"] == id_mensaje), None)
     if not mensaje:
-        raise HTTPException(404, "Ese mensaje no existe")
+        raise ErrorDeAPI(404, "Ese mensaje no existe")
     return mensaje
 
 
-@router.patch("/{id_conversacion}/mensajes/{id_mensaje}", summary="Editar un mensaje propio")
 def editar_mensaje(
     id_conversacion: int,
     id_mensaje: int,
-    cuerpo: dict[str, Any] = Body(default={}),
-    yo: int = IdUsuarioActual,
+    cuerpo: dict[str, Any],
+    yo: int,
 ):
     """Solo el texto, y solo el propio.
 
@@ -222,19 +216,18 @@ def editar_mensaje(
     conversacion = _buscar(id_conversacion, yo)
     mensaje = _buscar_mensaje(conversacion, id_mensaje)
     if mensaje["deId"] != yo:
-        raise HTTPException(403, "Solo podés editar tus propios mensajes")
+        raise ErrorDeAPI(403, "Solo podés editar tus propios mensajes")
 
     texto = str(cuerpo.get("texto") or "").strip()
     if not texto and not mensaje.get("adjuntos"):
-        raise HTTPException(400, "El mensaje no puede quedar vacío")
+        raise ErrorDeAPI(400, "El mensaje no puede quedar vacío")
 
     mensaje["texto"] = texto
     mensaje["editado"] = d.iso(d.ahora())
     return _visible(mensaje)
 
 
-@router.delete("/{id_conversacion}/mensajes/{id_mensaje}", summary="Eliminar un mensaje propio")
-def eliminar_mensaje(id_conversacion: int, id_mensaje: int, yo: int = IdUsuarioActual):
+def eliminar_mensaje(id_conversacion: int, id_mensaje: int, yo: int):
     """Se borra el propio, y se borra de verdad: también su archivo.
 
     Dejar el archivo en el almacenamiento después de borrar el mensaje es
@@ -244,7 +237,7 @@ def eliminar_mensaje(id_conversacion: int, id_mensaje: int, yo: int = IdUsuarioA
     conversacion = _buscar(id_conversacion, yo)
     mensaje = _buscar_mensaje(conversacion, id_mensaje)
     if mensaje["deId"] != yo:
-        raise HTTPException(403, "Solo podés eliminar tus propios mensajes")
+        raise ErrorDeAPI(403, "Solo podés eliminar tus propios mensajes")
 
     for adjunto in mensaje.get("adjuntos") or []:
         if adjunto.get("objectKey"):
@@ -256,8 +249,7 @@ def eliminar_mensaje(id_conversacion: int, id_mensaje: int, yo: int = IdUsuarioA
     return {"eliminado": id_mensaje}
 
 
-@router.post("/{id_conversacion}/mensajes/{id_mensaje}/fijar", summary="Fijar o soltar un mensaje")
-def fijar_mensaje(id_conversacion: int, id_mensaje: int, yo: int = IdUsuarioActual):
+def fijar_mensaje(id_conversacion: int, id_mensaje: int, yo: int):
     """Uno solo por conversación, y lo puede fijar cualquiera de los dos.
 
     Sirve para lo que hay que tener a mano: la fecha de un parcial, un aula.
@@ -274,27 +266,33 @@ def fijar_mensaje(id_conversacion: int, id_mensaje: int, yo: int = IdUsuarioActu
     return {"fijado": conversacion.get("fijado")}
 
 
-@router.post("", summary="Abrir la conversación con alguien, o crearla")
-def abrir_conversacion(cuerpo: dict[str, Any] = Body(default={}), yo: int = IdUsuarioActual):
+_abriendo = threading.Lock()
+
+
+def abrir_conversacion(cuerpo: dict[str, Any], yo: int):
     try:
         para_id = int(cuerpo.get("paraId"))
     except (TypeError, ValueError):
-        raise HTTPException(400, "No se puede abrir una conversación con esa persona")
+        raise ErrorDeAPI(400, "No se puede abrir una conversación con esa persona")
 
     persona = d.buscar_persona(para_id)
     if not persona or para_id == yo:
-        raise HTTPException(400, "No se puede abrir una conversación con esa persona")
+        raise ErrorDeAPI(400, "No se puede abrir una conversación con esa persona")
 
-    conversacion = next(
-        (c for c in d.conversaciones if _es_mia(c, yo) and para_id in c["entre"]), None
-    )
-    if not conversacion:
-        conversacion = {
-            "id": d.nuevo_id_conversacion(),
-            "entre": [yo, para_id],
-            "mensajes": [],
-        }
-        d.conversaciones.append(conversacion)
+    # «¿Ya hay una? → si no, crearla» va junto: dos que se escriben a la vez,
+    # o un doble clic, creaban dos conversaciones de la misma pareja
+    # (`pruebas/concurrencia.py`). En memoria y sin nada más adentro.
+    with _abriendo:
+        conversacion = next(
+            (c for c in d.conversaciones if _es_mia(c, yo) and para_id in c["entre"]), None
+        )
+        if not conversacion:
+            conversacion = {
+                "id": d.nuevo_id_conversacion(),
+                "entre": [yo, para_id],
+                "mensajes": [],
+            }
+            d.conversaciones.append(conversacion)
 
     return {
         "id": conversacion["id"],

@@ -28,7 +28,7 @@ que volver a discutirla por no recordar el motivo.
 | [18](#18-los-archivos-se-validan-por-su-contenido) | Validación por contenido | 02/11/2026 | Vigente |
 | [19](#19-modera-el-docente-hasta-que-exista-el-rol-de-administrador) | Modera el docente | 02/11/2026 | Provisoria |
 | [20](#20-postergar-la-autenticación) | Postergar la autenticación | 02/11/2026 | Provisoria |
-| [21](#21-python-con-fastapi-en-el-servidor) | Python con FastAPI en el servidor | 07/11/2026 | Vigente |
+| [21](#21-python-con-django-en-el-servidor) | Python con Django en el servidor | 07/11/2026 | Vigente |
 
 ---
 
@@ -49,7 +49,7 @@ criterios de escritura y que cada integrante pueda leer el código del otro sin 
 **Consecuencias.** Se renuncia al tipado estático. Se compensa con nombres explícitos y
 validación en los límites del sistema.
 
-**Estado.** Reemplazada el 07/11/2026 por la decisión [21](#21-python-con-fastapi-en-el-servidor).
+**Estado.** Reemplazada el 07/11/2026 por la decisión [21](#21-python-con-django-en-el-servidor).
 
 ---
 
@@ -220,7 +220,7 @@ distintos competía con terminar las funcionalidades.
 **Consecuencias en ese momento.** Quedaban sin uso bcrypt, jsonwebtoken y multer, que
 figuraban como dependencias futuras. Se postergó decidir si Express permanecería como
 capa intermedia o si la interfaz consultaría Firestore directamente. Esa implementación
-de Express fue reemplazada por Python/FastAPI en la decisión 21.
+de Express fue reemplazada por Python/Django en la decisión 21.
 
 ---
 
@@ -378,22 +378,89 @@ cubierto de manera parcial mientras esto siga pendiente.
 
 ---
 
-## 21. Python con FastAPI en el servidor
+## 21. Python con Django en el servidor
 
 **Contexto.** La API creció y el equipo decidió pasar el servidor de Express a Python,
 manteniendo React y Vite en el frontend.
 
-**Decisión.** Usar FastAPI para el backend principal y mantener la interfaz HTTP que
-consume el frontend. La implementación está en `backend/`.
+**Decisión.** Usar Django para el backend principal y mantener la interfaz HTTP que
+consume el frontend. Las URLconf y vistas de Django están en `backend/`.
 
 **Alternativas descartadas.** Continuar ampliando el servidor Express existente.
 
-**Por qué.** El backend Python permite organizar las rutas por funcionalidad, generar
-documentación OpenAPI interactiva y avanzar con un lenguaje distinto al del frontend.
+**Por qué.** Django permite centralizar el enrutamiento, los middlewares y las vistas
+del campus en un único framework backend. La especificación OpenAPI se mantiene como
+documento versionado en `docs/api/openapi.yaml`.
 
-**Consecuencias.** El backend requiere Python 3.11 o superior y sus dependencias de
-`backend/requirements.txt`. Los datos siguen siendo de prueba y se reinician al reiniciar
-el servidor. Las pantallas anteriores de Actividad e Información se mantienen mediante
-rutas de compatibilidad. La implementación de Express fue retirada del proyecto.
+**Consecuencias.** El backend requiere Python 3.11 o superior y las dependencias de
+`backend/requirements.txt`. Django atiende las rutas HTTP del campus; la persistencia
+usa Firestore cuando está configurada. El servicio Node de `backend-node/` se limita a
+los catálogos externos y no implementa rutas del campus.
+
+**Estado.** Vigente.
+
+---
+
+## 22. El segundo backend en Node se limita a los catálogos externos
+
+**Contexto.** La cátedra pide que el proyecto implemente Django y Node. El backend principal del campus es Django en `backend/`, y había que decidir qué parte
+atiende Node.
+
+La restricción que gobierna la decisión no es el framework sino **cómo se guardan los
+datos**: el servidor trabaja sobre una copia en memoria del campus (`backend/app/datos.py`),
+las rutas la leen y la escriben directamente, y `servicios/persistencia.py` manda a
+Firestore lo que cambió después de cada petición. Eso obliga a un solo proceso. Con dos,
+cada uno tendría su propio campus y el último en guardar pisaría al otro **sin que nada
+fallara**, que es la peor forma de perder datos. Django puede convivir porque corre dentro
+del mismo proceso y comparte esa memoria; Node no puede compartir la memoria de Python.
+
+**Decisión.** Node atiende los **catálogos externos** —la búsqueda en Google Books y Open
+Library— como un servicio sin estado, en `backend-node/`. El campus le pregunta por HTTP
+dentro de la misma máquina. Node no es dueño de ninguna colección de Firestore, no verifica
+tokens y no decide permisos.
+
+**Alternativas descartadas.**
+
+1. *Repartir el dominio entre Django y Node* (por ejemplo, Mensajes, Foro y Novedades en
+   Node). Son 23 rutas que escriben en la memoria del campus, emiten eventos de auditoría,
+   mandan avisos por mensaje y validan archivos mirando los bytes. Llevarlas a otro proceso
+   obliga a dos dueños para las mismas colecciones, a duplicar la capa de permisos y las
+   reglas de archivos en dos lenguajes, y a un corte de migración donde un error borra
+   datos. Para 21 días y dos personas, el costo es alto y nada de eso lo ve el usuario.
+2. *Un servicio de tiempo real para el chat y las campanitas.* Es un buen candidato y
+   resuelve algo real: hoy los contadores se vuelven a pedir en cada cambio de ruta. Queda
+   como el siguiente paso, no como el primero, porque necesita saber quién puede ver qué y
+   eso lo obliga a preguntarle al campus.
+
+**Por qué.** De todo el campus, los catálogos externos son la única parte que no tiene
+estado propio: no toca `datos.py`, no escribe en Firestore, no mira el historial académico
+y no decide permisos. Lo único que hace es esperar a dos servidores ajenos al mismo tiempo
+y unir lo que contestan.
+
+Eso es también lo que Node hace mejor que Python: I/O concurrente contra servicios de
+terceros sin estado compartido. **No es Node agregado para cumplir un requisito, es la
+parte del sistema donde Node es la herramienta correcta.** Y es la única parte que se cae
+por culpa de un tercero —Google sin clave devuelve 429 casi siempre—, así que aislarla en
+su propio proceso tiene un segundo beneficio: cuando se cae, se cae sola.
+
+El reparto de responsabilidades quedó donde corresponde. En el campus: quién pregunta, el
+freno por persona, los favoritos y la biblioteca de cada materia. En Node: pedirles a los
+dos catálogos, unificar por ISBN y cachear. Duplicar la capa de permisos en otro lenguaje
+es la forma más segura de que las dos digan cosas distintas.
+
+**Consecuencias.** Requiere Node 22.15 o superior; la única dependencia es Express, y el
+resto —`fetch`, el corredor de pruebas, la lectura del archivo de entorno— es nativo.
+
+La frontera es `backend/app/servicios/libros_externos.py`, que actúa como cliente y
+**conserva las mismas dos funciones con la misma firma**. Django las llama sin trasladar
+la biblioteca ni sus permisos a Node.
+
+Si el servicio no está levantado, el campus funciona entero y lo único que no se puede es
+buscar en catálogos externos; el error llega con la misma forma que una fuente caída y la
+pantalla ya sabe mostrarlo. `GOOGLE_BOOKS_API_KEY` se movió de `backend/.env` a
+`backend-node/.env`, porque ese servicio es el único que consulta Google.
+
+El servicio escucha en 127.0.0.1 y acepta un secreto compartido opcional. No tiene —ni
+necesita— las credenciales de Firebase ni las de R2.
 
 **Estado.** Vigente.

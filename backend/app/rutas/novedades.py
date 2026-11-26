@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException
+from app.errores import ErrorDeAPI
 
 from .. import datos as d
 from ..servicios import almacenamiento as alm
 from ..servicios import archivos, auditoria, fotos
-from ..servicios.autenticacion import UsuarioActual
-
-router = APIRouter(prefix="/api/novedades", tags=["Novedades"])
 
 # Las únicas reacciones posibles
 REACCIONES = ["leido", "util", "dudas"]
@@ -84,7 +81,7 @@ def _buscar(id_publicacion: int) -> dict:
     """La novedad, o un 404. Tres rutas la buscaban con la misma línea."""
     publicacion = next((p for p in d.publicaciones if p['id'] == id_publicacion), None)
     if not publicacion:
-        raise HTTPException(404, 'Novedad no encontrada')
+        raise ErrorDeAPI(404, 'Novedad no encontrada')
     return publicacion
 
 
@@ -119,8 +116,7 @@ def _anclar_solo(id_publicacion: int) -> None:
         p["anclada"] = p["id"] == id_publicacion
 
 
-@router.get("", summary="Listar las publicaciones del muro")
-def listar_publicaciones(yo: dict = UsuarioActual):
+def listar_publicaciones(yo: dict):
     """La anclada va siempre primera; el resto, de la más nueva a la más vieja.
 
     Se devuelven solo las que le llegan a quien pregunta: lo de la facultad
@@ -138,10 +134,9 @@ def listar_publicaciones(yo: dict = UsuarioActual):
     }
 
 
-@router.post("", status_code=201, summary="Publicar una novedad")
-def crear_publicacion(cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual):
+def crear_publicacion(cuerpo: dict[str, Any], yo: dict):
     if not _puede_publicar(yo):
-        raise HTTPException(403, "Solo los docentes pueden publicar novedades")
+        raise ErrorDeAPI(403, "Solo los docentes pueden publicar novedades")
 
     titulo = str(cuerpo.get("titulo") or "").strip()
     texto = str(cuerpo.get("cuerpo") or "").strip()
@@ -153,7 +148,7 @@ def crear_publicacion(cuerpo: dict[str, Any] = Body(default={}), yo: dict = Usua
     imagen = str(cuerpo.get("imagen") or "").strip() or None
 
     if not titulo or not texto:
-        raise HTTPException(400, "La novedad necesita un título y un texto")
+        raise ErrorDeAPI(400, "La novedad necesita un título y un texto")
 
     publicacion = {
         "id": d.nuevo_id_publicacion(),
@@ -176,20 +171,19 @@ def crear_publicacion(cuerpo: dict[str, Any] = Body(default={}), yo: dict = Usua
     return _con_autor(publicacion, yo)
 
 
-@router.put("/{id_publicacion}", summary="Editar una novedad propia")
 def editar_publicacion(
-    id_publicacion: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_publicacion: int, cuerpo: dict[str, Any], yo: dict
 ):
     publicacion = next((p for p in d.publicaciones if p["id"] == id_publicacion), None)
     if not publicacion:
-        raise HTTPException(404, "Novedad no encontrada")
+        raise ErrorDeAPI(404, "Novedad no encontrada")
     if not _puede_publicar(yo) or publicacion["autorId"] != yo["id"]:
-        raise HTTPException(403, "Solo quien la publicó puede editarla")
+        raise ErrorDeAPI(403, "Solo quien la publicó puede editarla")
 
     titulo = str(cuerpo.get("titulo") or "").strip()
     texto = str(cuerpo.get("cuerpo") or "").strip()
     if not titulo or not texto:
-        raise HTTPException(400, "La novedad necesita un título y un texto")
+        raise ErrorDeAPI(400, "La novedad necesita un título y un texto")
 
     publicacion["titulo"] = titulo
     publicacion["cuerpo"] = texto
@@ -211,8 +205,7 @@ IMAGEN_MAX_MB = archivos.IMAGENES_MAX_MB
 FORMATOS_IMAGEN = {"png", "jpg", "jpeg"}
 
 
-@router.post("/{id_publicacion}/imagen", summary="Subir la imagen de una novedad")
-def subir_imagen(id_publicacion: int, cuerpo: dict = Body(...), yo: dict = UsuarioActual):
+def subir_imagen(id_publicacion: int, cuerpo: dict, yo: dict):
     """La sube quien escribió la novedad.
 
     Solo PNG y JPG, **mirando los bytes**: un SVG es un documento con scripts
@@ -220,7 +213,7 @@ def subir_imagen(id_publicacion: int, cuerpo: dict = Body(...), yo: dict = Usuar
     """
     publicacion = _buscar(id_publicacion)
     if publicacion["autorId"] != yo["id"]:
-        raise HTTPException(403, "Solo podés cambiar la imagen de tus propias novedades")
+        raise ErrorDeAPI(403, "Solo podés cambiar la imagen de tus propias novedades")
 
     contenido, ficha = archivos.leer_subida(
         cuerpo, permitidos=FORMATOS_IMAGEN, max_mb=IMAGEN_MAX_MB
@@ -235,7 +228,7 @@ def subir_imagen(id_publicacion: int, cuerpo: dict = Body(...), yo: dict = Usuar
     try:
         alm.subir(objeto, contenido, ficha["tipo"])
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(502, f"No se pudo guardar la imagen: {error}")
+        raise ErrorDeAPI(502, f"No se pudo guardar la imagen: {error}")
 
     alm.registrar(
         objeto,
@@ -252,11 +245,10 @@ def subir_imagen(id_publicacion: int, cuerpo: dict = Body(...), yo: dict = Usuar
     return _con_autor(publicacion, yo)
 
 
-@router.delete("/{id_publicacion}/imagen", summary="Quitar la imagen de una novedad")
-def quitar_imagen(id_publicacion: int, yo: dict = UsuarioActual):
+def quitar_imagen(id_publicacion: int, yo: dict):
     publicacion = _buscar(id_publicacion)
     if publicacion["autorId"] != yo["id"]:
-        raise HTTPException(403, "Solo podés cambiar la imagen de tus propias novedades")
+        raise ErrorDeAPI(403, "Solo podés cambiar la imagen de tus propias novedades")
 
     if publicacion.get("imagenObjeto"):
         alm.olvidar(publicacion["imagenObjeto"])
@@ -265,19 +257,18 @@ def quitar_imagen(id_publicacion: int, yo: dict = UsuarioActual):
     return _con_autor(publicacion, yo)
 
 
-@router.post("/{id_publicacion}/reaccion", summary="Reaccionar, o quitar la reacción")
 def reaccionar(
-    id_publicacion: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_publicacion: int, cuerpo: dict[str, Any], yo: dict
 ):
     """Cada persona tiene una sola: poner otra reemplaza la anterior, y tocar
     la misma de nuevo la saca."""
     publicacion = next((p for p in d.publicaciones if p["id"] == id_publicacion), None)
     if not publicacion:
-        raise HTTPException(404, "Novedad no encontrada")
+        raise ErrorDeAPI(404, "Novedad no encontrada")
 
     tipo = cuerpo.get("tipo")
     if tipo is not None and tipo not in REACCIONES:
-        raise HTTPException(400, "Esa reacción no existe")
+        raise ErrorDeAPI(400, "Esa reacción no existe")
 
     publicacion.setdefault("reacciones", {"leido": [], "util": [], "dudas": []})
     reacciones = publicacion["reacciones"]
@@ -295,9 +286,8 @@ def reaccionar(
     return _con_autor(publicacion, yo)
 
 
-@router.delete("/{id_publicacion}", summary="Retirar una novedad")
 def retirar_publicacion(
-    id_publicacion: int, cuerpo: dict[str, Any] = Body(default={}), yo: dict = UsuarioActual
+    id_publicacion: int, cuerpo: dict[str, Any], yo: dict
 ):
     """La saca del muro: su autor, o quien administra o supervisa.
 
@@ -308,19 +298,19 @@ def retirar_publicacion(
     """
     publicacion = next((p for p in d.publicaciones if p["id"] == id_publicacion), None)
     if not publicacion:
-        raise HTTPException(404, "Novedad no encontrada")
+        raise ErrorDeAPI(404, "Novedad no encontrada")
 
     es_mia = publicacion["autorId"] == yo["id"]
     if not es_mia and not _modera(yo):
-        raise HTTPException(
+        raise ErrorDeAPI(
             403, "Solo quien la publicó, o la administración, pueden retirarla"
         )
 
     motivo = str(cuerpo.get("motivo") or "").strip()
     if not es_mia and not motivo:
-        raise HTTPException(400, "Hay que indicar por qué se retira la novedad")
+        raise ErrorDeAPI(400, "Hay que indicar por qué se retira la novedad")
     if len(motivo) > 500:
-        raise HTTPException(400, "El motivo es demasiado largo")
+        raise ErrorDeAPI(400, "El motivo es demasiado largo")
 
     d.publicaciones.remove(publicacion)
 
