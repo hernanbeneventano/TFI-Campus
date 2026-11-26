@@ -83,9 +83,14 @@ export const IconoEstrella = ({ llena, ...p }) => (
 // oscuro (el menú, la barra y la tarjeta del inicio de sesión). Sale de
 // `public/logo-campus.png`, una versión de 256 px recortada al escudo; el
 // original pesa 700 KB y no tiene por qué bajar en cada visita.
+//
+// La ruta se arma con BASE_URL y no se escribe fija: Vite reescribe las
+// rutas de index.html y las del CSS cuando el sitio no vive en la raíz del
+// dominio, pero no las cadenas que están dentro del JavaScript. Con `/` fija,
+// en GitHub Pages el logo se pediría a la raíz del dominio y no estaría.
 export const Logo = ({ width = 64, height = 64, ...p }) => (
   <img
-    src="/logo-campus.png"
+    src={`${import.meta.env.BASE_URL}logo-campus.png`}
     width={width}
     height={height}
     alt=""

@@ -1,0 +1,97 @@
+# Publica la interfaz en GitHub Pages.
+#
+# Pages sirve archivos estáticos: lo que se sube es el resultado de
+# `npm run build`, nada más. Las carpetas `backend/` y `backend-node/` quedan
+# en el repositorio pero no se copian ni se ejecutan; el servidor se despliega
+# aparte y la interfaz lo encuentra por VITE_API_URL.
+#
+# Antes de que esto funcione hay que dejar, en el repositorio:
+#   Settings › Pages › Source           = GitHub Actions
+#   Settings › Variables › VITE_API_URL = https://<servidor>.onrender.com
+#   Settings › Secrets › VITE_FIREBASE_*  (las siete de frontend/.env.local)
+# Y en el servidor, FRONTEND_URL = https://<usuario>.github.io, o el navegador
+# se come un error de origen cruzado en cada consulta.
+
+name: Publicar la interfaz en Pages
+
+on:
+  push:
+    branches: [main, correccion/cosas-menores]
+    # Solo lo que entra en el sitio. Un cambio en el servidor o en el informe
+    # no tiene por qué volver a publicar la interfaz.
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Si se empujan dos cambios seguidos, se publica el último y se cancela el
+# anterior: dos despliegues a la vez dejarían el sitio a mitad de camino.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar las dependencias
+        run: npm ci
+
+      - name: Construir
+        env:
+          # El sitio vive en https://<usuario>.github.io/<repositorio>/, así
+          # que la base es el nombre del repositorio y no la raíz.
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+        run: npm run build
+
+      - name: Preparar el sitio para Pages
+        run: |
+          # Pages no sabe reescribir rutas: al entrar directo a /modulos/3
+          # busca ese archivo, no lo encuentra y contesta 404. Si el 404 es una
+          # copia de index.html, la aplicación se carga igual y el router
+          # resuelve la ruta. Es la forma habitual de servir una aplicación de
+          # una sola página en un alojamiento estático.
+          cp dist/index.html dist/404.html
+          # Sin esto, Pages pasa el sitio por Jekyll, que descarta los archivos
+          # y las carpetas que empiezan con guion bajo.
+          touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  publicar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4

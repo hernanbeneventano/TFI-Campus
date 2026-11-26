@@ -1,7 +1,10 @@
 // Funciones para comunicarse con el backend.
-// Vite redirige /api a http://localhost:3000 (ver vite.config.js).
+// Mientras se desarrolla, Vite redirige /api a http://localhost:3000 (ver
+// vite.config.js). En un despliegue estático la dirección del servidor la
+// fija VITE_API_URL al construir (ver services/destino.js).
 
 import { obtenerToken } from './sesion.js';
+import { api } from './destino.js';
 
 // Cada consulta lleva el token de identidad de Firebase. El servidor lo
 // verifica y de ahí saca quién pregunta: nunca se le manda el rol desde acá,
@@ -31,7 +34,7 @@ async function responderOFallar(respuesta, queHacia) {
 
 async function pedir(ruta) {
   return responderOFallar(
-    await fetch(`/api${ruta}`, { headers: await cabeceras() }),
+    await fetch(api(ruta), { headers: await cabeceras() }),
     `pedir ${ruta}`
   );
 }
@@ -39,7 +42,7 @@ async function pedir(ruta) {
 // Las tres que mandan cuerpo JSON se diferencian solo en el método
 function conCuerpo(metodo, queHacia) {
   return async (ruta, cuerpo) => {
-    const respuesta = await fetch(`/api${ruta}`, {
+    const respuesta = await fetch(api(ruta), {
       method: metodo,
       headers: await cabeceras({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(cuerpo),
@@ -56,7 +59,7 @@ async function borrar(ruta, cuerpo) {
   // Algunas bajas llevan cuerpo: retirar la publicación de otra persona exige
   // el motivo, y ese motivo viaja con el DELETE.
   return responderOFallar(
-    await fetch(`/api${ruta}`, {
+    await fetch(api(ruta), {
       method: 'DELETE',
       headers: await cabeceras(cuerpo ? { 'Content-Type': 'application/json' } : {}),
       ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}),
@@ -352,7 +355,7 @@ export const marcarFavoritoBiblioteca = (id, puesto) =>
 
 // La dirección de descarga: el navegador la abre, el backend comprueba los
 // permisos y manda el archivo.
-export const enlaceDescarga = (id) => `/api/biblioteca/${idEnRuta(id)}/archivo`;
+export const enlaceDescarga = (id) => api(`/biblioteca/${idEnRuta(id)}/archivo`);
 
 // El archivo viaja en base64 dentro del JSON. Es lo que se puede hacer sin
 // Firebase Storage; cuando esté, sube al bucket y acá queda la referencia.
@@ -368,7 +371,7 @@ function subirArchivoA(ruta, archivo, alAvanzar, extra = {}) {
     lector.onerror = () => rechazar(new Error('No se pudo leer el archivo'));
     lector.onload = async () => {
       const peticion = new XMLHttpRequest();
-      peticion.open('POST', `/api${ruta}`);
+      peticion.open('POST', api(ruta));
       peticion.setRequestHeader('Content-Type', 'application/json');
       const token = await obtenerToken().catch(() => null);
       if (token) peticion.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -429,7 +432,7 @@ export const obtenerAuditoriaDeMisMaterias = (filtros) =>
 
 /** La dirección de descarga, con los filtros puestos: baja lo que se ve. */
 export const enlaceExportarAuditoria = (filtros, formato) =>
-  `/api/auditoria/exportar?${parametrosDe({ ...filtros, formato })}`;
+  api(`/auditoria/exportar?${parametrosDe({ ...filtros, formato })}`);
 
 // --- Panel de control ---
 export const obtenerPanel = () => pedir('/panel');
@@ -530,7 +533,7 @@ export const subirArchivoDeElemento = (idCurso, idSeccion, idItem, archivo, alAv
   );
 
 export const enlaceArchivoDeElemento = (idCurso, idSeccion, idItem) =>
-  `/api/cursos/${idCurso}/carpetas/${idSeccion}/items/${idEnRuta(idItem)}/archivo`;
+  api(`/cursos/${idCurso}/carpetas/${idSeccion}/items/${idEnRuta(idItem)}/archivo`);
 
 // --- Días de cursada de un módulo ---
 export const agregarDiaDeClase = (idCurso, datos) =>
