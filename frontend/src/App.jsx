@@ -65,8 +65,12 @@ export default function App() {
   // Se vuelven a contar al cambiar de apartado: así, por ejemplo, al salir de
   // Mensajes el contador ya refleja lo que se acaba de leer.
   useEffect(() => {
+    if (!sesion) {
+      setContadores(null);
+      return;
+    }
     obtenerContadores().then(setContadores).catch(() => setContadores(null));
-  }, [pathname, usuario]);
+  }, [pathname, usuario, sesion]);
 
   // Mientras Firebase restaura la sesión no se muestra nada: ni el campus
   // —no se sabe de quién— ni el login —puede que ya haya sesión—.
